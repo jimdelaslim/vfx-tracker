@@ -523,20 +523,11 @@ function setDatabasePath(dbPath) {
         
         setTimeout(() => {
             startFlask();
-            
-            setTimeout(() => {
-                // Show success and reload
-                dialog.showMessageBox(mainWindow, {
-                    type: 'info',
-                    title: 'Database Switched',
-                    message: data.message || `Switched to ${path.basename(dbPath)}`,
-                    buttons: ['OK']
-                }).then(() => {
-                    if (mainWindow) {
-                        mainWindow.reload();
-                    }
-                });
-            }, 2000);
+            waitForFlask().then(ready => {
+                if (ready && mainWindow) {
+                    mainWindow.reload();
+                }
+            });
         }, 500);
     })
     .catch(error => {
@@ -942,12 +933,43 @@ ipcMain.on('picker-action', (event, action) => {
         });
     } else if (action === 'open-project') {
         // Show dialog immediately
-        openDatabaseFile(null).then(success => {
-            if (success) {
-                createWindow();
-                createMenu();
+        dialog.showOpenDialog(null, {
+            title: 'Open Project',
+            filters: [
+                { name: 'VFX Tracker Project', extensions: ['db'] },
+                { name: 'All Files', extensions: ['*'] }
+            ],
+            properties: ['openFile']
+        }).then(result => {
+            if (!result.canceled && result.filePaths.length > 0) {
+                const selectedPath = result.filePaths[0];
+                
+                if (!fs.existsSync(selectedPath)) {
+                    dialog.showErrorBox('File Not Found', 'Could not find: ' + selectedPath);
+                    showProjectPicker();
+                    return;
+                }
+                
+                currentProjectPath = selectedPath;
+                process.env.VFX_DB_PATH = selectedPath;
+                addToRecentProjects(selectedPath);
+                
+                // Restart Flask with correct database BEFORE showing window
+                stopFlask();
+                setTimeout(() => {
+                    startFlask();
+                    waitForFlask().then(ready => {
+                        if (ready) {
+                            createWindow();
+                            createMenu();
+                            updateWindowTitle();
+                        } else {
+                            dialog.showErrorBox('Error', 'Flask failed to start');
+                            showProjectPicker();
+                        }
+                    });
+                }, 500);
             } else {
-                // User cancelled, show picker again
                 showProjectPicker();
             }
         });
@@ -957,10 +979,24 @@ ipcMain.on('picker-action', (event, action) => {
         
         if (fs.existsSync(projectPath)) {
             currentProjectPath = projectPath;
-            createWindow();
-            createMenu();
-            updateWindowTitle();
-            setTimeout(() => setDatabasePath(projectPath), 500);
+            process.env.VFX_DB_PATH = projectPath;
+            addToRecentProjects(projectPath);
+            
+            // Restart Flask with correct database BEFORE showing window
+            stopFlask();
+            setTimeout(() => {
+                startFlask();
+                waitForFlask().then(ready => {
+                    if (ready) {
+                        createWindow();
+                        createMenu();
+                        updateWindowTitle();
+                    } else {
+                        dialog.showErrorBox('Error', 'Flask failed to start');
+                        showProjectPicker();
+                    }
+                });
+            }, 500);
         } else {
             dialog.showErrorBox('File Not Found', `Could not find: ${projectPath}`);
             removeFromRecentProjects(projectPath);
