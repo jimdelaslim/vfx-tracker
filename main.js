@@ -12,6 +12,7 @@ const recentProjectsFile = path.join(app.getPath('userData'), 'recent-projects.j
 let mainWindow;
 let flaskProcess;
 let currentProjectPath = null;
+let isSwitchingDatabase = false;  // Prevent quit during database switch
 
 // Start Flask server with virtual environment
 function startFlask() {
@@ -1016,19 +1017,23 @@ ipcMain.on('picker-action', (event, action) => {
                     addToRecentProjects(currentProjectPath);
                     
                     // Restart Flask to pick up new database
+                    isSwitchingDatabase = true;
                     stopFlask();
                     
                     setTimeout(() => {
                         startFlask();
-                        
-                        // Wait longer for Flask to fully restart
-                        setTimeout(() => {
-                            // NOW create window
-                            createWindow();
-                            createMenu();
-                            updateWindowTitle();
-                        }, 3000);
-                    }, 1000);
+                        waitForFlask().then(ready => {
+                            isSwitchingDatabase = false;
+                            if (ready) {
+                                createWindow();
+                                createMenu();
+                                updateWindowTitle();
+                            } else {
+                                dialog.showErrorBox('Error', 'Flask failed to start');
+                                showProjectPicker();
+                            }
+                        });
+                    }, 500);
                 })
                 .catch(error => {
                     console.error('Error creating project:', error);
@@ -1066,10 +1071,12 @@ ipcMain.on('picker-action', (event, action) => {
                 addToRecentProjects(selectedPath);
                 
                 // Restart Flask with correct database BEFORE showing window
+                isSwitchingDatabase = true;
                 stopFlask();
                 setTimeout(() => {
                     startFlask();
                     waitForFlask().then(ready => {
+                        isSwitchingDatabase = false;
                         if (ready) {
                             createWindow();
                             createMenu();
@@ -1085,6 +1092,7 @@ ipcMain.on('picker-action', (event, action) => {
             }
         });
     } else if (action.startsWith('recent-')) {
+        isSwitchingDatabase = true;
         closePickerWindows();
         const idx = parseInt(action.split('-')[1]);
         const projectPath = recentProjects[idx];
@@ -1099,6 +1107,7 @@ ipcMain.on('picker-action', (event, action) => {
             setTimeout(() => {
                 startFlask();
                 waitForFlask().then(ready => {
+                    isSwitchingDatabase = false;
                     if (ready) {
                         createWindow();
                         createMenu();
@@ -1139,7 +1148,8 @@ app.whenReady().then(async () => {
 app.on('window-all-closed', () => {
     console.log('All windows closed');
     // On Windows, quit when all windows are closed
-    if (process.platform !== 'darwin') {
+    // BUT NOT if we're in the middle of switching databases
+    if (process.platform !== 'darwin' && !isSwitchingDatabase) {
         app.quit();
     }
 });
