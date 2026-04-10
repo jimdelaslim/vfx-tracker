@@ -36,6 +36,7 @@ class Project(db.Model):
     logo_path = db.Column(db.Text)  # Full path to logo file
     path_aliases = db.Column(db.Text)  # JSON list of base paths for reference images
     cache_enabled = db.Column(db.Boolean, default=True)  # Enable/disable image caching
+    default_start_frame = db.Column(db.Integer, default=1001)  # Default starting frame for new plates
     is_active = db.Column(db.Boolean, default=False)  # Only one project can be active at a time
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     

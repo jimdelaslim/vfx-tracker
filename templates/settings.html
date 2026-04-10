@@ -180,6 +180,23 @@
             <div id="fps-message" style="margin-top: 0.5rem; font-weight: 600;"></div>
         </div>
         
+        <!-- Default Start Frame Setting -->
+        <div class="settings-section" style="margin-top: 2rem;">
+            <h3 class="settings-section-title settings-title-with-tooltip" style="margin: 0;">
+                Default Start Frame
+                <span class="settings-tooltip">Applied automatically to all new plates on EDL import. Existing plates are not affected. You can still override per-shot in the edit section.</span>
+            </h3>
+            <div style="display: flex; gap: 1rem; align-items: center; margin-top: 0.5rem;">
+                <input type="number" 
+                       id="default-start-frame-input"
+                       value="{{ project.default_start_frame if project.default_start_frame is not none else 1001 }}" 
+                       style="width: 120px; padding: 0.5rem; border: 2px solid #ddd; border-radius: 6px; font-size: 1rem;"
+                       onchange="updateDefaultStartFrame({{ project.id }}, this.value)">
+                <span style="color: #6c757d;">frames</span>
+            </div>
+            <p style="font-size: 0.85rem; color: #888; margin-top: 0.5rem;">Common values: 0, 1001, 1000001</p>
+            <div id="start-frame-message" style="margin-top: 0.5rem; font-weight: 600;"></div>
+        
         <!-- Path Aliases Section -->
         <div class="settings-section">
             <h3 class="settings-section-title settings-title-with-tooltip" style="margin: 0;">
@@ -749,3 +766,26 @@ async function saveAllChanges() {
 </script>
 
 {% endblock %}
+
+    <script>
+    function updateDefaultStartFrame(projectId, value) {
+        const messageDiv = document.getElementById('start-frame-message');
+        fetch(`/project/${projectId}/update_default_start_frame`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({default_start_frame: parseInt(value) || 1001})
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                messageDiv.style.color = '#20b2aa';
+                messageDiv.textContent = 'Default start frame updated to ' + data.default_start_frame;
+                setTimeout(() => { messageDiv.textContent = ''; }, 3000);
+            }
+        })
+        .catch(err => {
+            messageDiv.style.color = '#dc3545';
+            messageDiv.textContent = 'Error updating start frame';
+        });
+    }
+    </script>

@@ -83,6 +83,11 @@ def migrate_database_schema():
                 cursor.execute("ALTER TABLE projects ADD COLUMN cache_enabled BOOLEAN DEFAULT 1")
                 connection.commit()
                 print("AUTO-MIGRATION: cache_enabled complete!")
+            if 'default_start_frame' not in project_columns:
+                print("AUTO-MIGRATION: Adding default_start_frame column...")
+                cursor.execute("ALTER TABLE projects ADD COLUMN default_start_frame INTEGER DEFAULT 1001")
+                connection.commit()
+                print("AUTO-MIGRATION: default_start_frame complete!")
             # Check for camera_clipname column in shots table
             cursor.execute("PRAGMA table_info(shots)")
             shot_columns = [row[1] for row in cursor.fetchall()]
@@ -520,7 +525,9 @@ def import_metadata():
                         shot.shot_frame_rate = metadata.shot_frame_rate
                         shot.start_tc = metadata.start_tc
                         shot.end_tc = metadata.end_tc
-                        shot.start_frame = metadata.start_frame
+                        # Don't overwrite start_frame if already set by user
+                        if not shot.start_frame or str(shot.start_frame) in ('0', ''):
+                            shot.start_frame = metadata.start_frame
                         shot.end_frame = metadata.end_frame
                         shot.total_frames = metadata.total_frames
                         shot.camera_manufacturer = metadata.camera_manufacturer
@@ -909,7 +916,9 @@ def confirm_metadata_import():
                 shot.shot_frame_rate = metadata.shot_frame_rate
                 shot.start_tc = metadata.start_tc
                 shot.end_tc = metadata.end_tc
-                shot.start_frame = metadata.start_frame
+                # Don't overwrite start_frame if already set by user
+                if not shot.start_frame or str(shot.start_frame) in ('0', ''):
+                    shot.start_frame = metadata.start_frame
                 shot.end_frame = metadata.end_frame
                 shot.total_frames = metadata.total_frames
                 shot.camera_manufacturer = metadata.camera_manufacturer
@@ -2430,6 +2439,9 @@ def import_confirmation():
             shot_data['project_id'] = project.id
             shot_data['plate_status'] = 'Prep'
             shot_data['plate_number'] = 0
+            # Set default start frame from project settings
+            if 'start_frame' not in shot_data or not shot_data.get('start_frame'):
+                shot_data['start_frame'] = project.default_start_frame or 1001
             
             shot = Shot(**shot_data)
             db.session.add(shot)
@@ -2452,7 +2464,9 @@ def import_confirmation():
                     shot.shot_frame_rate = metadata.shot_frame_rate
                     shot.start_tc = metadata.start_tc
                     shot.end_tc = metadata.end_tc
-                    shot.start_frame = metadata.start_frame
+                    # Don't overwrite start_frame if already set by user
+                    if not shot.start_frame or str(shot.start_frame) in ('0', ''):
+                        shot.start_frame = metadata.start_frame
                     shot.end_frame = metadata.end_frame
                     shot.total_frames = metadata.total_frames
                     shot.camera_manufacturer = metadata.camera_manufacturer
@@ -2663,6 +2677,9 @@ def import_confirmation():
             shot_data['project_id'] = project.id
             shot_data['plate_status'] = 'Prep'
             shot_data['plate_number'] = 0
+            # Set default start frame from project settings
+            if 'start_frame' not in shot_data or not shot_data.get('start_frame'):
+                shot_data['start_frame'] = project.default_start_frame or 1001
             
             shot = Shot(**shot_data)
             db.session.add(shot)
@@ -2685,7 +2702,9 @@ def import_confirmation():
                     shot.shot_frame_rate = metadata.shot_frame_rate
                     shot.start_tc = metadata.start_tc
                     shot.end_tc = metadata.end_tc
-                    shot.start_frame = metadata.start_frame
+                    # Don't overwrite start_frame if already set by user
+                    if not shot.start_frame or str(shot.start_frame) in ('0', ''):
+                        shot.start_frame = metadata.start_frame
                     shot.end_frame = metadata.end_frame
                     shot.total_frames = metadata.total_frames
                     shot.camera_manufacturer = metadata.camera_manufacturer
@@ -3737,6 +3756,25 @@ def get_database_path():
         'path': DATABASE_PATH,
         'filename': os.path.basename(DATABASE_PATH)
     })
+
+
+
+@app.route('/project/<int:project_id>/update_default_start_frame', methods=['POST'])
+def update_default_start_frame(project_id):
+    """Update project default start frame"""
+    from flask import jsonify
+    try:
+        project = Project.query.get_or_404(project_id)
+        data = request.get_json()
+        
+        if data and 'default_start_frame' in data:
+            project.default_start_frame = int(data['default_start_frame'])
+            db.session.commit()
+            return jsonify({'success': True, 'default_start_frame': project.default_start_frame})
+        
+        return jsonify({'success': False, 'error': 'No value provided'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5001, use_reloader=False)
