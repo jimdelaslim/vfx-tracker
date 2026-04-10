@@ -1540,16 +1540,45 @@ function updateVFXField(vfxId, field, value) {
     });
 }
 
+
+// Refresh edit section when a plate number changes
+function refreshEditIfNeeded(shotId, newPlateNum) {
+    // Find which VFX code this shot belongs to
+    const plateCard = document.querySelector(`.plate-card[data-shot-id="${shotId}"]`);
+    if (!plateCard) return;
+    
+    const vfxContainer = plateCard.closest('[data-vfx-id]');
+    if (!vfxContainer) return;
+    
+    const vfxId = vfxContainer.dataset.vfxId;
+    
+    // Check what plate number the edit section currently has selected
+    const savedPlate = localStorage.getItem(`selectedPlate_${vfxId}`);
+    
+    // If the edit section is showing the same plate number we just changed to,
+    // or if the shot being edited is this shot, reload the edit data
+    const currentEditShotId = document.getElementById(`edit-head-${vfxId}`)?.dataset?.shotId;
+    
+    if (currentEditShotId === String(shotId) || String(savedPlate) === String(newPlateNum)) {
+        // Reload with updated data
+        loadPlateToEdit(vfxId, parseInt(newPlateNum));
+    }
+}
+
 function updatePlateNumber(shotId, plateNum) {
     fetchWithTimeout('/shot/' + shotId + '/update/field', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({plate_number: plateNum})
+        body: JSON.stringify({plate_number: parseInt(plateNum) || 0})
     })
     .then(response => response.json())
     .then(data => {
-        if (data.success && plateNum == 0) {
-            alert('[!] Remember to assign a plate number!');
+        if (data.success) {
+            if (parseInt(plateNum) === 0) {
+                alert('[!] Remember to assign a plate number!');
+            }
+            // Refresh edit section if it's showing this plate number
+            refreshEditIfNeeded(shotId, plateNum);
         }
     });
 }
@@ -1590,6 +1619,8 @@ function updatePlateNumber(shotId, plateNum) {
             } else {
                 input.style.color = '#20b2aa'; // Teal for assigned
             }
+            // Refresh edit section if it's showing this plate number
+            refreshEditIfNeeded(shotId, plateNum);
         }
     });
 }
