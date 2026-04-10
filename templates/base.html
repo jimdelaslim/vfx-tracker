@@ -362,5 +362,58 @@ window.addEventListener('scroll', () => {
     lastScrollTop = scrollTop;
 });
 </script>
+
+<script>
+// Navigation shortcuts (active on all pages)
+document.addEventListener('keydown', function(e) {
+    const activeEl = document.activeElement;
+    const isTyping = activeEl && (
+        activeEl.tagName === 'INPUT' || 
+        activeEl.tagName === 'TEXTAREA' || 
+        activeEl.tagName === 'SELECT' ||
+        activeEl.isContentEditable
+    );
+    
+    if (isTyping) return;
+    
+    const ctrl = e.ctrlKey || e.metaKey;
+    const shift = e.shiftKey;
+    const alt = e.altKey;
+    const key = e.key.toLowerCase();
+    
+    // Page navigation (bare number keys)
+    if (!ctrl && !shift && !alt) {
+        if (key === '1') { e.preventDefault(); window.location.href = '/'; return; }
+        if (key === '2') { e.preventDefault(); window.location.href = '/metadata/overview'; return; }
+        if (key === '3') { e.preventDefault(); window.location.href = '/settings'; return; }
+        if (key === '4') { e.preventDefault(); window.location.href = '/help'; return; }
+    }
+    
+    // Ctrl/Cmd+I - Import EDL
+    if (ctrl && !shift && !alt && key === 'i') {
+        e.preventDefault();
+        window.location.href = '/import';
+        return;
+    }
+    
+    // Shift+M - Import Metadata
+    if (!ctrl && shift && !alt && key === 'm') {
+        e.preventDefault();
+        window.location.href = '/import/metadata';
+        return;
+    }
+    
+    // Escape - go to dashboard
+    if (key === 'escape') {
+        if (isTyping) {
+            activeEl.blur();
+        } else {
+            e.preventDefault();
+            window.location.href = '/';
+        }
+        return;
+    }
+});
+</script>
 </body>
 </html>

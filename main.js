@@ -624,6 +624,103 @@ function openRecentProject(projectPath) {
     addToRecentProjects(projectPath);
 }
 
+// Show keyboard shortcuts window
+function showKeyboardShortcuts() {
+    const shortcutsWindow = new BrowserWindow({
+        width: 500,
+        height: 650,
+        resizable: false,
+        minimizable: false,
+        maximizable: false,
+        center: true,
+        title: 'Keyboard Shortcuts',
+        webPreferences: {
+            nodeIntegration: false,
+            contextIsolation: true
+        }
+    });
+    
+    const isMac = process.platform === 'darwin';
+    const cmd = isMac ? '⌘' : 'Ctrl';
+    const opt = isMac ? '⌥' : 'Alt';
+    
+    const html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <style>
+                * { margin: 0; padding: 0; box-sizing: border-box; }
+                body {
+                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+                    padding: 24px;
+                    background: #f5f5f5;
+                    color: #333;
+                }
+                h2 { font-size: 1.3rem; margin-bottom: 16px; color: #20b2aa; }
+                h3 { font-size: 0.85rem; text-transform: uppercase; color: #888; margin: 16px 0 8px; letter-spacing: 0.5px; }
+                .row {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    padding: 6px 0;
+                    border-bottom: 1px solid #eee;
+                }
+                .row:last-child { border-bottom: none; }
+                .label { font-size: 0.9rem; }
+                .keys {
+                    font-family: -apple-system, monospace;
+                    font-size: 0.8rem;
+                    background: white;
+                    border: 1px solid #ddd;
+                    border-radius: 4px;
+                    padding: 3px 8px;
+                    color: #555;
+                    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+                    white-space: nowrap;
+                }
+            </style>
+        </head>
+        <body>
+            <h2>Keyboard Shortcuts</h2>
+            
+            <h3>Navigation</h3>
+            <div class="row"><span class="label">Dashboard</span><span class="keys">1</span></div>
+            <div class="row"><span class="label">Metadata Overview</span><span class="keys">2</span></div>
+            <div class="row"><span class="label">Settings</span><span class="keys">3</span></div>
+            <div class="row"><span class="label">Help</span><span class="keys">4</span></div>
+            
+            <h3>Import / Export</h3>
+            <div class="row"><span class="label">Import EDL</span><span class="keys">${cmd} + I</span></div>
+            <div class="row"><span class="label">Import Metadata</span><span class="keys">Shift + M</span></div>
+            <div class="row"><span class="label">Export EDL</span><span class="keys">${cmd} + E</span></div>
+            <div class="row"><span class="label">Export PDF (VFX)</span><span class="keys">${cmd} + P</span></div>
+            <div class="row"><span class="label">Export CSV (VFX)</span><span class="keys">${opt} + C</span></div>
+            <div class="row"><span class="label">Export PDF (Metadata)</span><span class="keys">${cmd} + Shift + M</span></div>
+            <div class="row"><span class="label">Export CSV (Metadata)</span><span class="keys">${opt} + Shift + C</span></div>
+            
+            <h3>Selection</h3>
+            <div class="row"><span class="label">Select All</span><span class="keys">Shift + A</span></div>
+            <div class="row"><span class="label">Deselect All</span><span class="keys">${cmd} + Shift + A</span></div>
+            
+            <h3>Actions</h3>
+            <div class="row"><span class="label">Update Timecodes</span><span class="keys">U</span></div>
+            <div class="row"><span class="label">Update (from edit section)</span><span class="keys">Enter</span></div>
+            <div class="row"><span class="label">Clear Filters</span><span class="keys">Escape</span></div>
+            
+            <h3>Filter by Status</h3>
+            <div class="row"><span class="label">Prep</span><span class="keys">${opt} + P</span></div>
+            <div class="row"><span class="label">Ready</span><span class="keys">${opt} + R</span></div>
+            <div class="row"><span class="label">Turned Over</span><span class="keys">${opt} + T</span></div>
+            <div class="row"><span class="label">Update</span><span class="keys">${opt} + U</span></div>
+            <div class="row"><span class="label">Omitted</span><span class="keys">${opt} + O</span></div>
+        </body>
+        </html>
+    `;
+    
+    shortcutsWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(html));
+    shortcutsWindow.setMenuBarVisibility(false);
+}
+
 // Create menu
 function createMenu() {
     const isMac = process.platform === 'darwin';
@@ -696,6 +793,12 @@ function createMenu() {
                 {
                     label: 'Save Project As...',
                     click: saveProjectAs
+                },
+                { type: 'separator' },
+                {
+                    label: 'Keyboard Shortcuts',
+                    accelerator: 'CmdOrCtrl+/',
+                    click: showKeyboardShortcuts
                 },
                 { type: 'separator' },
                 {

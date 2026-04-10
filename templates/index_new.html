@@ -1430,8 +1430,16 @@ function filterByStatus(status) {
         params.set('status', status);
     }
     
+    // Update localStorage so persistence matches
+    const newUrl = '/?' + params.toString();
+    localStorage.setItem('vfx_tracker_filters', JSON.stringify({
+        search: params.get('search') || '',
+        sort: params.get('sort') || 'vfx_code',
+        status: params.get('status') || ''
+    }));
+    
     // Reload page with new parameters
-    window.location.href = '/?' + params.toString();
+    window.location.href = newUrl;
 }
 
 function clearFilter() {
@@ -4175,6 +4183,171 @@ function scrollToTop() {
     }
     
 })();
+
+
+// ========================================
+// KEYBOARD SHORTCUTS
+// ========================================
+
+document.addEventListener('keydown', function(e) {
+    // Check if user is typing in an input field
+    const activeEl = document.activeElement;
+    const isTyping = activeEl && (
+        activeEl.tagName === 'INPUT' || 
+        activeEl.tagName === 'TEXTAREA' || 
+        activeEl.tagName === 'SELECT' ||
+        activeEl.isContentEditable
+    );
+    
+    const ctrl = e.ctrlKey || e.metaKey;  // Cmd on Mac, Ctrl on PC
+    const shift = e.shiftKey;
+    const alt = e.altKey;  // Option on Mac
+    const key = e.key.toLowerCase();
+    // Use e.code for Alt shortcuts (Option+key on Mac produces special chars)
+    const code = e.code;  // e.g. 'KeyP', 'KeyR', etc.
+    
+    // === ALWAYS ACTIVE (even when typing) ===
+    
+    // Enter - If in edit section input, click Update Timecodes
+    if (key === 'enter' && isTyping) {
+        const editInput = activeEl.closest('[id^="edit-section-"]');
+        if (editInput) {
+            const vfxId = editInput.id.replace('edit-section-', '');
+            const updateBtn = document.querySelector('[onclick="updateTimecodes(' + vfxId + ')"]');
+            if (updateBtn) {
+                e.preventDefault();
+                activeEl.blur();
+                updateBtn.style.display = 'block';
+                updateBtn.click();
+                return;
+            }
+        }
+    }
+    
+    // Escape - Clear filters / blur input
+    if (key === 'escape') {
+        if (isTyping) {
+            activeEl.blur();
+        } else {
+            if (typeof clearAllFilters === 'function') clearAllFilters();
+        }
+        e.preventDefault();
+        return;
+    }
+    
+    // Ctrl/Cmd+I - Import EDL
+    if (ctrl && !shift && !alt && key === 'i') {
+        e.preventDefault();
+        window.location.href = '/import';
+        return;
+    }
+    
+    // Ctrl/Cmd+E - Export EDL
+    if (ctrl && !shift && !alt && key === 'e') {
+        e.preventDefault();
+        const exportEdlBtn = document.querySelector('[onclick*="exportSelectedEDL"], [onclick*="exportEDL"]');
+        if (exportEdlBtn) exportEdlBtn.click();
+        return;
+    }
+    
+    // Ctrl/Cmd+P - Export PDF (VFX)
+    if (ctrl && !shift && !alt && key === 'p') {
+        e.preventDefault();
+        const exportPdfBtn = document.querySelector('[onclick*="exportSelectedPDF"], [onclick*="exportPDF"]');
+        if (exportPdfBtn) exportPdfBtn.click();
+        return;
+    }
+    
+    // Ctrl/Cmd+Shift+M - Export PDF (Metadata)
+    if (ctrl && shift && code === 'KeyM') {
+        e.preventDefault();
+        const exportMetaPdfBtn = document.querySelector('[onclick*="exportMetadataPDF"]');
+        if (exportMetaPdfBtn) exportMetaPdfBtn.click();
+        return;
+    }
+    
+    // Ctrl/Cmd+Shift+A - Deselect All
+    if (ctrl && shift && code === 'KeyA') {
+        e.preventDefault();
+        if (typeof deselectAll === 'function') deselectAll();
+        return;
+    }
+    
+    // Alt/Option+Shift+C - Export CSV (Metadata)
+    if (!ctrl && shift && alt && code === 'KeyC') {
+        e.preventDefault();
+        const exportMetaCsvBtn = document.querySelector('[onclick*="exportMetadataCSV"]');
+        if (exportMetaCsvBtn) exportMetaCsvBtn.click();
+        return;
+    }
+    
+    // Alt/Option+C - Export CSV (VFX)
+    if (!ctrl && !shift && alt && code === 'KeyC') {
+        e.preventDefault();
+        const exportCsvBtn = document.querySelector('[onclick*="exportSelectedCSV"], [onclick*="exportCSV"]');
+        if (exportCsvBtn) exportCsvBtn.click();
+        return;
+    }
+    
+    // Shift+A - Select All (no ctrl)
+    if (!ctrl && shift && !alt && key === 'a') {
+        if (isTyping) return;
+        e.preventDefault();
+        document.querySelectorAll('.vfx-code-checkbox').forEach(cb => {
+            cb.checked = true;
+            const vfxId = cb.value;
+            if (typeof handleBatchSelection === 'function') handleBatchSelection(parseInt(vfxId), true);
+        });
+        document.querySelectorAll('.shot-checkbox').forEach(cb => cb.checked = true);
+        if (typeof updateSelectionCount === 'function') updateSelectionCount();
+        return;
+    }
+    
+    // Shift+M - Import Metadata (no ctrl)
+    if (!ctrl && shift && !alt && key === 'm') {
+        if (isTyping) return;
+        e.preventDefault();
+        window.location.href = '/import/metadata';
+        return;
+    }
+    
+    // === ONLY WHEN NOT TYPING ===
+    if (isTyping) return;
+    
+    // Alt/Option + status sort shortcuts (use code to avoid Mac special chars)
+    if (alt && !ctrl && !shift) {
+        if (code === 'KeyP') { e.preventDefault(); if (typeof filterByStatus === 'function') filterByStatus('Prep'); return; }
+        if (code === 'KeyR') { e.preventDefault(); if (typeof filterByStatus === 'function') filterByStatus('Ready'); return; }
+        if (code === 'KeyT') { e.preventDefault(); if (typeof filterByStatus === 'function') filterByStatus('Turned Over'); return; }
+        if (code === 'KeyU') { e.preventDefault(); if (typeof filterByStatus === 'function') filterByStatus('Update'); return; }
+        if (code === 'KeyO') { e.preventDefault(); if (typeof filterByStatus === 'function') filterByStatus('Omitted'); return; }
+    }
+    
+    // U - Update Timecodes (for the currently visible/expanded VFX code)
+    if (!ctrl && !shift && !alt && key === 'u') {
+        e.preventDefault();
+        const updateBtns = document.querySelectorAll('[onclick^="updateTimecodes"]');
+        for (const btn of updateBtns) {
+            if (btn.style.display !== 'none' && btn.offsetParent !== null) {
+                btn.click();
+                break;
+            }
+        }
+        return;
+    }
+    
+
+    
+    // 1 - Dashboard
+    if (key === '1') { e.preventDefault(); window.location.href = '/'; return; }
+    // 2 - Metadata page
+    if (key === '2') { e.preventDefault(); window.location.href = '/metadata/overview'; return; }
+    // 3 - Settings
+    if (key === '3') { e.preventDefault(); window.location.href = '/settings'; return; }
+    // 4 - Help
+    if (key === '4') { e.preventDefault(); window.location.href = '/help'; return; }
+});
+
 </script>
 
 
