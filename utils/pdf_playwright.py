@@ -208,92 +208,165 @@ def get_status_color(status):
             return color
     return STATUS_COLORS['prep']
 
-def render_html_to_pdf(html_pages):
-    print(f"[TOOL] Rendering {len(html_pages)} pages with Playwright")
-    """Use Playwright to render HTML pages to PDF"""
+# ========================================
+# PERSISTENT BROWSER for fast PDF exports
+# ========================================
+_playwright_instance = None
+_browser_instance = None
+
+def _get_browser():
+    """Get or create a persistent Chromium browser instance"""
+    global _playwright_instance, _browser_instance
+    
+    # If browser exists and is still connected, reuse it
+    if _browser_instance and _browser_instance.is_connected():
+        print("[TOOL] Reusing existing browser instance")
+        return _browser_instance
+    
+    # Clean up old instances
+    _shutdown_browser()
+    
+    # Set up browser path for packaged mode
+    if getattr(sys, 'frozen', False):
+        print("[TOOL] Running in packaged mode, looking for bundled browsers...")
+        
+        if hasattr(sys, '_MEIPASS'):
+            base_path = sys._MEIPASS
+        else:
+            base_path = os.path.dirname(sys.executable)
+        
+        possible_paths = [
+            os.path.join(os.path.dirname(sys.executable), 'playwright-browsers'),
+            os.path.join(base_path, 'playwright-browsers'),
+            os.environ.get('PLAYWRIGHT_BROWSERS_PATH')
+        ]
+        
+        for path in possible_paths:
+            if path and os.path.exists(path):
+                os.environ['PLAYWRIGHT_BROWSERS_PATH'] = path
+                print(f"[OK] Using Playwright browsers from: {path}")
+                break
+        else:
+            print(f"[ERROR] Could not find Playwright browsers!")
+            raise Exception("Playwright browsers not found in packaged app")
+    else:
+        print("[TOOL] Running in development mode, using system Playwright browsers")
+    
+    # Launch new browser
+    print("[TOOL] Launching new Chromium instance...")
+    _playwright_instance = sync_playwright().start()
+    _browser_instance = _playwright_instance.chromium.launch()
+    print("[OK] Browser launched and ready")
+    
+    return _browser_instance
+
+def _shutdown_browser():
+    """Clean up browser resources"""
+    global _playwright_instance, _browser_instance
     
     try:
-        with sync_playwright() as p:
-            # Set browser path for bundled Playwright browsers on Windows
-            browser_path = None
-            
-            # Check if running in PyInstaller bundle
-            if getattr(sys, 'frozen', False):
-                print("[TOOL] Running in packaged mode, looking for bundled browsers...")
-                
-                # Get base path - different depending on how PyInstaller was run
-                if hasattr(sys, '_MEIPASS'):
-                    base_path = sys._MEIPASS
-                else:
-                    base_path = os.path.dirname(sys.executable)
-                
-                # Check multiple possible locations for Playwright browsers
-                possible_paths = [
-                    os.path.join(os.path.dirname(sys.executable), 'playwright-browsers'),
-                    os.path.join(base_path, 'playwright-browsers'),
-                    os.environ.get('PLAYWRIGHT_BROWSERS_PATH')
-                ]
-                
-                for path in possible_paths:
-                    if path and os.path.exists(path):
-                        browser_path = path
-                        os.environ['PLAYWRIGHT_BROWSERS_PATH'] = path
-                        print(f"[OK] Using Playwright browsers from: {path}")
-                        break
-                
-                if not browser_path:
-                    print(f"[ERROR] Could not find Playwright browsers!")
-                    print(f"[ERROR] Checked paths: {possible_paths}")
-                    print(f"[ERROR] sys.executable: {sys.executable}")
-                    print(f"[ERROR] Current working directory: {os.getcwd()}")
-                    raise Exception("Playwright browsers not found in packaged app")
-            else:
-                print("[TOOL] Running in development mode, using system Playwright browsers")
-            
-            # Launch browser
-            browser = p.chromium.launch()
+        if _browser_instance:
+            _browser_instance.close()
+    except:
+        pass
+    
+    try:
+        if _playwright_instance:
+            _playwright_instance.stop()
+    except:
+        pass
+    
+    _browser_instance = None
+    _playwright_instance = None
+
+# Register cleanup on exit
+import atexit
+atexit.register(_shutdown_browser)
+
+
+def render_html_to_pdf(html_pages):
+    """Use Playwright to render HTML pages to PDF (persistent browser)"""
+    print(f"[TOOL] Rendering {len(html_pages)} pages with Playwright")
+    
+    try:
+        browser = _get_browser()
+        context = browser.new_context()
+        page = context.new_page()
+
+        # Combine all pages with page breaks
+        combined_html = """
+        <!DOCTYPE html>
+        <html>
+        <head><meta charset="UTF-8"></head>
+        <body>
+        """
+
+        for i, html_content in enumerate(html_pages):
+            if i > 0:
+                combined_html += '<div style="page-break-before: always;"></div>'
+            combined_html += html_content
+
+        combined_html += """
+        </body>
+        </html>
+        """
+
+        # Set content and generate PDF
+        page.set_content(combined_html)
+
+        pdf_bytes = page.pdf(
+            format='A4',
+            landscape=True,
+            margin={
+                'top': '0.5in',
+                'right': '0.5in',
+                'bottom': '0.5in',
+                'left': '0.5in'
+            },
+            print_background=True
+        )
+
+        # Close the context but keep the browser alive
+        context.close()
+        print(f"[OK] PDF generated: {len(pdf_bytes)} bytes")
+        return pdf_bytes
+        
+    except Exception as e:
+        print(f"[ERROR] Playwright PDF generation failed: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        
+        # Browser might have crashed - reset it
+        _shutdown_browser()
+        
+        # Retry once with fresh browser
+        try:
+            print("[TOOL] Retrying with fresh browser...")
+            browser = _get_browser()
             context = browser.new_context()
             page = context.new_page()
-
-            # Combine all pages with page breaks
+            
             combined_html = """
             <!DOCTYPE html>
             <html>
             <head><meta charset="UTF-8"></head>
             <body>
             """
-
             for i, html_content in enumerate(html_pages):
                 if i > 0:
                     combined_html += '<div style="page-break-before: always;"></div>'
                 combined_html += html_content
-
-            combined_html += """
-            </body>
-            </html>
-            """
-
-            # Set content and generate PDF
+            combined_html += "</body></html>"
+            
             page.set_content(combined_html)
-
             pdf_bytes = page.pdf(
-                format='A4',
-                landscape=True,
-                margin={
-                    'top': '0.5in',
-                    'right': '0.5in',
-                    'bottom': '0.5in',
-                    'left': '0.5in'
-                },
+                format='A4', landscape=True,
+                margin={'top': '0.5in', 'right': '0.5in', 'bottom': '0.5in', 'left': '0.5in'},
                 print_background=True
             )
-
-            browser.close()
-            print(f"[OK] PDF generated: {len(pdf_bytes)} bytes")
+            context.close()
+            print(f"[OK] PDF generated on retry: {len(pdf_bytes)} bytes")
             return pdf_bytes
-            
-    except Exception as e:
-        print(f"[ERROR] Playwright PDF generation failed: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        raise Exception(f"PDF generation failed: {str(e)}")
+        except Exception as e2:
+            _shutdown_browser()
+            raise Exception(f"PDF generation failed after retry: {str(e2)}")
