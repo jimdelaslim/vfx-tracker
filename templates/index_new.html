@@ -1021,8 +1021,8 @@ function clearAllFilters() {
                         <input type="text" class="batch-linkable batch-turnover-number" 
                                data-vfx-id="{{ vfx_code.id }}"
                                value="{{ vfx_code.turnover_number or '' }}" 
-                               oninput="handleBatchInput('turnover_number', this.value)"
-                               onblur="updateVFXField({{ vfx_code.id }}, 'turnover_number', this.value)">
+                               
+                               onblur="updateVFXField({{ vfx_code.id }}, 'turnover_number', this.value); handleBatchInput('turnover_number', this.value, this)">
                     </div>
 
                     <div class="vfx-info-field" style="margin-bottom: 1rem;">
@@ -1030,7 +1030,7 @@ function clearAllFilters() {
                         <input type="date" class="batch-linkable batch-turnover-date"
                                data-vfx-id="{{ vfx_code.id }}"
                                value="{{ vfx_code.turnover_date.strftime('%Y-%m-%d') if vfx_code.turnover_date else '' }}"
-                               onchange="handleBatchInput('turnover_date', this.value); updateVFXField({{ vfx_code.id }}, 'turnover_date', this.value)">
+                               onchange="updateVFXField({{ vfx_code.id }}, 'turnover_date', this.value); handleBatchInput('turnover_date', this.value, this)">
                     </div>
 
                     <div class="vfx-info-field">
@@ -1039,23 +1039,23 @@ function clearAllFilters() {
                             <input type="text" class="batch-linkable batch-vendor-1" 
                                    data-vfx-id="{{ vfx_code.id }}"
                                    placeholder="Vendor 1" value="{{ vfx_code.vendor_1 or '' }}"
-                                   onblur="updateVFXField({{ vfx_code.id }}, 'vendor_1', this.value)"
-                                   oninput="handleBatchInput('vendor_1', this.value)">
+                                   onblur="updateVFXField({{ vfx_code.id }}, 'vendor_1', this.value); handleBatchInput('vendor_1', this.value, this)"
+                                   >
                             <input type="text" class="batch-linkable batch-vendor-2"
                                    data-vfx-id="{{ vfx_code.id }}"
                                    placeholder="Vendor 2" value="{{ vfx_code.vendor_2 or '' }}"
-                                   onblur="updateVFXField({{ vfx_code.id }}, 'vendor_2', this.value)"
-                                   oninput="handleBatchInput('vendor_2', this.value)">
+                                   onblur="updateVFXField({{ vfx_code.id }}, 'vendor_2', this.value); handleBatchInput('vendor_2', this.value, this)"
+                                   >
                             <input type="text" class="batch-linkable batch-vendor-3"
                                    data-vfx-id="{{ vfx_code.id }}"
                                    placeholder="Vendor 3" value="{{ vfx_code.vendor_3 or '' }}"
-                                   onblur="updateVFXField({{ vfx_code.id }}, 'vendor_3', this.value)"
-                                   oninput="handleBatchInput('vendor_3', this.value)">
+                                   onblur="updateVFXField({{ vfx_code.id }}, 'vendor_3', this.value); handleBatchInput('vendor_3', this.value, this)"
+                                   >
                             <input type="text" class="batch-linkable batch-vendor-4"
                                    data-vfx-id="{{ vfx_code.id }}"
                                    placeholder="Vendor 4" value="{{ vfx_code.vendor_4 or '' }}"
-                                   onblur="updateVFXField({{ vfx_code.id }}, 'vendor_4', this.value)"
-                                   oninput="handleBatchInput('vendor_4', this.value)">
+                                   onblur="updateVFXField({{ vfx_code.id }}, 'vendor_4', this.value); handleBatchInput('vendor_4', this.value, this)"
+                                   >
                         </div>
                     </div>
                 </div>
@@ -3925,38 +3925,45 @@ function updateBatchVisuals() {
     }
 }
 
-function handleBatchInput(fieldName, value) {
-    
+function handleBatchInput(fieldName, value, sourceElement) {
     // Only apply batch changes if 2+ codes are selected
     if (selectedVFXCodes.size < 2) {
         return;
     }
     
-    // Get the element that triggered this (from event)
-    const sourceElement = event ? event.target : null;
     const sourceVfxId = sourceElement ? sourceElement.dataset.vfxId : null;
+    const fieldClass = `batch-${fieldName.replace(/_/g, '-')}`;
     
-    
-    // Update all selected VFX codes with this value
+    // Collect all target VFX codes (skip the source)
+    const targets = [];
     selectedVFXCodes.forEach(vfxId => {
-        // Skip the source element (already has the value)
-        if (vfxId == sourceVfxId) {
-            return;
-        }
-        
-        // Find the correct field class name
-        const fieldClass = `batch-${fieldName.replace(/_/g, '-')}`;
-        
-        // Update the field in the UI
+        if (String(vfxId) === String(sourceVfxId)) return;
+        targets.push(vfxId);
+    });
+    
+    // Update UI immediately for all targets
+    targets.forEach(vfxId => {
         const targetField = document.querySelector(`[data-vfx-id="${vfxId}"].${fieldClass}`);
-        
         if (targetField) {
             targetField.value = value;
-            // Trigger the update
-            updateVFXField(vfxId, fieldName, value);
-        } else {
         }
     });
+    
+    // Send updates sequentially to avoid race conditions
+    async function sendUpdates() {
+        for (const vfxId of targets) {
+            try {
+                await fetch('/vfx/' + vfxId + '/update/field', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({[fieldName]: value})
+                });
+            } catch (err) {
+                console.error('Batch update failed for vfx', vfxId, err);
+            }
+        }
+    }
+    sendUpdates();
 }
 
 
