@@ -11,18 +11,13 @@ html {
 body {
     overflow-x: hidden;
 }
-/* Hide notes panel completely when closed */
+/* Hide notes panel completely when closed - use display:none to fully remove */
 .notes-panel {
-    right: -500px !important;
-    border-left: none !important;
-    visibility: hidden;
-    transition: right 0.3s ease, visibility 0s linear 0.3s;
+    display: none !important;
 }
 .notes-panel.open {
+    display: flex !important;
     right: 0 !important;
-    border-left: 3px solid #6c757d !important;
-    visibility: visible;
-    transition: right 0.3s ease, visibility 0s linear 0s;
 }
 </style>
 
