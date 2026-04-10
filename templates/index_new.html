@@ -11,12 +11,18 @@ html {
 body {
     overflow-x: hidden;
 }
-/* Hide any overflow from fixed elements */
+/* Hide notes panel completely when closed */
 .notes-panel {
-    right: -400px !important;
+    right: -500px !important;
+    border-left: none !important;
+    visibility: hidden;
+    transition: right 0.3s ease, visibility 0s linear 0.3s;
 }
 .notes-panel.open {
     right: 0 !important;
+    border-left: 3px solid #6c757d !important;
+    visibility: visible;
+    transition: right 0.3s ease, visibility 0s linear 0s;
 }
 </style>
 
