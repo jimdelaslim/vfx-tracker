@@ -3801,5 +3801,20 @@ def update_default_start_frame(project_id):
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
+
+# Warm up Playwright Chromium on startup so first PDF export is fast
+def _warmup_playwright():
+    try:
+        from utils.pdf_playwright import _get_browser
+        print("[TOOL] Warming up Playwright Chromium...")
+        _get_browser()
+        print("[OK] Playwright Chromium ready")
+    except Exception as e:
+        print(f"[WARN] Playwright warmup failed: {e}")
+
+import threading
+threading.Thread(target=_warmup_playwright, daemon=True).start()
+
+
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5001, use_reloader=False)

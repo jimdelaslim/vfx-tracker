@@ -4,6 +4,64 @@
 
 {% block content %}
 
+<style>
+#pdf-loading-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 99999;
+    justify-content: center;
+    align-items: center;
+}
+#pdf-loading-overlay.active {
+    display: flex;
+}
+.pdf-loading-box {
+    background: white;
+    padding: 2rem 3rem;
+    border-radius: 12px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+    text-align: center;
+}
+.pdf-spinner {
+    width: 50px;
+    height: 50px;
+    border: 5px solid #e0e0e0;
+    border-top-color: #20b2aa;
+    border-radius: 50%;
+    animation: pdfspin 1s linear infinite;
+    margin: 0 auto 1rem;
+}
+@keyframes pdfspin {
+    to { transform: rotate(360deg); }
+}
+.pdf-loading-text {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #333;
+}
+</style>
+<div id="pdf-loading-overlay">
+    <div class="pdf-loading-box">
+        <div class="pdf-spinner"></div>
+        <div class="pdf-loading-text" id="pdf-loading-text">Generating PDF...</div>
+    </div>
+</div>
+<script>
+window.showPdfLoading = function(text) {
+    const overlay = document.getElementById('pdf-loading-overlay');
+    const textEl = document.getElementById('pdf-loading-text');
+    if (textEl) textEl.textContent = text || 'Generating PDF...';
+    if (overlay) overlay.classList.add('active');
+};
+window.hidePdfLoading = function() {
+    const overlay = document.getElementById('pdf-loading-overlay');
+    if (overlay) overlay.classList.remove('active');
+};
+</script>
+
+
 <script>
 // ========================================
 // PERSISTENT SEARCH/SORT/FILTER
@@ -2518,6 +2576,13 @@ async function exportSelectedPDF() {
     const allVfxHeaderChecks = document.querySelectorAll('.vfx-code-checkbox:checked');
     let exportMode = 'single';  // Default: single PDF
     
+    // Helper to ensure spinner hides on any exit path
+    let _spinnerShown = false;
+    const _showSpinner = (txt) => { window.showPdfLoading(txt); _spinnerShown = true; };
+    const _hideSpinner = () => { if (_spinnerShown) window.hidePdfLoading(); };
+    
+    try {
+    
     if (allVfxHeaderChecks.length > 1) {
         // Custom dialog for better UX
         const dialogHtml = `
@@ -2552,6 +2617,8 @@ async function exportSelectedPDF() {
             };
         });
     }
+    
+    _showSpinner('Generating PDF...');
     
     // Generate smart filename (same logic as EDL)
     let defaultFilename = 'selected_shots_info.pdf';
@@ -2659,6 +2726,11 @@ async function exportSelectedPDF() {
         } else {
             alert('Failed to write PDF file: ' + writeResult.error);
         }
+    }    } catch (err) {
+        console.error('PDF export error:', err);
+        alert('Failed to generate PDF: ' + err.message);
+    } finally {
+        _hideSpinner();
     }
 }
 
