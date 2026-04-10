@@ -704,6 +704,7 @@ function showKeyboardShortcuts() {
             <div class="row"><span class="label">Deselect All</span><span class="keys">${cmd} + Shift + A</span></div>
             
             <h3>Actions</h3>
+            <div class="row"><span class="label">Focus Search</span><span class="keys">Shift + Space</span></div>
             <div class="row"><span class="label">Update Timecodes</span><span class="keys">U</span></div>
             <div class="row"><span class="label">Update (from edit section)</span><span class="keys">Enter</span></div>
             <div class="row"><span class="label">Clear Filters</span><span class="keys">Escape</span></div>

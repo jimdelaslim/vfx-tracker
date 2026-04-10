@@ -2,6 +2,24 @@
 
 
 
+
+<style>
+/* Fix for right-edge smudge/line */
+html {
+    overflow-x: hidden;
+}
+body {
+    overflow-x: hidden;
+}
+/* Hide any overflow from fixed elements */
+.notes-panel {
+    right: -400px !important;
+}
+.notes-panel.open {
+    right: 0 !important;
+}
+</style>
+
 {% block content %}
 
 <style>
@@ -174,7 +192,13 @@ function clearAllFilters() {
 .notes-panel-content {
     flex: 1;
     padding: 1rem;
-    overflow-y: auto;
+    overflow: hidden;
+}
+.notes-panel-content textarea {
+    scrollbar-width: none;
+}
+.notes-panel-content textarea::-webkit-scrollbar {
+    display: none;
 }
 
 .notes-panel-content textarea {
@@ -4301,6 +4325,17 @@ document.addEventListener('keydown', function(e) {
                 return;
             }
         }
+    }
+    
+    // Shift+Space - Focus search bar
+    if (!ctrl && shift && !alt && key === ' ') {
+        e.preventDefault();
+        const searchInput = document.getElementById('search-input');
+        if (searchInput) {
+            searchInput.focus();
+            searchInput.select();
+        }
+        return;
     }
     
     // Escape - Clear filters / blur input
