@@ -3312,9 +3312,15 @@ function updateTimecodes(vfxId) {
             }
         });
         
-        // Update the VFX header frame range banner using first shot
+        // Update the VFX header frame range banner using currently selected plate
         if (data.shots.length > 0) {
-            const shot = data.shots[0];
+            // Find which shot is currently selected in the edit section
+            const currentEditShotId = document.getElementById(`edit-head-${vfxId}`)?.dataset?.shotId;
+            let shot = data.shots[0]; // fallback to first
+            if (currentEditShotId) {
+                const selected = data.shots.find(s => String(s.id) === String(currentEditShotId));
+                if (selected) shot = selected;
+            }
             const fr = shot.frame_range;
             
             // Update header frame boxes
