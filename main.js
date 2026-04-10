@@ -871,12 +871,17 @@ ipcMain.handle('write-export-file', async (event, { filePath, data }) => {
 ipcMain.on('picker-action', (event, action) => {
     console.log('Picker action received:', action);
     
-    // Close all picker windows
-    BrowserWindow.getAllWindows().forEach(win => {
-        if (win.getTitle() === 'VFX Shot Tracker') {
-            win.close();
-        }
+    // Store picker windows to close AFTER dialog is shown
+    // On Windows, closing before dialog causes the dialog to fail
+    const pickerWindows = BrowserWindow.getAllWindows().filter(win => {
+        return win.getTitle() === 'VFX Shot Tracker' && win !== mainWindow;
     });
+    
+    function closePickerWindows() {
+        pickerWindows.forEach(win => {
+            try { if (!win.isDestroyed()) win.close(); } catch(e) {}
+        });
+    }
     
     if (action === 'new-project') {
         // Show dialog immediately
@@ -885,6 +890,7 @@ ipcMain.on('picker-action', (event, action) => {
             defaultPath: 'untitled_project.db',
             filters: [{ name: 'VFX Tracker Project', extensions: ['db'] }]
         }).then(result => {
+            closePickerWindows();
             if (!result.canceled) {
                 currentProjectPath = result.filePath;
                 console.log('Creating new project at:', currentProjectPath);
@@ -928,6 +934,7 @@ ipcMain.on('picker-action', (event, action) => {
                 });
             } else {
                 console.log('New project cancelled');
+                closePickerWindows();
                 showProjectPicker();
             }
         });
@@ -941,6 +948,7 @@ ipcMain.on('picker-action', (event, action) => {
             ],
             properties: ['openFile']
         }).then(result => {
+            closePickerWindows();
             if (!result.canceled && result.filePaths.length > 0) {
                 const selectedPath = result.filePaths[0];
                 
@@ -974,6 +982,7 @@ ipcMain.on('picker-action', (event, action) => {
             }
         });
     } else if (action.startsWith('recent-')) {
+        closePickerWindows();
         const idx = parseInt(action.split('-')[1]);
         const projectPath = recentProjects[idx];
         
