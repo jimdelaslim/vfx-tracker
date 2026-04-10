@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div style="max-width: 1200px; margin: 0 auto;">
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rem;">
+        <h2>Edit Metadata - {{ shot.clip_name }}</h2>
+        <a href="/metadata/overview" class="btn btn-secondary" style="background: #6c757d; color: white; text-decoration: none;"><- Back to Metadata</a>
+    </div>
+    
+    <!-- Display Current Metadata (Read-Only) -->
+    <div style="background: white; padding: 2rem; border-radius: 8px; margin-bottom: 2rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+        <h3 style="margin-bottom: 1.5rem; color: #2c3e50;"> Current Camera & Lens Metadata</h3>
+        
+        {% if shot.camera or shot.lens or shot.lut or shot.iso or shot.resolution or shot.codec %}
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem;">
+            {% if shot.camera %}<div><strong style="color: #7f8c8d;">Camera Type:</strong> {{ shot.camera }}</div>{% endif %}
+            {% if shot.camera_manufacturer %}<div><strong style="color: #7f8c8d;">Camera Manufacturer:</strong> {{ shot.camera_manufacturer }}</div>{% endif %}
+            {% if shot.camera_serial %}<div><strong style="color: #7f8c8d;">Camera Serial #:</strong> {{ shot.camera_serial }}</div>{% endif %}
+            {% if shot.lens %}<div><strong style="color: #7f8c8d;">Lens Type:</strong> {{ shot.lens }}</div>{% endif %}
+            {% if shot.focal_length %}<div><strong style="color: #7f8c8d;">Focal Point (mm):</strong> {{ shot.focal_length }}</div>{% endif %}
+            {% if shot.t_stop %}<div><strong style="color: #7f8c8d;">Camera Aperture:</strong> {{ shot.t_stop }}</div>{% endif %}
+            {% if shot.distance %}<div><strong style="color: #7f8c8d;">Distance:</strong> {{ shot.distance }}</div>{% endif %}
+            {% if shot.iso %}<div><strong style="color: #7f8c8d;">ISO:</strong> {{ shot.iso }}</div>{% endif %}
+            {% if shot.shutter_angle %}<div><strong style="color: #7f8c8d;">Shutter Angle:</strong> {{ shot.shutter_angle }}</div>{% endif %}
+            {% if shot.shutter_speed %}<div><strong style="color: #7f8c8d;">Shutter Speed:</strong> {{ shot.shutter_speed }}</div>{% endif %}
+            {% if shot.white_balance %}<div><strong style="color: #7f8c8d;">White Point (Kelvin):</strong> {{ shot.white_balance }}</div>{% endif %}
+            {% if shot.nd_filter %}<div><strong style="color: #7f8c8d;">ND Filter:</strong> {{ shot.nd_filter }}</div>{% endif %}
+            {% if shot.camera_tilt %}<div><strong style="color: #7f8c8d;">Camera Tilt Angle:</strong> {{ shot.camera_tilt }}</div>{% endif %}
+            {% if shot.camera_roll %}<div><strong style="color: #7f8c8d;">Camera Roll Angle:</strong> {{ shot.camera_roll }}</div>{% endif %}
+            {% if shot.lut %}<div><strong style="color: #7f8c8d;">LUT Used:</strong> {{ shot.lut }}</div>{% endif %}
+            {% if shot.resolution %}<div><strong style="color: #7f8c8d;">Resolution:</strong> {{ shot.resolution }}</div>{% endif %}
+            {% if shot.codec %}<div><strong style="color: #7f8c8d;">Video Codec:</strong> {{ shot.codec }}</div>{% endif %}
+            {% if shot.color_space %}<div><strong style="color: #7f8c8d;">Color Space Notes:</strong> {{ shot.color_space }}</div>{% endif %}
+            {% if shot.gamma %}<div><strong style="color: #7f8c8d;">Gamma Notes:</strong> {{ shot.gamma }}</div>{% endif %}
+            {% if shot.shot_frame_rate %}<div><strong style="color: #7f8c8d;">Shot Frame Rate:</strong> {{ shot.shot_frame_rate }}</div>{% endif %}
+            {% if shot.start_tc %}<div><strong style="color: #7f8c8d;">Start TC:</strong> {{ shot.start_tc }}</div>{% endif %}
+            {% if shot.end_tc %}<div><strong style="color: #7f8c8d;">End TC:</strong> {{ shot.end_tc }}</div>{% endif %}
+            {% if shot.start_frame %}<div><strong style="color: #7f8c8d;">Start Frame:</strong> {{ shot.start_frame }}</div>{% endif %}
+            {% if shot.end_frame %}<div><strong style="color: #7f8c8d;">End Frame:</strong> {{ shot.end_frame }}</div>{% endif %}
+            {% if shot.total_frames %}<div><strong style="color: #7f8c8d;">Frames:</strong> {{ shot.total_frames }}</div>{% endif %}
+            {% if shot.camera_clipname %}<div><strong style="color: #7f8c8d;">Camera Clipname:</strong> {{ shot.camera_clipname }}</div>{% endif %}
+        </div>
+        {% else %}
+        <p style="color: #7f8c8d; font-style: italic;">No metadata imported yet. <a href="/import/metadata" style="color: #667eea;">Import metadata CSV</a></p>
+        {% endif %}
+    </div>
+    
+    <!-- Edit Form -->
+    <div class="card">
+        <h3 style="margin-bottom: 1.5rem;">Edit Metadata</h3>
+        
+        <form method="POST" action="/shot/{{ shot.id }}/metadata/update">
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
+                <div>
+                    <label>Camera Type</label>
+                    <input type="text" name="camera" value="{{ shot.camera or '' }}">
+                </div>
+                <div>
+                    <label>Camera Manufacturer</label>
+                    <input type="text" name="camera_manufacturer" value="{{ shot.camera_manufacturer or '' }}">
+                </div>
+                <div>
+                    <label>Camera Serial #</label>
+                    <input type="text" name="camera_serial" value="{{ shot.camera_serial or '' }}">
+                </div>
+                <div>
+                    <label>Lens Type</label>
+                    <input type="text" name="lens" value="{{ shot.lens or '' }}">
+                </div>
+                <div>
+                    <label>Focal Point (mm)</label>
+                    <input type="text" name="focal_length" value="{{ shot.focal_length or '' }}">
+                </div>
+                <div>
+                    <label>Camera Aperture</label>
+                    <input type="text" name="t_stop" value="{{ shot.t_stop or '' }}">
+                </div>
+                <div>
+                    <label>Distance</label>
+                    <input type="text" name="distance" value="{{ shot.distance or '' }}">
+                </div>
+                <div>
+                    <label>ISO</label>
+                    <input type="text" name="iso" value="{{ shot.iso or '' }}">
+                </div>
+                <div>
+                    <label>Shutter Angle</label>
+                    <input type="text" name="shutter_angle" value="{{ shot.shutter_angle or '' }}">
+                </div>
+                <div>
+                    <label>Shutter Speed</label>
+                    <input type="text" name="shutter_speed" value="{{ shot.shutter_speed or '' }}">
+                </div>
+                <div>
+                    <label>White Point (Kelvin)</label>
+                    <input type="text" name="white_balance" value="{{ shot.white_balance or '' }}">
+                </div>
+                <div>
+                    <label>ND Filter</label>
+                    <input type="text" name="nd_filter" value="{{ shot.nd_filter or '' }}">
+                </div>
+                <div>
+                    <label>Camera Tilt Angle</label>
+                    <input type="text" name="camera_tilt" value="{{ shot.camera_tilt or '' }}">
+                </div>
+                <div>
+                    <label>Camera Roll Angle</label>
+                    <input type="text" name="camera_roll" value="{{ shot.camera_roll or '' }}">
+                </div>
+                <div>
+                    <label>LUT Used</label>
+                    <input type="text" name="lut" value="{{ shot.lut or '' }}">
+                </div>
+                <div>
+                    <label>Resolution</label>
+                    <input type="text" name="resolution" value="{{ shot.resolution or '' }}">
+                </div>
+                <div>
+                    <label>Video Codec</label>
+                    <input type="text" name="codec" value="{{ shot.codec or '' }}">
+                </div>
+                <div>
+                    <label>Color Space Notes</label>
+                    <input type="text" name="color_space" value="{{ shot.color_space or '' }}">
+                </div>
+                <div>
+                    <label>Gamma Notes</label>
+                    <input type="text" name="gamma" value="{{ shot.gamma or '' }}">
+                </div>
+                <div>
+                    <label>Shot Frame Rate</label>
+                    <input type="text" name="shot_frame_rate" value="{{ shot.shot_frame_rate or '' }}">
+                </div>
+                <div>
+                    <label>Start TC</label>
+                    <input type="text" name="start_tc" value="{{ shot.start_tc or '' }}">
+                </div>
+                <div>
+                    <label>End TC</label>
+                    <input type="text" name="end_tc" value="{{ shot.end_tc or '' }}">
+                </div>
+                <div>
+                    <label>Start Frame</label>
+                    <input type="text" name="start_frame" value="{{ shot.start_frame or '' }}">
+                </div>
+                <div>
+                    <label>End Frame</label>
+                    <input type="text" name="end_frame" value="{{ shot.end_frame or '' }}">
+                </div>
+                <div>
+                    <label>Frames</label>
+                    <input type="text" name="total_frames" value="{{ shot.total_frames or '' }}">
+                </div>
+                <div class="form-group">
+                    <label>Camera Clipname</label>
+                    <input type="text" name="camera_clipname" value="{{ shot.camera_clipname or '' }}">
+                </div>
+            </div>
+            
+            <div style="display: flex; gap: 1rem;">
+                <button type="submit" class="btn">Save Metadata</button>
+                <a href="/" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function deleteMetadata(metadataId) {
+    fetch(`/metadata/${metadataId}/delete`, {
+        method: 'POST',
+    }).then(() => {
+        window.location.reload();
+    });
+}
+</script>
+
+{% endblock %}

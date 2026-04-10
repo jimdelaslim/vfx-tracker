@@ -1,0 +1,411 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div style="max-width: 1200px; margin: 0 auto;">
+    <h2 style="margin-bottom: 2rem; color: #20b2aa;">VFX Shot Tracker Help</h2>
+    
+    <!-- Getting Started -->
+    <div class="card" style="margin-bottom: 2rem;">
+        <h3 style="color: #20b2aa; margin-bottom: 1.5rem;">Getting Started</h3>
+        
+        <div style="display: grid; grid-template-columns: 60px 1fr; gap: 1rem; margin-bottom: 1rem;">
+            <div style="font-size: 2rem; text-align: center;">1</div>
+            <div>
+                <strong>Create a Project</strong><br>
+                Click "Create New Project" and enter a name and frame rate (FPS). You can change these later in Settings.
+            </div>
+            
+            <div style="font-size: 2rem; text-align: center;">2</div>
+            <div>
+                <strong>Import Your EDL</strong><br>
+                Go to "Import EDL" and upload your CMX3600 EDL file. Shots will be automatically grouped by VFX code.
+            </div>
+            
+            <div style="font-size: 2rem; text-align: center;">3</div>
+            <div>
+                <strong>Import Metadata (Optional)</strong><br>
+                Upload camera metadata CSV files to auto-populate camera, lens, and color information.
+            </div>
+            
+            <div style="font-size: 2rem; text-align: center;">4</div>
+            <div>
+                <strong>Assign Plate Numbers & Edit</strong><br>
+                Assign a plate number to each plate via the dropdown box next to the clip name. You can now select this plate number in the edit section to adjust handles, crank and update timecodes.
+            </div>
+        </div>
+    </div>
+    
+    <!-- Edit Section -->
+    <div class="card" style="margin-bottom: 2rem;">
+        <h3 style="color: #20b2aa; margin-bottom: 1.5rem;">Using the Edit Section</h3>
+        
+        <p style="margin-bottom: 1rem;">The <strong>Edit Section</strong> (right side) is where you modify individual plates:</p>
+        
+        <div style="display: grid; grid-template-columns: 200px 1fr; gap: 1rem; margin-bottom: 1.5rem; background: #f8f9fa; padding: 1rem; border-radius: 8px;">
+            <div style="font-weight: 700; color: #20b2aa;">1. Select a Plate</div>
+            <div>Select the plate you wish to edit via choosing the plate number you assigned it in the dropdown box</div>
+            
+            <div style="font-weight: 700; color: #20b2aa;">2. Edit Values</div>
+            <div>Change start frame, head/tail handles, crank speed, or version</div>
+            
+            <div style="font-weight: 700; color: #20b2aa;">3. Auto-Save</div>
+            <div>Values save automatically when you click out of a field (on blur)</div>
+            
+            <div style="font-weight: 700; color: #20b2aa;">4. Update Timecodes</div>
+            <div>Click the green "Update Timecodes" button to recalculate TC Scan In/Out based on your handle changes</div>
+        </div>
+        
+        <div style="background: #fff3cd; padding: 1rem; border-radius: 8px; border-left: 4px solid #f39c12;">
+            <strong>Important:</strong> When you change handles, the frame numbers update immediately, but the TC Scan In/Out timecodes require clicking "Update Timecodes" to recalculate.
+        </div>
+    </div>
+    
+    <!-- Naming Conventions -->
+    <div class="card" style="margin-bottom: 2rem;">
+        <h3 style="color: #20b2aa; margin-bottom: 1.5rem;">Clip Naming Conventions</h3>
+        
+        <p style="margin-bottom: 1rem;">Clip names follow a flexible pattern:</p>
+        
+        <div style="background: #f8f9fa; padding: 1rem; border-radius: 8px; margin-bottom: 0.5rem; font-family: monospace; font-size: 1.1rem; text-align: center;">
+            PROJECT_SCENE_SHOT_[plateType][plateNum]_v[version]
+        </div>
+        <div style="background: #f8f9fa; padding: 0.75rem; border-radius: 8px; margin-bottom: 1.5rem; font-family: monospace; font-size: 0.95rem; text-align: center; color: #666;">
+            Examples: WILD_038_0010_bg01_v1 &nbsp;|&nbsp; WILD_038_0010_src01_v002 &nbsp;|&nbsp; 101_BOR_070_002_bgr001_v1
+        </div>
+        
+        <div style="display: grid; grid-template-columns: 200px 1fr; gap: 1rem; margin-bottom: 1rem;">
+            <div style="font-weight: 700; color: #fd7e14;">VFX Code</div>
+            <div>Everything before the plate type (e.g. WILD_038_0010). Groups all plates for a single shot together.</div>
+            
+            <div style="font-weight: 700; color: #20b2aa;">Plate Type</div>
+            <div>Any 2-4 letter abbreviation (teal badge). Common types include:</div>
+        </div>
+        
+        <div style="display: grid; grid-template-columns: 80px 1fr; gap: 0.5rem 1rem; margin-bottom: 1rem; margin-left: 2rem; background: #f8f9fa; padding: 1rem; border-radius: 8px;">
+            <div style="font-weight: 600; font-family: monospace;">bg</div>
+            <div>Background</div>
+            <div style="font-weight: 600; font-family: monospace;">fg</div>
+            <div>Foreground</div>
+            <div style="font-weight: 600; font-family: monospace;">src</div>
+            <div>Source</div>
+            <div style="font-weight: 600; font-family: monospace;">ref</div>
+            <div>Reference</div>
+            <div style="font-weight: 600; font-family: monospace;">pl</div>
+            <div>Clean Plate</div>
+            <div style="font-weight: 600; font-family: monospace;">fx</div>
+            <div>VFX Balls/Charts</div>
+            <div style="font-weight: 600; font-family: monospace;">bgr</div>
+            <div>Background (alternate)</div>
+            <div style="font-weight: 600; font-family: monospace;">fgr</div>
+            <div>Foreground (alternate)</div>
+        </div>
+        
+        <div style="display: grid; grid-template-columns: 200px 1fr; gap: 1rem; margin-bottom: 1rem;">
+            <div style="font-weight: 700; color: #20b2aa;">Plate Number</div>
+            <div>Any digit count after the plate type: 01, 001, 0001, etc.</div>
+            
+            <div style="font-weight: 700; color: #6c757d;">Version</div>
+            <div>Any digit count after _v: v1, v01, v002, etc. (grey badge)</div>
+        </div>
+        
+        <div style="background: #e8f4f8; padding: 1rem; border-radius: 8px; border-left: 4px solid #20b2aa; margin-top: 1rem; margin-bottom: 1rem;">
+            <strong>Flexible system:</strong> The tracker accepts any 2-4 letter plate type abbreviation - you are not limited to the common types listed above. Use whatever naming convention your project requires.
+        </div>
+        
+        <div style="background: #fff3cd; padding: 1rem; border-radius: 8px; border-left: 4px solid #f39c12;">
+            <strong>Editable fields:</strong> Clip name, plate type, and version are all editable directly on the dashboard. When you change the plate type or version, the clip name auto-regenerates. When you edit the clip name directly, the plate type badge updates to match.
+        </div>
+    </div>
+    
+    <!-- Shot Status -->
+    <div class="card" style="margin-bottom: 2rem;">
+        <h3 style="color: #20b2aa; margin-bottom: 1.5rem;">Shot Status System</h3>
+        
+        <p style="margin-bottom: 1rem;">Each VFX code has a status that determines the header and frame box colors:</p>
+        
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+            <div style="background: #e83e8c; color: white; padding: 1rem; border-radius: 8px; text-align: center;">
+                <strong style="font-size: 1.2rem;">Prep</strong><br>
+                <small style="opacity: 1; color: white; font-size: 0.9rem;">Initial state</small>
+            </div>
+            
+            <div style="background: #fd7e14; color: white; padding: 1rem; border-radius: 8px; text-align: center;">
+                <strong style="font-size: 1.2rem;">Ready</strong><br>
+                <small style="opacity: 1; color: white; font-size: 0.9rem;">Ready to turnover</small>
+            </div>
+            
+            <div style="background: #198754; color: white; padding: 1rem; border-radius: 8px; text-align: center;">
+                <strong style="font-size: 1.2rem;">Turned Over</strong><br>
+                <small style="opacity: 1; color: white; font-size: 0.9rem;">Sent to vendor</small>
+            </div>
+            
+            <div style="background: #ffc107; color: #000; padding: 1rem; border-radius: 8px; text-align: center;">
+                <strong style="font-size: 1.2rem;">Update</strong><br>
+                <small style="opacity: 1; color: #000; font-size: 0.9rem;">Needs update/revision</small>
+            </div>
+            
+            <div style="background: #000; color: white; padding: 1rem; border-radius: 8px; text-align: center;">
+                <strong style="font-size: 1.2rem;">Omitted</strong><br>
+                <small style="opacity: 1; color: white; font-size: 0.9rem;">Not needed</small>
+            </div>
+        </div>
+        
+        <div style="background: #e8f4f8; padding: 1rem; border-radius: 8px; border-left: 4px solid #20b2aa;">
+            <strong>Tip:</strong> Click the status counts in the dashboard header to filter VFX codes by status. The frame range boxes will also match the status color.
+        </div>
+    </div>
+    
+    <!-- Project Settings -->
+    <div class="card" style="margin-bottom: 2rem;">
+        <h3 style="color: #20b2aa; margin-bottom: 1.5rem;">Project Settings</h3>
+        
+        <p style="margin-bottom: 1rem;">Access Settings from the navigation menu to configure:</p>
+        
+        <div style="display: grid; grid-template-columns: 200px 1fr; gap: 1rem; margin-bottom: 1.5rem; background: #f8f9fa; padding: 1rem; border-radius: 8px;">
+            <div style="font-weight: 700; color: #20b2aa;">Project Name</div>
+            <div>Change the project name. You can leave it empty to show only the logo. Use the "Hide Title on Dashboard" button to toggle title visibility.</div>
+            
+            <div style="font-weight: 700; color: #20b2aa;">Project Logo</div>
+            <div>Upload a logo image to display in the header alongside or instead of the project title. Both logo and title can be shown together. Use "Hide Logo on Dashboard" to toggle logo visibility.</div>
+            
+            <div style="font-weight: 700; color: #20b2aa;">Frame Rate (FPS)</div>
+            <div>Set the project's timeline frame rate. All EDL imports will use this FPS for timecode calculations.</div>
+        </div>
+        
+        <div style="background: #fff3cd; padding: 1rem; border-radius: 8px; border-left: 4px solid #f39c12;">
+            <strong>Project FPS:</strong> This should match your editing timeline's frame rate (23.976, 24, 25, 29.97, 30, etc.), NOT your source footage frame rate.
+        </div>
+    </div>
+    
+    <!-- Crank Speed & Handles -->
+    <div class="card" style="margin-bottom: 2rem;">
+        <h3 style="color: #20b2aa; margin-bottom: 1.5rem;">Crank Speed & Handles</h3>
+        
+        <h4 style="margin-bottom: 1rem;">What is Crank Speed?</h4>
+        <p style="margin-bottom: 1rem;">Crank speed indicates if the footage was shot at a different frame rate than the timeline. This affects both the duration and handles needed.</p>
+        
+        <div style="display: grid; grid-template-columns: 150px 1fr; gap: 1rem; margin-bottom: 1.5rem; background: #f8f9fa; padding: 1rem; border-radius: 8px;">
+            <div style="font-weight: 700;">100%</div>
+            <div>Normal speed (e.g., 24fps shot at 24fps timeline)</div>
+            
+            <div style="font-weight: 700;">200%</div>
+            <div>Double speed / Slow motion (e.g., 48fps shot at 24fps timeline)</div>
+            
+            <div style="font-weight: 700;">50%</div>
+            <div>Half speed / Fast motion (e.g., 12fps shot at 24fps timeline)</div>
+        </div>
+        
+        <h4 style="margin-bottom: 1rem;">How Handles Work with Crank Speed</h4>
+        <p style="margin-bottom: 1rem;"><strong>Handle Input Boxes = SOURCE HANDLES</strong></p>
+        <p style="margin-bottom: 1rem;">When you enter handle values, you're specifying how many <strong>source frames</strong> you need:</p>
+        
+        <div style="background: #fff3cd; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+            <strong>Example at 200% Crank (Slow Motion):</strong><br>
+            • You enter: <strong>16</strong> frames in head handles<br>
+            • Timeline sees: <strong>8</strong> frames (because 16 source frames ÷ 2 = 8 output frames)<br>
+            • Vendor receives: <strong>16 source frames</strong> to work with
+        </div>
+        
+
+    </div>
+    
+    <!-- Frame Range Display -->
+    <div class="card" style="margin-bottom: 2rem;">
+        <h3 style="color: #20b2aa; margin-bottom: 1.5rem;">Frame Range Display</h3>
+        
+        <div style="background: #fd7e14; color: white; padding: 1.5rem; border-radius: 12px; margin-bottom: 1.5rem; border: 3px solid #fd7e14;">
+            <div style="text-align: center; font-family: monospace; font-size: 1.3rem; margin-bottom: 1rem;">
+                1001 [8] 1008  •  1009 [170] 1178  •  1179 [8] 1186
+            </div>
+            <div style="text-align: center; font-size: 0.9rem; opacity: 0.9;">
+                Head Handles • Action • Tail Handles
+            </div>
+        </div>
+        
+        <h4 style="margin-bottom: 1rem;">What This Means:</h4>
+        
+        <div style="display: grid; grid-template-columns: 200px 1fr; gap: 1rem; margin-bottom: 1.5rem;">
+            <div style="font-weight: 700; color: #20b2aa;">1001 [8] 1008</div>
+            <div><strong>Head Handles:</strong> 8 frames of OUTPUT handles before the action starts (frames 1001-1008)</div>
+            
+            <div style="font-weight: 700; color: #20b2aa;">1009 [170] 1178</div>
+            <div><strong>Action Frames:</strong> 170 OUTPUT frames of the actual shot (frames 1009-1178)</div>
+            
+            <div style="font-weight: 700; color: #20b2aa;">1179 [8] 1186</div>
+            <div><strong>Tail Handles:</strong> 8 frames of OUTPUT handles after the action ends (frames 1179-1186)</div>
+            
+            <div style="font-weight: 700; color: #20b2aa;">TOTAL: 186</div>
+            <div>Total frames to deliver to vendor (8 + 170 + 8)</div>
+        </div>
+        
+        <div style="background: #fff3cd; padding: 1rem; border-radius: 8px; border-left: 4px solid #f39c12;">
+            <strong>Key Point:</strong> These numbers represent <strong>OUTPUT frames</strong> - what the vendor will deliver back to you after any respeed is applied. This matches your timeline frame numbers.
+        </div>
+        
+        <h4 style="margin-top: 2rem; margin-bottom: 1rem;">Starting Frame: 1001</h4>
+        <p>All frame ranges start at frame 1001 by convention. You can change this per-plate in the Edit Section if needed.</p>
+    </div>
+    
+    <!-- Timecode Section -->
+    <div class="card" style="margin-bottom: 2rem;">
+        <h3 style="color: #20b2aa; margin-bottom: 1.5rem;">Timecode Information</h3>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+            <div>
+                <div style="background: white; border: 2px solid #495057; color: #000; padding: 1rem; border-radius: 8px; margin-bottom: 0.5rem;">
+                    <strong>TC Cut In / Out</strong><br>
+                    <span style="font-family: monospace; color: #000;">16:04:01:19 to 16:04:05:00</span><br>
+                    <small style="color: #666;">77 frames - Action only</small>
+                </div>
+                <p style="font-size: 0.9rem; color: #666;">The timecode range of just the action from the EDL (no handles).</p>
+            </div>
+            
+            <div>
+                <div style="background: white; border: 2px solid #fd7e14; color: #000; padding: 1rem; border-radius: 8px; margin-bottom: 0.5rem;">
+                    <strong>TC Scan In / Out</strong><br>
+                    <span style="font-family: monospace; color: #fd7e14;">16:04:01:03 to 16:04:05:16</span><br>
+                    <small style="color: #666;">93 frames - With handles</small>
+                </div>
+                <p style="font-size: 0.9rem; color: #666;">The full timecode range including handles that the vendor needs to scan.</p>
+            </div>
+        </div>
+        
+        <div style="background: #e8f4f8; padding: 1rem; border-radius: 8px; border-left: 4px solid #20b2aa; margin-top: 1.5rem;">
+            <strong>Edit Section Indicator:</strong> When you change handles, the Edit Section background turns yellow to indicate timecodes need updating. Click the green "Update Timecodes" button to recalculate.
+        </div>
+    </div>
+    
+    <!-- Metadata Boxes -->
+    <div class="card">
+        <h3 style="color: #20b2aa; margin-bottom: 1.5rem;">Metadata Boxes</h3>
+        
+        <p style="margin-bottom: 1rem;">The metadata boxes show camera and color information imported from your camera reports:</p>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
+            <div style="background: white; border: 2px solid #495057; padding: 1rem; border-radius: 8px;">
+                <strong style="color: #495057;">Lens/Camera</strong><br>
+                <small style="color: #666;">Camera, lens, focal length, aperture, ISO, resolution, tape name, shutter, tilt/roll, distance</small>
+            </div>
+            
+            <div style="background: white; border: 2px solid #495057; padding: 1rem; border-radius: 8px;">
+                <strong style="color: #495057;">Color & LUT</strong><br>
+                <small style="color: #666;">LUT applied, color space, gamma, codec</small>
+            </div>
+        </div>
+        
+        <p style="margin-bottom: 1rem;">When no metadata has been imported, the boxes appear grey with "Metadata not imported".</p>
+        
+        <div style="background: #e8f4f8; padding: 1rem; border-radius: 8px; border-left: 4px solid #20b2aa;">
+            <strong>How to import metadata:</strong> Go to <strong>Import Metadata</strong> in the navigation and upload either a CSV or ALE file with your camera reports. Use the dropdown boxes to map your metadata columns to the VFX Tracker's fields. The system will automatically match clips by their cam roll/tape name.
+        </div>
+    </div>
+
+    <!-- Internal Notes -->
+    <div class="card" style="margin-bottom: 2rem;">
+        <h3 style="color: #20b2aa; margin-bottom: 1.5rem;">Internal Notes</h3>
+        
+        <p style="margin-bottom: 1rem;">Each VFX code has an internal notes panel for tracking information that should NOT be exported to vendors.</p>
+        
+        <p style="margin-bottom: 1rem;"><strong>How to use:</strong> Click the "Notes ▶" tab on the right side of any VFX code header. A panel will slide out from the right side of the screen where you can type notes.</p>
+        
+        <p style="margin-bottom: 1.5rem; color: #666;">Notes auto-save after 1 second of typing and are for internal use only - they will not appear in any PDF exports.</p>
+        
+        <div style="background: #fff3cd; padding: 1rem; border-radius: 8px; border-left: 4px solid #f39c12;">
+            <strong>Use cases:</strong> Track internal discussions, note revision history, flag issues that vendors shouldn't see, or keep production notes separate from turnover information.
+        </div>
+    </div>
+
+    <!-- Batch Changes -->
+    <div class="card" style="margin-bottom: 2rem;">
+        <h3 style="color: #20b2aa; margin-bottom: 1.5rem;">Batch Changes</h3>
+        
+        <p style="margin-bottom: 1rem;">Update TO#, TO Date, and Vendors across multiple VFX codes simultaneously:</p>
+        
+        <ol style="margin-bottom: 1.5rem; padding-left: 2rem; line-height: 1.8;">
+            <li style="margin-bottom: 0.75rem;">
+                <strong>Select VFX Codes:</strong> Check the checkbox in the header of 2 or more VFX codes you want to link.
+            </li>
+            <li style="margin-bottom: 0.75rem;">
+                <strong>Fields Turn Yellow:</strong> Once 2+ codes are selected, the TO#, TO Date, and all 4 Vendor fields will highlight in yellow to show they're linked.
+            </li>
+            <li style="margin-bottom: 0.75rem;">
+                <strong>Edit Once, Update All:</strong> Change any of these fields in one VFX code and all selected codes will update automatically.
+            </li>
+            <li style="margin-bottom: 0.75rem;">
+                <strong>Unlink:</strong> Uncheck any checkbox to break the link for that VFX code.
+            </li>
+        </ol>
+        
+        <div style="background: #e8f4f8; padding: 1rem; border-radius: 8px; border-left: 4px solid #20b2aa;">
+            <strong>Tip:</strong> Use "Select All" to link all visible VFX codes at once. This respects your current search filter, so you can search first, then select all matching results.
+        </div>
+    </div>
+
+    <!-- Search & Filter -->
+    <div class="card" style="margin-bottom: 2rem;">
+        <h3 style="color: #20b2aa; margin-bottom: 1.5rem;">Search & Filter Functions</h3>
+        
+        <p style="margin-bottom: 1rem;">The search bar at the top of the dashboard is powerful and searches across multiple fields:</p>
+        
+        <div style="display: grid; grid-template-columns: 150px 1fr; gap: 1rem; margin-bottom: 1.5rem; background: #f8f9fa; padding: 1rem; border-radius: 8px;">
+            <div style="font-weight: 700; color: #20b2aa;">VFX Code</div>
+            <div>Search by shot number (e.g., "0010" finds WILD_038_0010)</div>
+            
+            <div style="font-weight: 700; color: #20b2aa;">Clip Name</div>
+            <div>Search by plate name (e.g., "bg01" finds all background plates)</div>
+            
+            <div style="font-weight: 700; color: #20b2aa;">TO Number</div>
+            <div>Search by turnover number (e.g., "TO001")</div>
+            
+            <div style="font-weight: 700; color: #20b2aa;">TO Date</div>
+            <div>Search by turnover date in DD/MM/YY format (e.g., "31/01/26")</div>
+            
+            <div style="font-weight: 700; color: #20b2aa;">Vendor</div>
+            <div>Search by vendor name across all 4 vendor fields (e.g., "Framestore")</div>
+        </div>
+        
+        <h4 style="margin-bottom: 1rem;">Additional Features:</h4>
+        
+        <div style="display: grid; grid-template-columns: 150px 1fr; gap: 1rem; margin-bottom: 1rem; background: #f8f9fa; padding: 1rem; border-radius: 8px;">
+            <div style="font-weight: 700; color: #20b2aa;">Select All</div>
+            <div>Selects all <strong>visible</strong> VFX codes based on current search/filter</div>
+            
+            <div style="font-weight: 700; color: #20b2aa;">Deselect All</div>
+            <div>Clears all selections (visible and hidden)</div>
+            
+            <div style="font-weight: 700; color: #20b2aa;">Status Filter</div>
+            <div>Click the status count boxes (Prep, Ready, Turned Over, etc.) at the top to filter by status</div>
+            
+            <div style="font-weight: 700; color: #20b2aa;">Sort</div>
+            <div>Use the "Sort by..." dropdown to organize by VFX code, TO#, or TO Date</div>
+        </div>
+        
+        <div style="background: #fff3cd; padding: 1rem; border-radius: 8px; border-left: 4px solid #f39c12;">
+            <strong>Pro Tip:</strong> Combine search + filter + select all to quickly update groups of shots. For example: search "framestore" → select all → batch update TO date for all Framestore shots.
+        </div>
+    </div>
+</div>
+
+<style>
+.card {
+    background: white;
+    padding: 2rem;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    max-width: 100%;
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+}
+
+.card h4 {
+    color: #2c3e50;
+    margin-top: 1.5rem;
+}
+
+.card p {
+    line-height: 1.6;
+    color: #555;
+}
+</style>
+
+{% endblock %}

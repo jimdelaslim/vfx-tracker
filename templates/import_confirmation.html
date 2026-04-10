@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+
+{% block title %}Confirm EDL Import{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <h2>Confirm EDL Import</h2>
+    
+    
+    <!-- DEBUG INFO -->
+    <div class="alert alert-secondary mb-3">
+        <strong>🔍 Debug Info:</strong><br>
+        Conflicts: {{ conflicts|length }}<br>
+        Missing Codes: {{ missing_codes|length }}<br>
+        {% if conflicts %}
+        <details>
+            <summary>View Conflicts Data</summary>
+            <pre>{{ conflicts }}</pre>
+        </details>
+        {% endif %}
+        {% if missing_codes %}
+        <details>
+            <summary>View Missing Codes</summary>
+            <pre>{{ missing_codes }}</pre>
+        </details>
+        {% endif %}
+    </div>
+    
+    {% if conflicts %}
+    <div class="alert alert-warning mb-4">
+        <h4><i class="bi bi-exclamation-triangle"></i> Existing VFX Codes Detected</h4>
+        <p>The following VFX codes already exist. Choose what to do:</p>
+    </div>
+    
+    <form method="POST">
+        <div class="card mb-4">
+            <div class="card-header bg-warning">
+                <h5 class="mb-0">Conflicts ({{ conflicts|length }})</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>VFX Code</th>
+                            <th>Current Version</th>
+                            <th>Status</th>
+                            <th>Turnover</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for conflict in conflicts %}
+                        <tr>
+                            <td><strong>{{ conflict.vfx_code }}</strong></td>
+                            <td>v{{ conflict.current_version }}</td>
+                            <td>
+                                <span class="badge bg-{{ 'warning' if conflict.status == 'Prep' else 'success' if conflict.status == 'Turned Over' else 'info' if conflict.status == 'Updated' else 'secondary' }}">
+                                    {{ conflict.status }}
+                                </span>
+                            </td>
+                            <td>{{ conflict.turnover_number or 'None' }}</td>
+                            <td>
+                                <select name="action_{{ loop.index0 }}" class="form-select">
+                                    <option value="update" selected> Update to v{{ conflict.current_version + 1 }} (Keep TO#)</option>
+                                    <option value="skip">× Skip (Keep existing)</option>
+                                </select>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        {% if missing_codes %}
+        <div class="alert alert-info mb-4">
+            <h5><i class="bi bi-info-circle"></i> Missing VFX Codes ({{ missing_codes|length }})</h5>
+            <p>These clips will be skipped (no VFX code found):</p>
+            <ul class="mb-0">
+                {% for clip in missing_codes %}
+                <li><code>{{ clip.clip_name }}</code></li>
+                {% endfor %}
+            </ul>
+            <small class="text-muted mt-2 d-block">💡 Tip: Rename clips to include VFX codes before exporting EDL</small>
+        </div>
+        {% endif %}
+        
+        <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary">
+                <i class="bi bi-check-circle"></i> Confirm Import
+            </button>
+            <a href="{{ url_for('import_edl_route') }}" class="btn btn-secondary">
+                <i class="bi bi-x-circle"></i> Cancel
+            </a>
+        </div>
+    </form>
+    {% else %}
+    <div class="alert alert-success">
+        <i class="bi bi-check-circle"></i> No conflicts. Processing import...
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

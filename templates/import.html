@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div style="max-width: 600px; margin: 0 auto;">
+    <h2 style="margin-bottom: 1.5rem;">Import EDL</h2>
+    
+    <div style="background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+        <form method="POST" enctype="multipart/form-data">
+            <div style="margin-bottom: 1.5rem;">
+                <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Select EDL File</label>
+                <input type="file" name="edl_file" accept=".edl" required 
+                       style="width: 100%; padding: 0.5rem; border: 2px solid #ddd; border-radius: 4px;">
+                <small style="color: #7f8c8d; display: block; margin-top: 0.5rem;">
+                    Supported format: CMX3600 EDL (.edl)
+                </small>
+            </div>
+            
+            <div style="margin-bottom: 1.5rem;">
+                <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Frame Rate (FPS)</label>
+                <input type="number" name="fps" value="{{ project.fps }}" min="1" max="120" step="0.01"
+                       style="width: 100%; padding: 0.5rem; border: 2px solid #ddd; border-radius: 4px;">
+                <small style="color: #7f8c8d; display: block; margin-top: 0.5rem;">
+                    Override project default ({{ project.fps }}fps) for this import only. Leave as-is to use project FPS.
+                </small>
+            </div>
+            
+            <div style="display: flex; gap: 1rem;">
+                <button type="submit" class="btn">Import</button>
+                <a href="/" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+    
+    <div style="background: #e8f4f8; padding: 1.5rem; border-radius: 8px; margin-top: 2rem; border-left: 4px solid #3498db;">
+        <h3 style="margin-bottom: 0.5rem;">ℹ️ How it works</h3>
+        <ul style="margin-left: 1.5rem; color: #555;">
+            <li>Upload your EDL file from your NLE</li>
+            <li>Shots will be imported with timecode and duration info</li>
+            <li>You can then add VFX codes, vendor info, and handles</li>
+            <li>Export pull EDLs when ready for turnover</li>
+        </ul>
+    </div>
+</div>
+{% endblock %}

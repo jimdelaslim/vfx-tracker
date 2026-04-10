@@ -1,0 +1,420 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div style="max-width: 1200px; margin: 0 auto;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+        <h2>Edit Shot: {{ shot.clip_name }}</h2>
+        <div style="display: flex; gap: 1rem;">
+            <a href="/" style="text-decoration: none; color: #3498db;"><- Back to Dashboard</a>
+            <a href="/shot/{{ shot.id }}/pdf" class="btn btn-purple">📄 Export as PDF</a>
+        </div>
+    </div>
+    
+    <!-- TURNOVER NUMBER BOX -->
+    <div style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+        <form method="POST" action="/shot/{{ shot.id }}/update" style="display: flex; align-items: center; gap: 1rem;">
+            <label style="font-weight: 700; font-size: 1.2rem; margin: 0;">📋 TURNOVER #:</label>
+            <input type="text" name="turnover_number" value="{{ shot.turnover_number or '' }}" placeholder="e.g., TO-001" 
+                   style="flex: 1; padding: 0.75rem; border: none; border-radius: 6px; font-size: 1.1rem; font-weight: 600;">
+            <button type="submit" style="padding: 0.75rem 1.5rem; background: white; color: #f5576c; border: none; border-radius: 6px; font-weight: 700; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                Save TO#
+            </button>
+        </form>
+    </div>
+    
+    <!-- FRAME RANGE DISPLAY - THE MOST IMPORTANT BOX -->
+    {% set frame_range = shot.frame_range_display() %}
+    {% set source_head, source_tail = shot.source_handles() %}
+    
+    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 2rem; border-radius: 8px; margin-bottom: 2rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+        <h3 style="margin-bottom: 1.5rem; font-size: 1.2rem;">📊 FRAME RANGE - STARTING FRAME: {{ frame_range.shot_start }}</h3>
+        
+        <!-- Visual Frame Display -->
+        <div style="background: rgba(0,0,0,0.2); padding: 1.5rem; border-radius: 8px; font-family: 'Courier New', monospace; font-size: 1.1rem; text-align: center; margin-bottom: 1.5rem;">
+            <div style="letter-spacing: 2px;">
+                {{ frame_range.head_start }} <span style="color: #ffd700;">[{{ frame_range.head_frames }}]</span> {{ frame_range.head_end }}
+                &nbsp;&nbsp;&nbsp;&nbsp;
+                {{ frame_range.shot_start }} <span style="color: #00ff00; font-weight: bold;">[{{ frame_range.shot_frames }}]</span> {{ frame_range.shot_end }}
+                &nbsp;&nbsp;&nbsp;&nbsp;
+                {{ frame_range.tail_start }} <span style="color: #ffd700;">[{{ frame_range.tail_frames }}]</span> {{ frame_range.tail_end }}
+            </div>
+            <div style="margin-top: 0.5rem; font-size: 0.9rem; opacity: 0.8;">
+                └─ Head Handles ─┘ &nbsp;&nbsp; └───── Shot ─────┘ &nbsp;&nbsp; └─ Tail Handles ─┘
+            </div>
+        </div>
+        
+        <!-- TC and Frame Info Grid -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; font-size: 0.95rem;">
+            <div>
+                <strong>TC Cut In:</strong> {{ shot.source_in }} to {{ shot.source_out }}<br>
+                <strong>TC Scan In:</strong> {{ shot.tc_scan_in() }} to {{ shot.tc_scan_out() }}
+            </div>
+            <div>
+                <strong>Range:</strong> {{ frame_range.head_start }}-{{ frame_range.total_end }}<br>
+                <strong>Total Scan:</strong> {{ shot.total_source_frames() }} frames (source for vendor)
+            </div>
+            <div>
+                <strong>Length:</strong> {{ shot.duration_frames }} frames (output)<br>
+                {% if shot.crank_speed != 100.0 %}
+                <strong>Source Length:</strong> {{ shot.source_frames_needed() }} frames @ {{ shot.crank_speed }}%
+                {% endif %}
+            </div>
+            <div>
+                <strong>Handles:</strong> {{ shot.head_handles }}/{{ shot.tail_handles }} (output) → {{ source_head }}/{{ source_tail }} (source)
+            </div>
+        </div>
+        
+        {% if shot.crank_speed != 100.0 %}
+        <div style="background: rgba(255,193,7,0.2); border: 2px solid #ffc107; padding: 1rem; border-radius: 4px; margin-top: 1rem;">
+            <strong>⚠️ RETIMED CLIP: {{ shot.crank_speed }}%</strong><br>
+            Vendor will receive {{ shot.source_frames_needed() }} source frames to create {{ shot.duration_frames }} frames of output
+        </div>
+        {% endif %}
+    </div>
+    
+    
+            </div>
+            
+            <!-- CAMERA & LENS METADATA SECTION -->
+            <div style="background: white; padding: 2rem; border-radius: 8px; margin-bottom: 2rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                <h3 style="margin-bottom: 1.5rem; color: #2c3e50;"> Camera & Lens Metadata</h3>
+                
+                {% if shot.camera or shot.lens or shot.lut or shot.iso or shot.resolution or shot.codec %}
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    {% if shot.camera %}
+                    <div>
+                        <strong style="color: #7f8c8d;">Camera Type:</strong> {{ shot.camera }}
+                    </div>
+                    {% endif %}
+                    
+                    {% if shot.camera_manufacturer %}
+                    <div>
+                        <strong style="color: #7f8c8d;">Camera Manufacturer:</strong> {{ shot.camera_manufacturer }}
+                    </div>
+                    {% endif %}
+                    
+                    {% if shot.camera_serial %}
+                    <div>
+                        <strong style="color: #7f8c8d;">Camera Serial #:</strong> {{ shot.camera_serial }}
+                    </div>
+                    {% endif %}
+                    
+                    {% if shot.lens %}
+                    <div>
+                        <strong style="color: #7f8c8d;">Lens Type:</strong> {{ shot.lens }}
+                    </div>
+                    {% endif %}
+                    
+                    {% if shot.focal_length %}
+                    <div>
+                        <strong style="color: #7f8c8d;">Focal Point (mm):</strong> {{ shot.focal_length }}
+                    </div>
+                    {% endif %}
+                    
+                    {% if shot.t_stop %}
+                    <div>
+                        <strong style="color: #7f8c8d;">Camera Aperture:</strong> {{ shot.t_stop }}
+                    </div>
+                    {% endif %}
+                    
+                    {% if shot.distance %}
+                    <div>
+                        <strong style="color: #7f8c8d;">Distance:</strong> {{ shot.distance }}
+                    </div>
+                    {% endif %}
+                    
+                    {% if shot.iso %}
+                    <div>
+                        <strong style="color: #7f8c8d;">ISO:</strong> {{ shot.iso }}
+                    </div>
+                    {% endif %}
+                    
+                    {% if shot.shutter_angle %}
+                    <div>
+                        <strong style="color: #7f8c8d;">Shutter Angle:</strong> {{ shot.shutter_angle }}
+                    </div>
+                    {% endif %}
+                    
+                    {% if shot.shutter_speed %}
+                    <div>
+                        <strong style="color: #7f8c8d;">Shutter Speed:</strong> {{ shot.shutter_speed }}
+                    </div>
+                    {% endif %}
+                    
+                    {% if shot.white_balance %}
+                    <div>
+                        <strong style="color: #7f8c8d;">White Point (Kelvin):</strong> {{ shot.white_balance }}
+                    </div>
+                    {% endif %}
+                    
+                    {% if shot.nd_filter %}
+                    <div>
+                        <strong style="color: #7f8c8d;">ND Filter:</strong> {{ shot.nd_filter }}
+                    </div>
+                    {% endif %}
+                    
+                    {% if shot.camera_tilt %}
+                    <div>
+                        <strong style="color: #7f8c8d;">Camera Tilt Angle:</strong> {{ shot.camera_tilt }}
+                    </div>
+                    {% endif %}
+                    
+                    {% if shot.camera_roll %}
+                    <div>
+                        <strong style="color: #7f8c8d;">Camera Roll Angle:</strong> {{ shot.camera_roll }}
+                    </div>
+                    {% endif %}
+                    
+                    {% if shot.lut %}
+                    <div>
+                        <strong style="color: #7f8c8d;">LUT Used:</strong> {{ shot.lut }}
+                    </div>
+                    {% endif %}
+                    
+                    {% if shot.resolution %}
+                    <div>
+                        <strong style="color: #7f8c8d;">Resolution:</strong> {{ shot.resolution }}
+                    </div>
+                    {% endif %}
+                    
+                    {% if shot.codec %}
+                    <div>
+                        <strong style="color: #7f8c8d;">Video Codec:</strong> {{ shot.codec }}
+                    </div>
+                    {% endif %}
+                    
+                    {% if shot.color_space %}
+                    <div>
+                        <strong style="color: #7f8c8d;">Color Space Notes:</strong> {{ shot.color_space }}
+                    </div>
+                    {% endif %}
+                    
+                    {% if shot.gamma %}
+                    <div>
+                        <strong style="color: #7f8c8d;">Gamma Notes:</strong> {{ shot.gamma }}
+                    </div>
+                    {% endif %}
+                    
+                    {% if shot.shot_frame_rate %}
+                    <div>
+                        <strong style="color: #7f8c8d;">Shot Frame Rate:</strong> {{ shot.shot_frame_rate }}
+                    </div>
+                    {% endif %}
+                    
+                    {% if shot.start_tc %}
+                    <div>
+                        <strong style="color: #7f8c8d;">Start TC:</strong> {{ shot.start_tc }}
+                    </div>
+                    {% endif %}
+                    
+                    {% if shot.end_tc %}
+                    <div>
+                        <strong style="color: #7f8c8d;">End TC:</strong> {{ shot.end_tc }}
+                    </div>
+                    {% endif %}
+                    
+                    {% if shot.start_frame %}
+                    <div>
+                        <strong style="color: #7f8c8d;">Start Frame:</strong> {{ shot.start_frame }}
+                    </div>
+                    {% endif %}
+                    
+                    {% if shot.end_frame %}
+                    <div>
+                        <strong style="color: #7f8c8d;">End Frame:</strong> {{ shot.end_frame }}
+                    </div>
+                    {% endif %}
+                    
+                    {% if shot.total_frames %}
+                    <div>
+                        <strong style="color: #7f8c8d;">Frames:</strong> {{ shot.total_frames }}
+                    </div>
+                    {% endif %}
+                </div>
+                {% else %}
+                <p style="color: #7f8c8d; font-style: italic;">No metadata imported yet. <a href="/import/metadata" style="color: #667eea;">Import metadata CSV</a></p>
+                {% endif %}
+            </div>
+            
+            <!-- Edit Form -->
+            <div class="card">
+        <form method="POST" action="/shot/{{ shot.id }}/update" id="shotForm">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem;">
+                <!-- EDL Info (Read-only) -->
+                <div style="grid-column: 1 / -1; background: #f8f9fa; padding: 1rem; border-radius: 4px;">
+                    <h3 style="margin-bottom: 1rem; color: #555;">📋 EDL Information (Read-Only)</h3>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                        <div>
+                            <strong>Event:</strong> {{ shot.event_number }}<br>
+                            <strong>Clip Name:</strong> {{ shot.clip_name }}<br>
+                            <strong>Output Duration:</strong> {{ shot.duration_frames }} frames
+                        </div>
+                        <div>
+                            <strong>Source In:</strong> {{ shot.source_in }}<br>
+                            <strong>Source Out:</strong> {{ shot.source_out }}<br>
+                            <strong>FPS:</strong> {{ shot.fps }}
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- VFX Code -->
+                <div>
+                    <label>VFX Code</label>
+                    <input type="text" name="vfx_code" value="{{ shot.vfx_code or '' }}">
+                </div>
+                
+                <!-- VFX Element -->
+                <div>
+                    <label>VFX Element</label>
+                    <input type="text" name="vfx_element" value="{{ shot.vfx_element or '' }}">
+                </div>
+                
+                <!-- Version -->
+                <div>
+                    <label>Version</label>
+                    <input type="number" name="version" value="{{ shot.version }}" min="1">
+                </div>
+                
+                <!-- Plate Type -->
+                <div>
+                    <label>Plate Type</label>
+                    <select name="plate_type">
+                        <option value="">- Select -</option>
+                        <option value="BG Plate" {% if shot.plate_type == 'BG Plate' %}selected{% endif %}>BG Plate</option>
+                        <option value="FG Plate" {% if shot.plate_type == 'FG Plate' %}selected{% endif %}>FG Plate</option>
+                        <option value="VFX Ball" {% if shot.plate_type == 'VFX Ball' %}selected{% endif %}>VFX Ball</option>
+                        <option value="Clean Plate" {% if shot.plate_type == 'Clean Plate' %}selected{% endif %}>Clean Plate</option>
+                    </select>
+                </div>
+                
+                <!-- Vendor -->
+                <div>
+                    <label>Vendor</label>
+                    <input type="text" name="vendor" value="{{ shot.vendor or '' }}">
+                </div>
+                
+                <!-- Status -->
+                <div>
+                    <label>Status</label>
+                    <select name="status">
+                        <option value="Prep" {% if shot.status == 'Prep' %}selected{% endif %}>Prep</option>
+                        <option value="Turned Over" {% if shot.status == 'Turned Over' %}selected{% endif %}>Turned Over</option>
+                        <option value="Updated" {% if shot.status == 'Updated' %}selected{% endif %}>Updated</option>
+                    </select>
+                </div>
+                
+                <!-- Crank Speed - THIS CONTROLS EVERYTHING -->
+                <div style="grid-column: 1 / -1; background: #fff3cd; padding: 1rem; border-radius: 4px; border: 2px solid #ffc107;">
+                    <label>⚙️ Crank Speed (%)</label>
+                    <input type="number" id="crankSpeed" name="crank_speed" value="{{ shot.crank_speed }}" step="0.1" min="0"
+                           style="width: 200px; padding: 0.5rem; border: 2px solid #ddd; border-radius: 4px; font-size: 1.1rem;">
+                    <small style="display: block; margin-top: 0.5rem; color: #856404;">
+                        100% = normal speed | 200% = double speed (half duration) | 50% = half speed (double duration)<br>
+                        <strong>Changing this will auto-adjust handles to maintain source handle count</strong>
+                    </small>
+                </div>
+                
+                <!-- Head Handles -->
+                <div>
+                    <label>Head Handles (output frames)</label>
+                    <input type="number" id="headHandles" name="head_handles" value="{{ shot.head_handles }}" min="0">
+                    <small id="headHandlesInfo" style="color: #666; display: block; margin-top: 0.25rem;">
+                        = {{ source_head }} source frames for vendor
+                    </small>
+                </div>
+                
+                <!-- Tail Handles -->
+                <div>
+                    <label>Tail Handles (output frames)</label>
+                    <input type="number" id="tailHandles" name="tail_handles" value="{{ shot.tail_handles }}" min="0">
+                    <small id="tailHandlesInfo" style="color: #666; display: block; margin-top: 0.25rem;">
+                        = {{ source_tail }} source frames for vendor
+                    </small>
+                </div>
+                
+                <!-- Cam Roll -->
+                <div>
+                    <label>Cam Roll</label>
+                    <input type="text" name="cam_roll" value="{{ shot.cam_roll or '' }}">
+                </div>
+                
+                <!-- Scope of Work -->
+                <div style="grid-column: 1 / -1;">
+                    <label>Scope of Work</label>
+                    <textarea name="scope_of_work" rows="4">{{ shot.scope_of_work or '' }}</textarea>
+                </div>
+                
+                <!-- Editorial Notes -->
+                <div style="grid-column: 1 / -1;">
+                    <label>Editorial Notes</label>
+                    <textarea name="notes" rows="4">{{ shot.notes or '' }}</textarea>
+                </div>
+            </div>
+            
+            
+            </div>
+
+            <button type="submit" class="btn">Save Changes</button>
+        </form>
+    </div>
+</div>
+
+<script>
+// Auto-adjust handles when crank speed changes
+const crankSpeedInput = document.getElementById('crankSpeed');
+const headHandlesInput = document.getElementById('headHandles');
+const tailHandlesInput = document.getElementById('tailHandles');
+const headHandlesInfo = document.getElementById('headHandlesInfo');
+const tailHandlesInfo = document.getElementById('tailHandlesInfo');
+
+// Store the initial source handles (what vendor actually needs)
+let initialCrankSpeed = parseFloat(crankSpeedInput.value);
+let sourceHeadHandles = Math.round(parseFloat(headHandlesInput.value) * (initialCrankSpeed / 100));
+let sourceTailHandles = Math.round(parseFloat(tailHandlesInput.value) * (initialCrankSpeed / 100));
+
+// Function to update handle displays
+function updateHandleInfo() {
+    const crankSpeed = parseFloat(crankSpeedInput.value) || 100;
+    const headHandles = parseFloat(headHandlesInput.value) || 0;
+    const tailHandles = parseFloat(tailHandlesInput.value) || 0;
+    
+    const sourceHead = Math.round(headHandles * (crankSpeed / 100));
+    const sourceTail = Math.round(tailHandles * (crankSpeed / 100));
+    
+    headHandlesInfo.textContent = `= ${sourceHead} source frames for vendor`;
+    tailHandlesInfo.textContent = `= ${sourceTail} source frames for vendor`;
+}
+
+// When crank speed changes, adjust output handles to keep source handles constant
+crankSpeedInput.addEventListener('change', function() {
+    const newCrankSpeed = parseFloat(this.value) || 100;
+    
+    // Calculate new output handles that will give us the same source handles
+    const newHeadHandles = Math.round(sourceHeadHandles / (newCrankSpeed / 100));
+    const newTailHandles = Math.round(sourceTailHandles / (newCrankSpeed / 100));
+    
+    headHandlesInput.value = newHeadHandles;
+    tailHandlesInput.value = newTailHandles;
+    
+    updateHandleInfo();
+});
+
+// When handles change manually, update the source handle tracking
+headHandlesInput.addEventListener('change', function() {
+    const crankSpeed = parseFloat(crankSpeedInput.value) || 100;
+    sourceHeadHandles = Math.round(parseFloat(this.value) * (crankSpeed / 100));
+    updateHandleInfo();
+});
+
+tailHandlesInput.addEventListener('change', function() {
+    const crankSpeed = parseFloat(crankSpeedInput.value) || 100;
+    sourceTailHandles = Math.round(parseFloat(this.value) * (crankSpeed / 100));
+    updateHandleInfo();
+});
+
+// Update on input (real-time feedback)
+crankSpeedInput.addEventListener('input', updateHandleInfo);
+headHandlesInput.addEventListener('input', updateHandleInfo);
+tailHandlesInput.addEventListener('input', updateHandleInfo);
+</script>
+{% endblock %}

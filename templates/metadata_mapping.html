@@ -1,0 +1,580 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div style="max-width: 1400px; margin: 0 auto; padding: 2rem;">
+    <h2 style="margin-bottom: 2rem;">Map CSV Columns to Metadata Fields</h2>
+    
+    <!-- Preview of CSV data -->
+    <div style="background: white; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+        <h3 style="margin-bottom: 1rem;">CSV Preview (First 3 Rows)</h3>
+        <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 0.875rem;">
+                <thead>
+                    <tr style="background: #f8f9fa;">
+                        {% for header in csv_headers %}
+                        <th style="padding: 0.75rem; border: 1px solid #dee2e6; text-align: left;">{{ header }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in preview_rows %}
+                    <tr>
+                        {% for value in row %}
+                        <td style="padding: 0.75rem; border: 1px solid #dee2e6;">{{ value }}</td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <!-- Mapping Form -->
+    <form method="POST" action="/import/metadata/confirm">
+        <input type="hidden" name="filepath" value="{{ filepath }}">
+        <input type="hidden" name="csv_headers" value="{{ csv_headers|tojson }}">
+        
+        <div style="background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h3>Column Mapping</h3>
+                <div style="display: flex; gap: 1rem; align-items: center;">
+                    <select id="preset-select" style="padding: 0.5rem; border: 1px solid #dee2e6; border-radius: 4px; min-width: 200px;">
+                        <option value="">Load Preset...</option>
+                        {% for preset in presets %}
+                        <option value="{{ preset.id }}">{{ preset.name }}</option>
+                        {% endfor %}
+                    </select>
+                    <button type="button" id="delete-preset-btn" onclick="deletePreset()" style="padding: 0.5rem 1rem; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; display: none;">
+                        Delete Preset
+                    </button>
+                    <button type="button" onclick="savePreset()" style="padding: 0.5rem 1rem; background: #20b2aa; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                        Save as Preset
+                    </button>
+                </div>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                                
+                <!-- CRITICAL: File Name for linking -->
+                <div style="grid-column: 1 / -1; margin-top: 1rem; padding: 0.5rem; background: #fff3cd; font-weight: 600; border-radius: 4px; border: 2px solid #ffc107;">
+                    REQUIRED: File Name (for linking to clips)
+                </div>
+                <div style="display: flex; align-items: center; gap: 1rem; padding: 0.75rem; background: #fffbf0; border: 2px solid #ffc107; border-radius: 4px;">
+                    <div style="flex: 1; font-weight: 700; color: #856404;">File Name / Clip Name</div>
+                    <div style="flex: 0 0 auto; color: #856404;"><-</div>
+                    <select name="mapping_file_name" class="mapping-select" style="flex: 1; padding: 0.5rem; border: 2px solid #ffc107; border-radius: 4px;" required>
+                        <option value="">SELECT A COLUMN</option>
+                        {% for header in csv_headers|sort|sort %}
+                        <option value="{{ header }}">{{ header }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+<!-- Camera Clipname -->
+                <div style="display: flex; align-items: center; gap: 1rem; padding: 0.75rem; background: white; border: 1px solid #dee2e6; border-radius: 4px;">
+                    <div style="flex: 1; font-weight: 500;">Camera Clipname</div>
+                    <div style="flex: 0 0 auto; color: #6c757d;"><-</div>
+                    <select name="mapping_camera_clipname" class="mapping-select" style="flex: 1; padding: 0.5rem; border: 1px solid #dee2e6; border-radius: 4px;">
+                        <option value="">Skip this field</option>
+                        {% for header in csv_headers|sort %}
+                        <option value="{{ header }}">{{ header }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+<!-- Camera Info -->
+                <div style="grid-column: 1 / -1; margin-top: 1rem; padding: 0.5rem; background: #f8f9fa; font-weight: 600; border-radius: 4px;">
+                     Camera Info
+                </div>
+                <div style="display: flex; align-items: center; gap: 1rem; padding: 0.75rem; background: white; border: 1px solid #dee2e6; border-radius: 4px;">
+                    <div style="flex: 1; font-weight: 500;">Camera</div>
+                    <div style="flex: 0 0 auto; color: #6c757d;"><-</div>
+                    <select name="mapping_camera" class="mapping-select" style="flex: 1; padding: 0.5rem; border: 1px solid #dee2e6; border-radius: 4px;">
+                        <option value="">Skip this field</option>
+                        {% for header in csv_headers|sort %}
+                        <option value="{{ header }}">{{ header }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div style="display: flex; align-items: center; gap: 1rem; padding: 0.75rem; background: white; border: 1px solid #dee2e6; border-radius: 4px;">
+                    <div style="flex: 1; font-weight: 500;">Camera Manufacturer</div>
+                    <div style="flex: 0 0 auto; color: #6c757d;"><-</div>
+                    <select name="mapping_camera_manufacturer" class="mapping-select" style="flex: 1; padding: 0.5rem; border: 1px solid #dee2e6; border-radius: 4px;">
+                        <option value="">Skip this field</option>
+                        {% for header in csv_headers|sort %}
+                        <option value="{{ header }}">{{ header }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div style="display: flex; align-items: center; gap: 1rem; padding: 0.75rem; background: white; border: 1px solid #dee2e6; border-radius: 4px;">
+                    <div style="flex: 1; font-weight: 500;">Camera Serial #</div>
+                    <div style="flex: 0 0 auto; color: #6c757d;"><-</div>
+                    <select name="mapping_camera_serial" class="mapping-select" style="flex: 1; padding: 0.5rem; border: 1px solid #dee2e6; border-radius: 4px;">
+                        <option value="">Skip this field</option>
+                        {% for header in csv_headers|sort %}
+                        <option value="{{ header }}">{{ header }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <!-- Lens Info -->
+                <div style="grid-column: 1 / -1; margin-top: 1rem; padding: 0.5rem; background: #f8f9fa; font-weight: 600; border-radius: 4px;">
+                    Lens Info
+                </div>
+                <div style="display: flex; align-items: center; gap: 1rem; padding: 0.75rem; background: white; border: 1px solid #dee2e6; border-radius: 4px;">
+                    <div style="flex: 1; font-weight: 500;">Lens</div>
+                    <div style="flex: 0 0 auto; color: #6c757d;"><-</div>
+                    <select name="mapping_lens" class="mapping-select" style="flex: 1; padding: 0.5rem; border: 1px solid #dee2e6; border-radius: 4px;">
+                        <option value="">Skip this field</option>
+                        {% for header in csv_headers|sort %}
+                        <option value="{{ header }}">{{ header }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div style="display: flex; align-items: center; gap: 1rem; padding: 0.75rem; background: white; border: 1px solid #dee2e6; border-radius: 4px;">
+                    <div style="flex: 1; font-weight: 500;">Focal Length</div>
+                    <div style="flex: 0 0 auto; color: #6c757d;"><-</div>
+                    <select name="mapping_focal_length" class="mapping-select" style="flex: 1; padding: 0.5rem; border: 1px solid #dee2e6; border-radius: 4px;">
+                        <option value="">Skip this field</option>
+                        {% for header in csv_headers|sort %}
+                        <option value="{{ header }}">{{ header }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div style="display: flex; align-items: center; gap: 1rem; padding: 0.75rem; background: white; border: 1px solid #dee2e6; border-radius: 4px;">
+                    <div style="flex: 1; font-weight: 500;">Aperture (T-Stop)</div>
+                    <div style="flex: 0 0 auto; color: #6c757d;"><-</div>
+                    <select name="mapping_t_stop" class="mapping-select" style="flex: 1; padding: 0.5rem; border: 1px solid #dee2e6; border-radius: 4px;">
+                        <option value="">Skip this field</option>
+                        {% for header in csv_headers|sort %}
+                        <option value="{{ header }}">{{ header }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div style="display: flex; align-items: center; gap: 1rem; padding: 0.75rem; background: white; border: 1px solid #dee2e6; border-radius: 4px;">
+                    <div style="flex: 1; font-weight: 500;">Distance</div>
+                    <div style="flex: 0 0 auto; color: #6c757d;"><-</div>
+                    <select name="mapping_distance" class="mapping-select" style="flex: 1; padding: 0.5rem; border: 1px solid #dee2e6; border-radius: 4px;">
+                        <option value="">Skip this field</option>
+                        {% for header in csv_headers|sort %}
+                        <option value="{{ header }}">{{ header }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <!-- Exposure -->
+                <div style="grid-column: 1 / -1; margin-top: 1rem; padding: 0.5rem; background: #f8f9fa; font-weight: 600; border-radius: 4px;">
+                    Exposure
+                </div>
+                <div style="display: flex; align-items: center; gap: 1rem; padding: 0.75rem; background: white; border: 1px solid #dee2e6; border-radius: 4px;">
+                    <div style="flex: 1; font-weight: 500;">ISO</div>
+                    <div style="flex: 0 0 auto; color: #6c757d;"><-</div>
+                    <select name="mapping_iso" class="mapping-select" style="flex: 1; padding: 0.5rem; border: 1px solid #dee2e6; border-radius: 4px;">
+                        <option value="">Skip this field</option>
+                        {% for header in csv_headers|sort %}
+                        <option value="{{ header }}">{{ header }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div style="display: flex; align-items: center; gap: 1rem; padding: 0.75rem; background: white; border: 1px solid #dee2e6; border-radius: 4px;">
+                    <div style="flex: 1; font-weight: 500;">Shutter Angle</div>
+                    <div style="flex: 0 0 auto; color: #6c757d;"><-</div>
+                    <select name="mapping_shutter_angle" class="mapping-select" style="flex: 1; padding: 0.5rem; border: 1px solid #dee2e6; border-radius: 4px;">
+                        <option value="">Skip this field</option>
+                        {% for header in csv_headers|sort %}
+                        <option value="{{ header }}">{{ header }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div style="display: flex; align-items: center; gap: 1rem; padding: 0.75rem; background: white; border: 1px solid #dee2e6; border-radius: 4px;">
+                    <div style="flex: 1; font-weight: 500;">Shutter Speed</div>
+                    <div style="flex: 0 0 auto; color: #6c757d;"><-</div>
+                    <select name="mapping_shutter_speed" class="mapping-select" style="flex: 1; padding: 0.5rem; border: 1px solid #dee2e6; border-radius: 4px;">
+                        <option value="">Skip this field</option>
+                        {% for header in csv_headers|sort %}
+                        <option value="{{ header }}">{{ header }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div style="display: flex; align-items: center; gap: 1rem; padding: 0.75rem; background: white; border: 1px solid #dee2e6; border-radius: 4px;">
+                    <div style="flex: 1; font-weight: 500;">White Balance</div>
+                    <div style="flex: 0 0 auto; color: #6c757d;"><-</div>
+                    <select name="mapping_white_balance" class="mapping-select" style="flex: 1; padding: 0.5rem; border: 1px solid #dee2e6; border-radius: 4px;">
+                        <option value="">Skip this field</option>
+                        {% for header in csv_headers|sort %}
+                        <option value="{{ header }}">{{ header }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div style="display: flex; align-items: center; gap: 1rem; padding: 0.75rem; background: white; border: 1px solid #dee2e6; border-radius: 4px;">
+                    <div style="flex: 1; font-weight: 500;">ND Filter</div>
+                    <div style="flex: 0 0 auto; color: #6c757d;"><-</div>
+                    <select name="mapping_nd_filter" class="mapping-select" style="flex: 1; padding: 0.5rem; border: 1px solid #dee2e6; border-radius: 4px;">
+                        <option value="">Skip this field</option>
+                        {% for header in csv_headers|sort %}
+                        <option value="{{ header }}">{{ header }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <!-- Camera Orientation -->
+                <div style="grid-column: 1 / -1; margin-top: 1rem; padding: 0.5rem; background: #f8f9fa; font-weight: 600; border-radius: 4px;">
+                    Camera Orientation
+                </div>
+                <div style="display: flex; align-items: center; gap: 1rem; padding: 0.75rem; background: white; border: 1px solid #dee2e6; border-radius: 4px;">
+                    <div style="flex: 1; font-weight: 500;">Camera Tilt</div>
+                    <div style="flex: 0 0 auto; color: #6c757d;"><-</div>
+                    <select name="mapping_camera_tilt" class="mapping-select" style="flex: 1; padding: 0.5rem; border: 1px solid #dee2e6; border-radius: 4px;">
+                        <option value="">Skip this field</option>
+                        {% for header in csv_headers|sort %}
+                        <option value="{{ header }}">{{ header }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div style="display: flex; align-items: center; gap: 1rem; padding: 0.75rem; background: white; border: 1px solid #dee2e6; border-radius: 4px;">
+                    <div style="flex: 1; font-weight: 500;">Camera Roll</div>
+                    <div style="flex: 0 0 auto; color: #6c757d;"><-</div>
+                    <select name="mapping_camera_roll" class="mapping-select" style="flex: 1; padding: 0.5rem; border: 1px solid #dee2e6; border-radius: 4px;">
+                        <option value="">Skip this field</option>
+                        {% for header in csv_headers|sort %}
+                        <option value="{{ header }}">{{ header }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <!-- Color & Format -->
+                <div style="grid-column: 1 / -1; margin-top: 1rem; padding: 0.5rem; background: #f8f9fa; font-weight: 600; border-radius: 4px;">
+                    Color & Format
+                </div>
+                <div style="display: flex; align-items: center; gap: 1rem; padding: 0.75rem; background: white; border: 1px solid #dee2e6; border-radius: 4px;">
+                    <div style="flex: 1; font-weight: 500;">LUT</div>
+                    <div style="flex: 0 0 auto; color: #6c757d;"><-</div>
+                    <select name="mapping_lut" class="mapping-select" style="flex: 1; padding: 0.5rem; border: 1px solid #dee2e6; border-radius: 4px;">
+                        <option value="">Skip this field</option>
+                        {% for header in csv_headers|sort %}
+                        <option value="{{ header }}">{{ header }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div style="display: flex; align-items: center; gap: 1rem; padding: 0.75rem; background: white; border: 1px solid #dee2e6; border-radius: 4px;">
+                    <div style="flex: 1; font-weight: 500;">Color Space</div>
+                    <div style="flex: 0 0 auto; color: #6c757d;"><-</div>
+                    <select name="mapping_color_space" class="mapping-select" style="flex: 1; padding: 0.5rem; border: 1px solid #dee2e6; border-radius: 4px;">
+                        <option value="">Skip this field</option>
+                        {% for header in csv_headers|sort %}
+                        <option value="{{ header }}">{{ header }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div style="display: flex; align-items: center; gap: 1rem; padding: 0.75rem; background: white; border: 1px solid #dee2e6; border-radius: 4px;">
+                    <div style="flex: 1; font-weight: 500;">Gamma</div>
+                    <div style="flex: 0 0 auto; color: #6c757d;"><-</div>
+                    <select name="mapping_gamma" class="mapping-select" style="flex: 1; padding: 0.5rem; border: 1px solid #dee2e6; border-radius: 4px;">
+                        <option value="">Skip this field</option>
+                        {% for header in csv_headers|sort %}
+                        <option value="{{ header }}">{{ header }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div style="display: flex; align-items: center; gap: 1rem; padding: 0.75rem; background: white; border: 1px solid #dee2e6; border-radius: 4px;">
+                    <div style="flex: 1; font-weight: 500;">Codec</div>
+                    <div style="flex: 0 0 auto; color: #6c757d;"><-</div>
+                    <select name="mapping_codec" class="mapping-select" style="flex: 1; padding: 0.5rem; border: 1px solid #dee2e6; border-radius: 4px;">
+                        <option value="">Skip this field</option>
+                        {% for header in csv_headers|sort %}
+                        <option value="{{ header }}">{{ header }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div style="display: flex; align-items: center; gap: 1rem; padding: 0.75rem; background: white; border: 1px solid #dee2e6; border-radius: 4px;">
+                    <div style="flex: 1; font-weight: 500;">Resolution</div>
+                    <div style="flex: 0 0 auto; color: #6c757d;"><-</div>
+                    <select name="mapping_resolution" class="mapping-select" style="flex: 1; padding: 0.5rem; border: 1px solid #dee2e6; border-radius: 4px;">
+                        <option value="">Skip this field</option>
+                        {% for header in csv_headers|sort %}
+                        <option value="{{ header }}">{{ header }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <!-- Timecode & Frames -->
+                <div style="grid-column: 1 / -1; margin-top: 1rem; padding: 0.5rem; background: #f8f9fa; font-weight: 600; border-radius: 4px;">
+                    Timecode & Frames
+                </div>
+                <div style="display: flex; align-items: center; gap: 1rem; padding: 0.75rem; background: white; border: 1px solid #dee2e6; border-radius: 4px;">
+                    <div style="flex: 1; font-weight: 500;">Frame Rate</div>
+                    <div style="flex: 0 0 auto; color: #6c757d;"><-</div>
+                    <select name="mapping_shot_frame_rate" class="mapping-select" style="flex: 1; padding: 0.5rem; border: 1px solid #dee2e6; border-radius: 4px;">
+                        <option value="">Skip this field</option>
+                        {% for header in csv_headers|sort %}
+                        <option value="{{ header }}">{{ header }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div style="display: flex; align-items: center; gap: 1rem; padding: 0.75rem; background: white; border: 1px solid #dee2e6; border-radius: 4px;">
+                    <div style="flex: 1; font-weight: 500;">Start TC</div>
+                    <div style="flex: 0 0 auto; color: #6c757d;"><-</div>
+                    <select name="mapping_start_tc" class="mapping-select" style="flex: 1; padding: 0.5rem; border: 1px solid #dee2e6; border-radius: 4px;">
+                        <option value="">Skip this field</option>
+                        {% for header in csv_headers|sort %}
+                        <option value="{{ header }}">{{ header }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div style="display: flex; align-items: center; gap: 1rem; padding: 0.75rem; background: white; border: 1px solid #dee2e6; border-radius: 4px;">
+                    <div style="flex: 1; font-weight: 500;">End TC</div>
+                    <div style="flex: 0 0 auto; color: #6c757d;"><-</div>
+                    <select name="mapping_end_tc" class="mapping-select" style="flex: 1; padding: 0.5rem; border: 1px solid #dee2e6; border-radius: 4px;">
+                        <option value="">Skip this field</option>
+                        {% for header in csv_headers|sort %}
+                        <option value="{{ header }}">{{ header }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div style="display: flex; align-items: center; gap: 1rem; padding: 0.75rem; background: white; border: 1px solid #dee2e6; border-radius: 4px;">
+                    <div style="flex: 1; font-weight: 500;">Start Frame</div>
+                    <div style="flex: 0 0 auto; color: #6c757d;"><-</div>
+                    <select name="mapping_start_frame" class="mapping-select" style="flex: 1; padding: 0.5rem; border: 1px solid #dee2e6; border-radius: 4px;">
+                        <option value="">Skip this field</option>
+                        {% for header in csv_headers|sort %}
+                        <option value="{{ header }}">{{ header }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div style="display: flex; align-items: center; gap: 1rem; padding: 0.75rem; background: white; border: 1px solid #dee2e6; border-radius: 4px;">
+                    <div style="flex: 1; font-weight: 500;">End Frame</div>
+                    <div style="flex: 0 0 auto; color: #6c757d;"><-</div>
+                    <select name="mapping_end_frame" class="mapping-select" style="flex: 1; padding: 0.5rem; border: 1px solid #dee2e6; border-radius: 4px;">
+                        <option value="">Skip this field</option>
+                        {% for header in csv_headers|sort %}
+                        <option value="{{ header }}">{{ header }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div style="display: flex; align-items: center; gap: 1rem; padding: 0.75rem; background: white; border: 1px solid #dee2e6; border-radius: 4px;">
+                    <div style="flex: 1; font-weight: 500;">Total Frames</div>
+                    <div style="flex: 0 0 auto; color: #6c757d;"><-</div>
+                    <select name="mapping_total_frames" class="mapping-select" style="flex: 1; padding: 0.5rem; border: 1px solid #dee2e6; border-radius: 4px;">
+                        <option value="">Skip this field</option>
+                        {% for header in csv_headers|sort %}
+                        <option value="{{ header }}">{{ header }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <!-- File Info -->
+                <div style="grid-column: 1 / -1; margin-top: 1rem; padding: 0.5rem; background: #f8f9fa; font-weight: 600; border-radius: 4px;">
+                     File Info
+                </div>
+                <div style="display: flex; align-items: center; gap: 1rem; padding: 0.75rem; background: white; border: 1px solid #dee2e6; border-radius: 4px;">
+                    <div style="flex: 1; font-weight: 500;">File Path</div>
+                    <div style="flex: 0 0 auto; color: #6c757d;"><-</div>
+                    <select name="mapping_file_path" class="mapping-select" style="flex: 1; padding: 0.5rem; border: 1px solid #dee2e6; border-radius: 4px;">
+                        <option value="">Skip this field</option>
+                        {% for header in csv_headers|sort %}
+                        <option value="{{ header }}">{{ header }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            
+            <div style="margin-top: 2rem; display: flex; justify-content: space-between;">
+                <a href="/import/metadata" style="padding: 0.75rem 1.5rem; background: #6c757d; color: white; text-decoration: none; border-radius: 4px;">
+                    Cancel
+                </a>
+                <button type="submit" style="padding: 0.75rem 2rem; background: #20b2aa; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 1rem;">
+                    Confirm & Import
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<script>
+// Auto-detect mappings on load
+window.addEventListener('DOMContentLoaded', function() {
+    const lastMapping = {{ last_mapping|tojson|safe }};
+    const selects = document.querySelectorAll('.mapping-select');
+    
+    selects.forEach(select => {
+        const fieldName = select.name.replace('mapping_', '');
+        
+        // First, try to load from last mapping
+        if (lastMapping && lastMapping[fieldName]) {
+            select.value = lastMapping[fieldName];
+        } else {
+            // Otherwise, try auto-detect
+            const options = Array.from(select.options);
+            options.forEach(option => {
+                if (option.value.toLowerCase().includes(fieldName.toLowerCase()) || 
+                    fieldName.toLowerCase().includes(option.value.toLowerCase())) {
+                    select.value = option.value;
+                }
+            });
+        }
+    });
+});
+
+function savePreset() {
+    // Create custom dialog (prompt doesn't work in Electron)
+    const dialog = document.createElement('div');
+    dialog.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 9999;';
+    dialog.innerHTML = `
+        <div style="background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); min-width: 400px;">
+            <h3 style="margin: 0 0 1rem 0;">Save Mapping Preset</h3>
+            <input type="text" id="preset-name-input" placeholder="Enter preset name..." style="width: 100%; padding: 0.75rem; border: 2px solid #dee2e6; border-radius: 4px; font-size: 1rem; margin-bottom: 1rem;">
+            <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+                <button id="cancel-preset-btn" style="padding: 0.75rem 1.5rem; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">Cancel</button>
+                <button id="save-preset-btn" style="padding: 0.75rem 1.5rem; background: #20b2aa; color: white; border: none; border-radius: 4px; cursor: pointer;">Save</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(dialog);
+    
+    // Focus input
+    const input = document.getElementById('preset-name-input');
+    input.focus();
+    
+    // Handle save
+    document.getElementById('save-preset-btn').onclick = function() {
+        const name = input.value.trim();
+        if (!name) {
+            alert('Please enter a preset name');
+            return;
+        }
+        
+        // Check if a preset with this name already exists
+        const presetSelect = document.getElementById('preset-select');
+        let existingPresetId = null;
+        
+        for (let i = 0; i < presetSelect.options.length; i++) {
+            const option = presetSelect.options[i];
+            if (option.text === name && option.value) {
+                existingPresetId = option.value;
+                break;
+            }
+        }
+        
+        // If exists, ask to overwrite
+        if (existingPresetId) {
+            if (!confirm(`A preset named "${name}" already exists. Overwrite it?`)) {
+                return;
+            }
+        }
+        
+        // Collect current mappings
+        const mappings = {};
+        document.querySelectorAll('.mapping-select').forEach(select => {
+            const fieldName = select.name.replace('mapping_', '');
+            if (select.value) {
+                mappings[fieldName] = select.value;
+            }
+        });
+        
+        // Save preset (include overwrite_id if overwriting)
+        const payload = {name: name, mappings: mappings};
+        if (existingPresetId) {
+            payload.overwrite_id = existingPresetId;
+        }
+        
+        fetch('/import/metadata/preset/save', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload)
+        }).then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                dialog.remove();
+                alert('Preset saved!');
+                location.reload();
+            } else {
+                console.error('Error saving preset');
+            }
+        }).catch(err => {
+            alert('Error saving preset: ' + err);
+        });
+    };
+    
+    // Handle cancel
+    document.getElementById('cancel-preset-btn').onclick = function() {
+        dialog.remove();
+    };
+    
+    // Handle Enter key
+    input.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            document.getElementById('save-preset-btn').click();
+        }
+    });
+}
+
+document.getElementById('preset-select').addEventListener('change', function() {
+    const deleteBtn = document.getElementById('delete-preset-btn');
+    
+    if (!this.value) {
+        deleteBtn.style.display = 'none';
+        return;
+    }
+    
+    // Show delete button when a preset is selected
+    deleteBtn.style.display = 'block';
+    
+    fetch(`/import/metadata/preset/${this.value}`)
+        .then(response => response.json())
+        .then(data => {
+            // Apply preset mappings
+            Object.keys(data.mappings).forEach(fieldName => {
+                const select = document.querySelector(`[name="mapping_${fieldName}"]`);
+                if (select) {
+                    select.value = data.mappings[fieldName];
+                }
+            });
+        });
+});
+
+// Delete preset function
+function deletePreset() {
+    const presetSelect = document.getElementById('preset-select');
+    const presetId = presetSelect.value;
+    const presetName = presetSelect.options[presetSelect.selectedIndex].text;
+    
+    if (!presetId) return;
+    
+    if (!confirm(`Delete preset "${presetName}"?`)) {
+        return;
+    }
+    
+    fetch(`/import/metadata/preset/${presetId}/delete`, {
+        method: 'POST'
+    }).then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            console.error('Error deleting preset');
+        }
+    }).catch(err => {
+        console.error('Error: ' + err);
+    });
+}
+</script>
+
+{% endblock %}

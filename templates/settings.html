@@ -1,0 +1,751 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+/* Tooltip Styles */
+.settings-tooltip {
+    /* Force hide the tooltip by default */
+    display: none !important;
+    position: absolute;
+    left: 0;
+    top: calc(100% + 0.5rem);
+    background: #2c3e50;
+    color: white;
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 400;
+    line-height: 1.5;
+    max-width: 400px;
+    z-index: 1000;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    pointer-events: none;
+    white-space: normal;
+}
+
+.settings-title-with-tooltip {
+    position: relative;
+    cursor: help;
+}
+
+.settings-title-with-tooltip:hover .settings-tooltip {
+    /* Show on hover after 1 second delay */
+    display: block !important;
+    animation: fadeInTooltip 0.3s ease-in 1s both;
+}
+
+@keyframes fadeInTooltip {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.settings-message {
+    padding: 1rem;
+    border-radius: 8px;
+    font-weight: 600;
+    text-align: center;
+}
+
+.settings-message.success {
+    background: #d4edda;
+    color: #155724;
+}
+
+.settings-message.error {
+    background: #f8d7da;
+    color: #721c24;
+}
+</style>
+
+<div style="max-width: 800px; margin: 2rem auto; padding: 2rem;">
+    <h1 style="margin-bottom: 2rem;">Project Settings</h1>
+    
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div style="padding: 1rem; margin-bottom: 1rem; border-radius: 4px; {% if category == 'success' %}background: #d4edda; color: #155724; border: 1px solid #c3e6cb;{% else %}background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb;{% endif %}">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+    
+    {% if project %}
+    <div style="background: white; border-radius: 8px; padding: 2rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+        <!-- Project Name Section -->
+        <div class="settings-section">
+            <h3 class="settings-section-title settings-title-with-tooltip" style="margin: 0;">
+                Project Name
+                <span class="settings-tooltip">You can hide the title to show only the logo, or leave the name empty</span>
+            </h3>
+            <div style="display: flex; gap: 1rem; align-items: center;">
+                <input type="text" 
+                       id="project-name-input" 
+                       value="{{ project.name }}" 
+                       placeholder="Leave empty to hide title on dashboard"
+                       style="padding: 0.5rem; border: 2px solid #ddd; border-radius: 4px; font-size: 1rem; flex: 1; max-width: 400px;">
+                
+            </div>
+            <div style="margin-top: 0.5rem;">
+                <button onclick="toggleDashboardTitle()" id="toggle-dashboard-title-btn" 
+                        style="padding: 0.5rem 1rem; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 500;">
+                    Hide Title on Dashboard
+                </button>
+            </div>
+            
+            <div id="name-message" style="margin-top: 0.5rem; font-weight: 600; color: #20b2aa;"></div>
+        </div>
+        
+        <!-- Logo Upload Section -->
+        <div class="settings-section">
+            <h3 class="settings-section-title settings-title-with-tooltip" style="margin: 0;">
+                Project Logo
+                <span class="settings-tooltip">Upload a logo image for your project header (PNG, JPG, GIF)</span>
+            </h3>
+            
+            {% if project.logo_path %}
+            <!-- Current Logo Display -->
+            <div style="margin-bottom: 1rem; padding: 1rem; background: #f8f9fa; border-radius: 6px; border: 2px solid #dee2e6;">
+                <div style="margin-bottom: 0.5rem;">
+                    <strong style="color: #20b2aa;"> Current Logo:</strong>
+                </div>
+                <img src="{{ url_for('static', filename=project.logo_path) }}" 
+                     alt="Project logo" 
+                     style="max-height: 200px; max-width: 400px; border-radius: 4px; border: 2px solid #ddd; display: block; margin-bottom: 0.5rem;">
+                <small style="color: #6c757d;">{{ project.logo_path.split('/')[-1] if project.logo_path else 'No file' }}</small>
+            </div>
+            
+            <!-- Logo Management Buttons -->
+            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem;">
+                <button onclick="toggleDashboardLogo()" id="toggle-dashboard-logo-btn" 
+                        style="padding: 0.5rem 1rem; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 500;">
+                    Hide Logo on Dashboard
+                </button>
+                <button onclick="document.querySelector('#logo-upload-form input[type=file]').click();" 
+                        style="padding: 0.5rem 1rem; background: #20b2aa; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 500;">
+                    Change Logo
+                </button>
+                <form action="/project/{{ project.id }}/remove_logo" method="POST" style="display: inline;">
+                    <button type="submit" 
+                            style="padding: 0.5rem 1rem; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 500;"
+                            onclick="return confirm('Are you sure you want to permanently remove the project logo?')">
+                        Remove Logo
+                    </button>
+                </form>
+            </div>
+            
+            <!-- Upload New Logo Form (hidden by default when logo exists) -->
+            <form id="logo-upload-form" action="/project/{{ project.id }}/upload_logo" method="POST" enctype="multipart/form-data" 
+                  style="display: none;">
+                <input type="file" name="logo" accept="image/*" onchange="this.form.submit()" style="display: none;">
+                </div>
+
+            </form>
+            
+            <small style="color: #6c757d; display: block; margin-top: 0.5rem;">
+                Click logo on dashboard to quickly change it
+            </small>
+            
+            {% else %}
+            <!-- No Logo - Show Upload Form -->
+            <form action="/project/{{ project.id }}/upload_logo" method="POST" enctype="multipart/form-data" 
+                  style="display: flex; gap: 1rem; align-items: center; margin-bottom: 0.5rem;">
+                <input type="file" name="logo" accept="image/*" onchange="this.form.submit()" style="padding: 0.5rem; border: 2px solid #ddd; border-radius: 4px; flex: 1;">
+                <span style="color: #6c757d; font-size: 0.9rem;">Logo will upload automatically</span>
+            </form>
+            
+            
+            {% endif %}
+        </div>
+        
+        <!-- Frame Rate Setting -->
+        <div style="margin-bottom: 2rem;">
+            <h3 class="settings-section-title settings-title-with-tooltip" style="margin: 0;">
+                Frame Rate (FPS)
+                <span class="settings-tooltip">Common rates: 23.976, 24, 25, 29.97, 30, 48, 60</span>
+            </h3>
+            <div style="display: flex; gap: 1rem; align-items: center;">
+                <input type="number" 
+                       id="fps-input" 
+                       value="{{ project.fps }}" 
+                       min="1" 
+                       max="120" 
+                       step="0.01"
+                       style="padding: 0.5rem; border: 2px solid #ddd; border-radius: 4px; font-size: 1rem; width: 150px;">
+                <span style="color: #6c757d;">fps</span>
+                
+            </div>
+            
+            <div id="fps-message" style="margin-top: 0.5rem; font-weight: 600;"></div>
+        </div>
+        
+        <!-- Path Aliases Section -->
+        <div class="settings-section">
+            <h3 class="settings-section-title settings-title-with-tooltip" style="margin: 0;">
+                Reference Image Path Aliases
+                <span class="settings-tooltip">Add multiple base paths where reference images might be stored. The app will try each path until it finds the image. Useful for multi-user setups or when working across different drives.</span>
+            </h3>
+            
+            
+            <div id="path-aliases-list" style="margin-bottom: 1rem;">
+                <!-- Paths will be populated here -->
+            </div>
+            
+            <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
+                <input type="text" 
+                       id="new-path-input" 
+                       placeholder="e.g., C:/Project/VFX/Thumbnails or /Volumes/Server/Project/VFX"
+                       style="padding: 0.5rem; border: 2px solid #ddd; border-radius: 4px; font-size: 0.9rem; flex: 1;">
+                <button onclick="addPathAlias()" 
+                        style="background: #20b2aa; color: white; padding: 0.5rem 1.5rem; border: none; border-radius: 4px; cursor: pointer; font-weight: 500;">
+                    Add Path
+                </button>
+            </div>
+            
+            
+            <div id="path-message" style="margin-top: 0.5rem; font-weight: 600;"></div>
+        </div>
+        
+        <!-- Image Cache Management -->
+        <div class="settings-section">
+            <h3 class="settings-section-title settings-title-with-tooltip" style="margin: 0;">
+                Image Cache
+                <span class="settings-tooltip">Reference images are cached locally for faster loading. Clear the cache to free up disk space or force re-download from server.</span>
+            </h3>
+            
+            
+            <div style="margin-bottom: 1rem; padding: 1rem; background: #f8f9fa; border-radius: 8px;">
+                <label style="display: flex; align-items: center; gap: 0.75rem; cursor: pointer;">
+                    <input type="checkbox" id="cache-enabled-toggle" onchange="toggleCacheEnabled(this.checked)"
+                           style="width: 20px; height: 20px; cursor: pointer;">
+                    <span style="font-weight: 600;">Enable Image Caching</span>
+                </label>
+                <div style="font-size: 0.85rem; color: #666; margin-top: 0.5rem; margin-left: 2rem;">
+                    When disabled, images load directly from the server (slower but always up-to-date)
+                </div>
+            </div>
+            
+            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                <button onclick="openCacheLocation()" 
+                        style="padding: 0.5rem 1rem; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 500;">
+                    Open Cache Location
+                </button>
+                <button onclick="clearImageCache()" 
+                        style="padding: 0.5rem 1rem; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 500;">
+                    Clear Image Cache
+                </button>
+            </div>
+            <div id="cache-message" style="margin-top: 0.5rem; font-weight: 600;"></div>
+        </div>
+
+    </div>
+    {% else %}
+    <div style="background: #f8d7da; border: 1px solid #f5c6cb; padding: 1rem; border-radius: 4px; color: #721c24;">
+        No active project. Please create or select a project first.
+    </div>
+    {% endif %}
+    
+    <!-- Save All Changes Button -->
+    <div style="text-align: center; margin-top: 3rem; margin-bottom: 2rem;">
+        <button onclick="saveAllChanges()" class="settings-button settings-button-primary" style="padding: 1rem 3rem; font-size: 1.1rem;">
+            Save All Changes
+        </button>
+        <div id="save-all-message" class="settings-message" style="display: none; margin-top: 1rem;"></div>
+    </div>
+    
+    <div style="margin-top: 2rem;">
+        <a href="/" class="btn btn-secondary" style="padding: 0.5rem 1.5rem; text-decoration: none;">
+            <- Back to Dashboard
+        </a>
+    </div>
+</div>
+
+<script>
+function updateProjectName() {
+    const nameInput = document.getElementById('project-name-input');
+    const messageDiv = document.getElementById('name-message');
+    const newName = nameInput.value.trim();
+    
+    console.log('Saving name:', newName, 'is empty:', !newName);
+    // Allow empty name - user can show only logo
+    
+    fetch('/project/{{ project.id }}/update', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ name: newName })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            messageDiv.style.color = '#28a745';
+            messageDiv.textContent = ' Project name updated successfully';
+            setTimeout(() => {
+                messageDiv.textContent = '';
+            }, 3000);
+        } else {
+            messageDiv.style.color = '#dc3545';
+            messageDiv.textContent = 'Error: Failed to update name';
+        }
+    })
+    .catch(error => {
+        messageDiv.style.color = '#dc3545';
+        messageDiv.textContent = 'Error: Failed to update name';
+        console.error('Error:', error);
+    });
+}
+
+function updateFPS() {
+    const fpsInput = document.getElementById('fps-input');
+    const messageDiv = document.getElementById('fps-message');
+    const newFPS = parseFloat(fpsInput.value);
+    
+    if (isNaN(newFPS) || newFPS <= 0 || newFPS > 120) {
+        messageDiv.style.color = '#dc3545';
+        messageDiv.textContent = 'Please enter a valid FPS between 0 and 120';
+        return;
+    }
+    
+    fetch('/project/{{ project.id }}/update_fps', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ fps: newFPS })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            messageDiv.style.color = '#28a745';
+            messageDiv.textContent = ' FPS updated successfully to ' + data.fps + ' fps';
+            setTimeout(() => {
+                messageDiv.textContent = '';
+            }, 3000);
+        } else {
+            messageDiv.style.color = '#dc3545';
+            messageDiv.textContent = 'Error: ' + (data.error || 'Failed to update FPS');
+        }
+    })
+    .catch(error => {
+        messageDiv.style.color = '#dc3545';
+        messageDiv.textContent = 'Error: Failed to update FPS';
+        console.error('Error:', error);
+    });
+}
+</script>
+
+
+<script>
+function toggleDashboardLogo() {
+    const btn = document.getElementById('toggle-dashboard-logo-btn');
+    const currentState = localStorage.getItem('logoVisible') !== 'false';
+    
+    localStorage.setItem('logoVisible', !currentState);
+    
+    if (currentState) {
+        btn.textContent = 'Show Logo on Dashboard';
+        btn.style.background = '#20b2aa';
+    } else {
+        btn.textContent = 'Hide Logo on Dashboard';
+        btn.style.background = '#6c757d';
+    }
+}
+
+function toggleDashboardTitle() {
+    const btn = document.getElementById('toggle-dashboard-title-btn');
+    const currentState = localStorage.getItem('titleVisible') !== 'false';
+    
+    localStorage.setItem('titleVisible', !currentState);
+    
+    if (currentState) {
+        btn.textContent = 'Show Title on Dashboard';
+        btn.style.background = '#20b2aa';
+    } else {
+        btn.textContent = 'Hide Title on Dashboard';
+        btn.style.background = '#6c757d';
+    }
+}
+
+
+
+// Path Aliases Management
+function loadPathAliases() {
+    fetch('/project/{{ project.id }}/path_aliases')
+        .then(response => response.json())
+        .then(data => {
+            const listDiv = document.getElementById('path-aliases-list');
+            const paths = data.paths || [];
+            
+            if (paths.length === 0) {
+                listDiv.innerHTML = '<div style="padding: 1rem; background: #f8f9fa; border-radius: 4px; color: #6c757d; text-align: center;">No paths configured yet</div>';
+            } else {
+                listDiv.innerHTML = paths.map((path, index) => `
+                    <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem; background: #f8f9fa; border-radius: 4px; margin-bottom: 0.5rem;">
+                        <span style="flex: 1; font-family: monospace; font-size: 0.9rem;">${path}</span>
+                        <button onclick="removePathAlias(${index})" 
+                                style="background: #dc3545; color: white; padding: 0.25rem 0.75rem; border: none; border-radius: 4px; cursor: pointer; font-size: 0.85rem;">
+                            Remove
+                        </button>
+                    </div>
+                `).join('');
+            }
+        })
+        .catch(error => console.error('Error loading paths:', error));
+}
+
+function addPathAlias() {
+    const input = document.getElementById('new-path-input');
+    const messageDiv = document.getElementById('path-message');
+    const newPath = input.value.trim();
+    
+    if (!newPath) {
+        messageDiv.style.color = '#dc3545';
+        messageDiv.textContent = 'Please enter a path';
+        return;
+    }
+    
+    fetch('/project/{{ project.id }}/path_aliases/add', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ path: newPath })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            messageDiv.style.color = '#28a745';
+            messageDiv.textContent = ' Path added successfully';
+            input.value = '';
+            loadPathAliases();
+            setTimeout(() => messageDiv.textContent = '', 3000);
+        } else {
+            messageDiv.style.color = '#dc3545';
+            messageDiv.textContent = 'Error: ' + (data.error || 'Failed to add path');
+        }
+    })
+    .catch(error => {
+        messageDiv.style.color = '#dc3545';
+        messageDiv.textContent = 'Error adding path';
+        console.error('Error:', error);
+    });
+}
+
+function removePathAlias(index) {
+    if (!confirm('Remove this path alias?')) return;
+    
+    const messageDiv = document.getElementById('path-message');
+    
+    fetch('/project/{{ project.id }}/path_aliases/remove', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ index: index })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            messageDiv.style.color = '#28a745';
+            messageDiv.textContent = ' Path removed';
+            loadPathAliases();
+            setTimeout(() => messageDiv.textContent = '', 3000);
+        } else {
+            messageDiv.style.color = '#dc3545';
+            messageDiv.textContent = 'Error removing path';
+        }
+    })
+    .catch(error => {
+        messageDiv.style.color = '#dc3545';
+        messageDiv.textContent = 'Error removing path';
+        console.error('Error:', error);
+    });
+}
+
+// Load path aliases when page loads
+window.addEventListener('load', function() {// Set button text on load
+
+    const logoBtn = document.getElementById('toggle-dashboard-logo-btn');
+    if (logoBtn) {
+        const logoVisible = localStorage.getItem('logoVisible');
+        if (logoVisible === 'false') {
+            logoBtn.textContent = 'Show Logo on Dashboard';
+            logoBtn.style.background = '#20b2aa';
+        } else {
+            logoBtn.textContent = 'Hide Logo on Dashboard';
+            logoBtn.style.background = '#6c757d';
+        }
+    }
+    
+    const titleBtn = document.getElementById('toggle-dashboard-title-btn');
+    if (titleBtn) {
+        const titleVisible = localStorage.getItem('titleVisible');
+        if (titleVisible === 'false') {
+            titleBtn.textContent = 'Show Title on Dashboard';
+            titleBtn.style.background = '#20b2aa';
+        } else {
+            titleBtn.textContent = 'Hide Title on Dashboard';
+            titleBtn.style.background = '#6c757d';
+        }
+    }
+    
+    // Load path aliases
+    loadPathAliases();
+});
+
+
+// Image Cache Management
+function openCacheLocation() {
+    fetch('/cache/open_location', {
+        method: 'POST'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (!data.success) {
+            alert('Could not open cache location');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error opening cache location');
+    });
+}
+
+function clearImageCache() {
+    if (!confirm('Clear all cached images? They will be re-downloaded from the server when needed.')) {
+        return;
+    }
+    
+    const messageDiv = document.getElementById('cache-message');
+    messageDiv.textContent = 'Clearing cache...';
+    messageDiv.style.color = '#6c757d';
+    
+    fetch('/cache/clear', {
+        method: 'POST'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            messageDiv.style.color = '#28a745';
+            messageDiv.textContent = ' Cache cleared successfully';
+            setTimeout(() => messageDiv.textContent = '', 3000);
+        } else {
+            messageDiv.style.color = '#dc3545';
+            messageDiv.textContent = 'Error clearing cache';
+        }
+    })
+    .catch(error => {
+        messageDiv.style.color = '#dc3545';
+        messageDiv.textContent = 'Error clearing cache';
+        console.error('Error:', error);
+    });
+}
+
+
+function toggleCacheEnabled(enabled) {
+    fetch('/cache/toggle', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({enabled: enabled})
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const messageDiv = document.getElementById('cache-message');
+            messageDiv.style.color = '#28a745';
+            messageDiv.textContent = enabled ? 'Caching enabled' : 'Caching disabled';
+            setTimeout(() => messageDiv.textContent = '', 3000);
+        }
+    })
+    .catch(error => {
+        console.error('Error toggling cache:', error);
+    });
+}
+
+// Load cache setting on page load
+window.addEventListener('load', function() {
+    fetch('/cache/status')
+    .then(response => response.json())
+    .then(data => {
+        const toggle = document.getElementById('cache-enabled-toggle');
+        if (toggle) {
+            toggle.checked = data.enabled;
+        }
+    })
+    .catch(error => {
+        console.error('Error loading cache status:', error);
+    });
+});
+
+async function saveAllChanges() {
+    const messageDiv = document.getElementById('save-all-message');
+    messageDiv.style.display = 'block';
+    messageDiv.className = 'settings-message';
+    messageDiv.textContent = 'Saving...';
+    
+    let allSuccess = true;
+    let errors = [];
+    const projectId = {{ project.id if project else 'null' }};
+    
+    if (!projectId) {
+        messageDiv.className = 'settings-message error';
+        messageDiv.textContent = 'No project found';
+        return;
+    }
+    
+    try {
+        // Save project name (allow empty to hide title on dashboard)
+        const projectNameInput = document.getElementById('project-name-input');
+        if (projectNameInput) {
+            const nameValue = projectNameInput.value.trim();  // Get value (can be empty)
+            const nameResponse = await fetch(`/project/${projectId}/update`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({name: nameValue})  // Send empty string if user cleared it
+            });
+            const nameData = await nameResponse.json();
+            if (!nameData.success) {
+                allSuccess = false;
+                errors.push('Project name');
+            }
+        }
+        
+        // Save FPS
+        const fpsInput = document.getElementById('fps-input');
+        if (fpsInput && fpsInput.value) {
+            const fpsResponse = await fetch(`/project/${projectId}/update_fps`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({fps: parseFloat(fpsInput.value)})
+            });
+            const fpsData = await fpsResponse.json();
+            if (!fpsData.success) {
+                allSuccess = false;
+                errors.push('FPS');
+            }
+        }
+        
+        // Skip logo upload - logo should be uploaded via the form buttons, not Save All Changes
+        // Logo upload requires file handling and is better done immediately
+        
+        // Add path if entered
+        const pathInput = document.getElementById('new-path-input');
+        if (pathInput && pathInput.value.trim()) {
+            const pathResponse = await fetch(`/project/${projectId}/path_aliases/add`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({path: pathInput.value.trim()})
+            });
+            const pathData = await pathResponse.json();
+            if (!pathData.success) {
+                allSuccess = false;
+                errors.push('Path alias');
+            } else {
+                pathInput.value = '';
+            }
+        }
+        
+        if (allSuccess) {
+            messageDiv.className = 'settings-message success';
+            messageDiv.textContent = 'All changes saved successfully!';
+            setTimeout(() => {
+                location.reload();
+            }, 1500);
+        } else {
+            messageDiv.className = 'settings-message error';
+            messageDiv.textContent = 'Some changes failed: ' + errors.join(', ');
+        }
+    } catch (error) {
+        messageDiv.className = 'settings-message error';
+        messageDiv.textContent = 'Error saving changes';
+        console.error('Save error:', error);
+    }
+}
+
+
+async function saveAllChanges() {
+    const messageDiv = document.getElementById('save-all-message');
+    messageDiv.style.display = 'block';
+    messageDiv.className = 'settings-message';
+    messageDiv.textContent = 'Saving...';
+    
+    let allSuccess = true;
+    let errors = [];
+    const projectId = {{ project.id if project else 'null' }};
+    
+    if (!projectId) {
+        messageDiv.className = 'settings-message error';
+        messageDiv.textContent = 'No project found';
+        return;
+    }
+    
+    try {
+        // Save project name (allow empty to hide title on dashboard)
+        const projectNameInput = document.getElementById('project-name-input');
+        if (projectNameInput) {
+            const nameValue = projectNameInput.value.trim();  // Get value (can be empty)
+            const nameResponse = await fetch(`/project/${projectId}/update`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({name: nameValue})  // Send empty string if user cleared it
+            });
+            const nameData = await nameResponse.json();
+            if (!nameData.success) {
+                allSuccess = false;
+                errors.push('Project name');
+            }
+        }
+        
+        // Save FPS
+        const fpsInput = document.getElementById('fps-input');
+        if (fpsInput && fpsInput.value) {
+            const fpsResponse = await fetch(`/project/${projectId}/update_fps`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({fps: parseFloat(fpsInput.value)})
+            });
+            const fpsData = await fpsResponse.json();
+            if (!fpsData.success) {
+                allSuccess = false;
+                errors.push('FPS');
+            }
+        }
+        
+        // Skip logo upload - logo should be uploaded via the form buttons, not Save All Changes
+        // Logo upload requires file handling and is better done immediately
+        
+        // Add path if entered
+        const pathInput = document.getElementById('new-path-input');
+        if (pathInput && pathInput.value.trim()) {
+            const pathResponse = await fetch(`/project/${projectId}/path_aliases/add`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({path: pathInput.value.trim()})
+            });
+            const pathData = await pathResponse.json();
+            if (!pathData.success) {
+                allSuccess = false;
+                errors.push('Path alias');
+            } else {
+                pathInput.value = '';
+            }
+        }
+        
+        if (allSuccess) {
+            messageDiv.className = 'settings-message success';
+            messageDiv.textContent = 'All changes saved successfully!';
+            setTimeout(() => {
+                location.reload();
+            }, 1500);
+        } else {
+            messageDiv.className = 'settings-message error';
+            messageDiv.textContent = 'Some changes failed: ' + errors.join(', ');
+        }
+    } catch (error) {
+        messageDiv.className = 'settings-message error';
+        messageDiv.textContent = 'Error saving changes';
+        console.error('Save error:', error);
+    }
+}
+
+</script>
+
+{% endblock %}

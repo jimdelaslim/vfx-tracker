@@ -1,0 +1,279 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div style="max-width: 1600px; margin: 0 auto; display: flex; gap: 2rem;">
+    <!-- Main Content Area -->
+    <div style="flex: 1; min-width: 0;">
+        <h2 style="margin-bottom: 2rem;">All Shots Metadata - {{ project.name }}</h2>
+        
+        {% if shots %}
+        <div style="margin-bottom: 1rem;">
+            <p style="color: #7f8c8d;">Showing metadata for {{ shots|length }} shot(s). Click "Edit Metadata" to view or modify details.</p>
+        </div>
+        
+        <div style="margin-bottom: 1.5rem;">
+            <label style="cursor: pointer; user-select: none;">
+                <input type="checkbox" id="selectAll" style="margin-right: 0.5rem; cursor: pointer;">
+                <strong>Select All</strong>
+            </label>
+            <button onclick="deleteSelectedMetadata()" style="padding: 0.5rem 1rem; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; display: none; margin-left: 1rem;" id="deleteBtn">
+                Delete Selected Metadata
+            </button>
+        </div>
+
+        
+        {% for shot in shots %}
+        <div class="card shot-card" style="margin-bottom: 1.5rem; padding: 1.5rem; display: flex; justify-content: space-between; align-items: center; gap: 1.5rem; max-width: fit-content;">
+            <!-- Checkbox -->
+            <input type="checkbox" class="shot-checkbox" value="{{ shot.id }}" style="cursor: pointer; width: 20px; height: 20px; flex-shrink: 0;">
+            
+            <!-- Shot Info -->
+            <div style="min-width: 300px;">
+                <div style="font-weight: 700; font-size: 1.1rem; margin-bottom: 0.3rem;">
+                    {{ shot.clip_name }}
+                </div>
+                <div style="color: #6c757d; font-size: 0.9rem;">
+                    Tape: {{ shot.cam_roll or 'N/A' }}
+                </div>
+            </div>
+            
+            <!-- Metadata Status -->
+            <div style="flex-shrink: 0;">
+                {% if shot.camera or shot.lens or shot.iso or shot.lut or shot.color_space %}
+                    <span style="padding: 0.4rem 1rem; background: #d4edda; color: #155724; border-radius: 4px; font-weight: 600; font-size: 0.9rem; white-space: nowrap;">
+                        Contains metadata
+                    </span>
+                {% else %}
+                    <span style="padding: 0.4rem 1rem; background: #f8d7da; color: #721c24; border-radius: 4px; font-weight: 600; font-size: 0.9rem; white-space: nowrap;">
+                        No metadata imported
+                    </span>
+                {% endif %}
+            </div>
+            
+            <!-- Edit Button -->
+            <a href="/shot/{{ shot.id }}/metadata" class="btn" style="background: #20b2aa; color: white; flex-shrink: 0; text-decoration: none; white-space: nowrap;">
+                Edit Metadata
+            </a>
+        </div>
+        {% endfor %}
+        
+        {% else %}
+        <div class="card" style="text-align: center; padding: 3rem;">
+            <h3>No shots in this project</h3>
+            <p style="color: #7f8c8d; margin: 1rem 0;">Import an EDL to get started</p>
+            <a href="/import" class="btn" style="background: #20b2aa; color: white; text-decoration: none;">Import EDL</a>
+        </div>
+        {% endif %}
+    </div>
+    
+    <!-- Sticky Sidebar -->
+    <div style="width: 300px; flex-shrink: 0;">
+        <div style="position: sticky; top: 2rem;">
+            <!-- Search Box -->
+            <div style="background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 1.5rem;">
+                <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Search Shots</label>
+                <input type="text" id="searchInput" placeholder="Search by name or tape..." 
+                       style="width: 100%; padding: 0.5rem; border: 2px solid #ddd; border-radius: 4px; font-size: 0.9rem;">
+                <div id="searchCount" style="margin-top: 0.5rem; color: #6c757d; font-size: 0.85rem;"></div>
+            </div>
+            
+            <!-- Export Section -->
+            <div style="background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                <h3 style="margin: 0 0 1rem 0; font-size: 1.1rem;">Export</h3>
+                
+                <button onclick="exportMetadataCSV()" class="btn" id="exportCSVBtn" disabled 
+                        style="width: 100%; margin-bottom: 0.75rem; background: #495057; color: white; border: none; padding: 0.75rem; border-radius: 4px; cursor: pointer;">
+                    Export CSV (<span id="csvCount">0</span>)
+                </button>
+                
+                <button onclick="exportMetadataPDF()" class="btn" id="exportPDFBtn" disabled 
+                        style="width: 100%; background: #495057; color: white; border: none; padding: 0.75rem; border-radius: 4px; cursor: pointer;">
+                    Export PDF (<span id="pdfCount">0</span>)
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.card {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed !important;
+}
+
+.shot-card {
+    transition: box-shadow 0.2s;
+}
+
+.shot-card:hover {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+</style>
+
+<script>
+// Checkbox selection
+const checkboxes = document.querySelectorAll('.shot-checkbox');
+const selectAllCheckbox = document.getElementById('selectAll');
+const exportCSVBtn = document.getElementById('exportCSVBtn');
+const exportPDFBtn = document.getElementById('exportPDFBtn');
+const csvCount = document.getElementById('csvCount');
+const pdfCount = document.getElementById('pdfCount');
+const searchInput = document.getElementById('searchInput');
+const searchCount = document.getElementById('searchCount');
+const shotCards = document.querySelectorAll('.shot-card');
+
+function updateSelectedCount() {
+    const checked = document.querySelectorAll('.shot-checkbox:checked').length;
+    csvCount.textContent = checked;
+    pdfCount.textContent = checked;
+    exportCSVBtn.disabled = checked === 0;
+    exportPDFBtn.disabled = checked === 0;
+    selectAllCheckbox.checked = checked === checkboxes.length && checkboxes.length > 0;
+}
+
+checkboxes.forEach(cb => {
+    cb.addEventListener('change', updateSelectedCount);
+});
+
+selectAllCheckbox.addEventListener('change', function() {
+    checkboxes.forEach(cb => {
+        if (cb.closest('.shot-card').style.display !== 'none') {
+            cb.checked = this.checked;
+        }
+    });
+    updateSelectedCount();
+});
+
+// Search functionality
+searchInput.addEventListener('input', function() {
+    const searchTerm = this.value.toLowerCase();
+    let visibleCount = 0;
+    
+    shotCards.forEach(card => {
+        const text = card.textContent.toLowerCase();
+        if (text.includes(searchTerm)) {
+            card.style.display = 'flex';
+            visibleCount++;
+        } else {
+            card.style.display = 'none';
+            // Uncheck hidden cards
+            const checkbox = card.querySelector('.shot-checkbox');
+            if (checkbox) checkbox.checked = false;
+        }
+    });
+    
+    if (searchTerm) {
+        searchCount.textContent = `Showing ${visibleCount} of ${shotCards.length} shots`;
+    } else {
+        searchCount.textContent = '';
+    }
+    
+    updateSelectedCount();
+});
+
+function exportMetadataCSV() {
+    const selected = Array.from(document.querySelectorAll('.shot-checkbox:checked'))
+        .map(cb => cb.value);
+    
+    if (selected.length === 0) {
+        alert('Please select at least one shot');
+        return;
+    }
+    
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '/export/metadata/csv/selected';
+    
+    const input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = 'shot_ids';
+    input.value = selected.join(',');
+    
+    form.appendChild(input);
+    document.body.appendChild(form);
+    form.submit();
+}
+
+function exportMetadataPDF() {
+    const selected = Array.from(document.querySelectorAll('.shot-checkbox:checked'))
+        .map(cb => cb.value);
+    
+    if (selected.length === 0) {
+        alert('Please select at least one shot');
+        return;
+    }
+    
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '/export/metadata/pdf/selected';
+    
+    const input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = 'shot_ids';
+    input.value = selected.join(',');
+    
+    form.appendChild(input);
+    document.body.appendChild(form);
+    form.submit();
+}
+
+
+// Show/hide delete button based on selection
+function updateDeleteButton() {
+    const checkboxes = document.querySelectorAll('.shot-checkbox:checked');
+    const deleteBtn = document.getElementById('deleteBtn');
+    if (checkboxes.length > 0) {
+        deleteBtn.style.display = 'block';
+    } else {
+        deleteBtn.style.display = 'none';
+    }
+}
+
+// Add event listeners to all checkboxes
+document.addEventListener('DOMContentLoaded', function() {
+    const checkboxes = document.querySelectorAll('.shot-checkbox');
+    checkboxes.forEach(cb => {
+        cb.addEventListener('change', updateDeleteButton);
+    });
+    
+    document.getElementById('selectAll').addEventListener('change', function() {
+        setTimeout(updateDeleteButton, 0);
+    });
+});
+
+// Delete selected metadata
+function deleteSelectedMetadata() {
+    const checkboxes = document.querySelectorAll('.shot-checkbox:checked');
+    if (checkboxes.length === 0) {
+        alert('No shots selected');
+        return;
+    }
+    
+    const count = checkboxes.length;
+    if (!confirm(`Delete metadata from ${count} shot(s)? This will remove all camera/lens metadata but keep the shots.`)) {
+        return;
+    }
+    
+    const shotIds = Array.from(checkboxes).map(cb => cb.value).join(',');
+    
+    fetch('/metadata/delete-selected', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: 'shot_ids=' + shotIds
+    }).then(response => {
+        if (response.ok) {
+            location.reload();
+        } else {
+            console.error('Error deleting metadata');
+        }
+    });
+}
+</script>
+
+{% endblock %}

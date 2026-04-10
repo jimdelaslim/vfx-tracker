@@ -1,0 +1,103 @@
+{
+  "name": "vfx-shot-tracker",
+  "version": "1.0.0",
+  "description": "VFX Shot Tracking and Turnover Management",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder build --mac --publish never",
+    "postinstall": "electron-builder install-app-deps"
+  },
+  "keywords": [
+    "vfx",
+    "shot-tracker",
+    "turnover"
+  ],
+  "author": "Your Name",
+  "license": "ISC",
+  "devDependencies": {
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8"
+  },
+  "dependencies": {
+    "tree-kill": "^1.2.2"
+  },
+  "build": {
+    "appId": "com.vfxtracker.app",
+    "productName": "VFX Shot Tracker",
+    "mac": {
+      "category": "public.app-category.productivity",
+      "icon": "build/icons/icon.png"
+    },
+    "files": [
+      "**/*",
+      "node_modules/tree-kill/**/*",
+      "!**/.git",
+      "!**/__pycache__",
+      "!**/.pytest_cache",
+      "!**/.DS_Store"
+    ],
+    "extraResources": [
+      {
+        "from": "dist/vfx-server.exe",
+        "to": "vfx-server.exe"
+      },
+      {
+        "from": "templates",
+        "to": "templates"
+      },
+      {
+        "from": "static",
+        "to": "static"
+      },
+      {
+        "from": "instance",
+        "to": "instance"
+      },
+      {
+        "from": "playwright-browsers",
+        "to": "playwright-browsers"
+      },
+      {
+        "from": "venv",
+        "to": "venv",
+        "filter": [
+          "**/*",
+          "!**/__pycache__",
+          "!**/*.pyc"
+        ]
+      },
+      "*.py",
+      "requirements.txt",
+      {
+        "from": "utils",
+        "to": "utils"
+      }
+    ],
+    "dmg": {
+      "contents": [
+        {
+          "x": 130,
+          "y": 220
+        },
+        {
+          "x": 410,
+          "y": 220,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ],
+      "window": {
+        "width": 540,
+        "height": 400
+      }
+    },
+    "win": {
+      "icon": "build/icons/icon.png",
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    }
+  }
+}

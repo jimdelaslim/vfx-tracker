@@ -1,0 +1,20 @@
+node_modules/
+dist/
+build/
+__pycache__/
+*.pyc
+venv/
+*.db
+*.spec
+.DS_Store
+playwright-browsers/
+instance/
+static/uploads/
+static/reference_images/
+uploads/
+Logo_Editing/
+EDLs-Logo-CSV/
+_Project Goal txt/
+VFX TRACKER REBUILD/
+Notes_Linked Tests.db
+*.backup

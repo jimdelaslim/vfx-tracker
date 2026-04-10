@@ -1,0 +1,495 @@
+"""PDF generation utilities for VFX tracker - matching UI exactly"""
+
+def generate_shot_pdf(shot):
+    """Generate PDF for a single shot"""
+    return generate_selected_shots_pdf(shot.clip_name, [shot], shot.project)
+
+def generate_vfx_group_pdf(vfx_code, shots, project):
+    """Generate PDF for all plates in a VFX shot group"""
+    return generate_selected_shots_pdf(vfx_code, shots, project)
+
+
+def generate_selected_shots_pdf(title, shots, project):
+    """Generate PDF matching UI layout exactly"""
+    from reportlab.lib.pagesizes import letter, landscape
+    from reportlab.lib import colors
+    from reportlab.lib.units import inch
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak, KeepTogether
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.enums import TA_CENTER, TA_LEFT
+    from io import BytesIO
+    from datetime import datetime
+    
+    buffer = BytesIO()
+    # Use landscape for more width like the UI
+    doc = SimpleDocTemplate(
+        buffer, 
+        pagesize=landscape(letter), 
+        topMargin=0.3*inch, 
+        bottomMargin=0.3*inch,
+        leftMargin=0.4*inch,
+        rightMargin=0.4*inch
+    )
+    
+    styles = getSampleStyleSheet()
+    
+    elements = []
+    
+    # Title
+    title_style = ParagraphStyle('Title', parent=styles['Heading1'], fontSize=14, textColor=colors.HexColor('#667eea'), spaceAfter=2, alignment=TA_CENTER)
+    elements.append(Paragraph(f"{title}", title_style))
+    elements.append(Paragraph(f"<font size=7>Project: {project.name} | Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}</font>", ParagraphStyle('subtitle', parent=styles['Normal'], alignment=TA_CENTER, fontSize=7)))
+    elements.append(Spacer(1, 0.08*inch))
+    
+    # Group by VFX code
+    from collections import defaultdict
+    vfx_groups = defaultdict(list)
+    for shot in shots:
+        vfx_key = shot.vfx_code_obj.vfx_code if (hasattr(shot, 'vfx_code_obj') and shot.vfx_code_obj) else (shot.vfx_code or 'Unknown')
+        vfx_groups[vfx_key].append(shot)
+    
+    # Each VFX group
+    for vfx_idx, (vfx_code, group_shots) in enumerate(vfx_groups.items()):
+        if vfx_idx > 0:
+            elements.append(Spacer(1, 0.2*inch))
+        
+        # VFX Header
+        vfx_header = Table([[f"📁 {vfx_code} ({len(group_shots)} plates)"]], colWidths=[10*inch])
+        vfx_header.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#e83e8c')),
+            ('TEXTCOLOR', (0, 0), (-1, -1), colors.white),
+            ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, -1), 11),
+            ('TOPPADDING', (0, 0), (-1, -1), 6),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+            ('LEFTPADDING', (0, 0), (-1, -1), 10),
+        ]))
+        elements.append(vfx_header)
+        elements.append(Spacer(1, 0.08*inch))
+        
+        # VFX Code Info Section (TO#, Scope, Date, Vendors, Editorial Note)
+        # Get VFX code object for the info
+        first_shot = group_shots[0]
+        vfx_code_obj = first_shot.vfx_code_obj if hasattr(first_shot, 'vfx_code_obj') and first_shot.vfx_code_obj else None
+        
+        vfx_info_elements = []
+        
+        # Left side: Reference + TO# + TO Date + Vendors
+        vfx_left = []
+        
+        # Reference placeholder
+        ref_placeholder = Table([['📷 IMAGE REFERENCE', ''], ['Click to upload', '']], colWidths=[2.8*inch, 0.1*inch])
+        ref_placeholder.setStyle(TableStyle([
+            ('BOX', (0, 0), (-1, -1), 1, colors.HexColor('#dee2e6')),
+            ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#f8f9fa')),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('TEXTCOLOR', (0, 0), (-1, -1), colors.HexColor('#adb5bd')),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 9),
+            ('FONTSIZE', (0, 1), (-1, 1), 7),
+            ('TOPPADDING', (0, 0), (-1, -1), 35),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 35),
+        ]))
+        vfx_left.append(ref_placeholder)
+        vfx_left.append(Spacer(1, 0.08*inch))
+        
+        # TO# and TO Date side by side
+        to_combined_data = [
+            ['TO #', 'TO Date'],
+            [vfx_code_obj.turnover_number if vfx_code_obj and vfx_code_obj.turnover_number else '', 
+             str(vfx_code_obj.turnover_date) if vfx_code_obj and vfx_code_obj.turnover_date else '']
+        ]
+        to_combined_table = Table(to_combined_data, colWidths=[1.4*inch, 1.4*inch])
+        to_combined_table.setStyle(TableStyle([
+            ('BOX', (0, 0), (-1, -1), 1, colors.HexColor('#dee2e6')),
+            ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#e9ecef')),
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#f8f9fa')),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, -1), 7),
+            ('TOPPADDING', (0, 0), (-1, -1), 5),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+            ('LEFTPADDING', (0, 0), (-1, -1), 6),
+        ]))
+        vfx_left.append(to_combined_table)
+        vfx_left.append(Spacer(1, 0.06*inch))
+        
+        # Vendors (4 rows)
+        vendors_data = [['Vendor(s)']]
+        for i in range(1, 5):
+            vendor_val = getattr(vfx_code_obj, f'vendor_{i}', '') if vfx_code_obj else ''
+            vendors_data.append([vendor_val or f'Vendor {i}'])
+        vendors_table = Table(vendors_data, colWidths=[2.9*inch])
+        vendors_table.setStyle(TableStyle([
+            ('BOX', (0, 0), (-1, -1), 1, colors.HexColor('#dee2e6')),
+            ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#e9ecef')),
+            ('BACKGROUND', (0, 0), (0, 0), colors.HexColor('#f8f9fa')),
+            ('FONTNAME', (0, 0), (0, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, -1), 7),
+            ('TOPPADDING', (0, 0), (-1, -1), 5),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+            ('LEFTPADDING', (0, 0), (-1, -1), 6),
+        ]))
+        vfx_left.append(vendors_table)
+        
+        # Right side: Scope of Work + VFX Editorial Note
+        vfx_right = []
+        
+        # Scope of Work
+        scope_data = [['Scope of Work'], [vfx_code_obj.scope_of_work if vfx_code_obj and vfx_code_obj.scope_of_work else '']]
+        scope_table = Table(scope_data, colWidths=[7*inch], rowHeights=[14, 60])
+        scope_table.setStyle(TableStyle([
+            ('BOX', (0, 0), (-1, -1), 1, colors.HexColor('#dee2e6')),
+            ('BACKGROUND', (0, 0), (0, 0), colors.HexColor('#f8f9fa')),
+            ('FONTNAME', (0, 0), (0, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, -1), 7),
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+            ('TOPPADDING', (0, 0), (-1, -1), 5),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+            ('LEFTPADDING', (0, 0), (-1, -1), 6),
+        ]))
+        vfx_right.append(scope_table)
+        vfx_right.append(Spacer(1, 0.06*inch))
+        
+        # VFX Editorial Note
+        editorial_data = [['VFX Editorial Note'], [vfx_code_obj.vfx_editorial_note if vfx_code_obj and vfx_code_obj.vfx_editorial_note else '']]
+        editorial_table = Table(editorial_data, colWidths=[7*inch], rowHeights=[14, 60])
+        editorial_table.setStyle(TableStyle([
+            ('BOX', (0, 0), (-1, -1), 1, colors.HexColor('#dee2e6')),
+            ('BACKGROUND', (0, 0), (0, 0), colors.HexColor('#f8f9fa')),
+            ('FONTNAME', (0, 0), (0, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, -1), 7),
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+            ('TOPPADDING', (0, 0), (-1, -1), 5),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+            ('LEFTPADDING', (0, 0), (-1, -1), 6),
+        ]))
+        vfx_right.append(editorial_table)
+        
+        # Combine left and right for VFX info section
+        vfx_info_layout = Table([[vfx_left, vfx_right]], colWidths=[2.9*inch, 7*inch])
+        vfx_info_layout.setStyle(TableStyle([
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+            ('LEFTPADDING', (0, 0), (-1, -1), 0),
+            ('RIGHTPADDING', (0, 0), (0, 0), 20),
+        ]))
+        elements.append(vfx_info_layout)
+        elements.append(Spacer(1, 0.15*inch))
+        
+        # Each plate
+        for shot in group_shots:
+            plate_elements = []
+            
+            # Get frame range first (needed for banner)
+            frame_range = shot.frame_range_display()
+            
+            # Plate header with status badge
+            status_color = colors.HexColor('#6c757d') if shot.plate_status == 'Prep' else (
+                colors.HexColor('#28a745') if shot.plate_status == 'Ready' else colors.HexColor('#e83e8c')
+            )
+            
+            plate_header = Table([[
+                f"#{shot.plate_number or 0}",
+                shot.clip_name,
+                f"{shot.plate_type.upper() if shot.plate_type else 'N/A'}{shot.vfx_element or ''}",
+                f"v {shot.version}",
+                shot.plate_status or 'Prep'
+            ]], colWidths=[0.5*inch, 4*inch, 0.7*inch, 0.6*inch, 0.9*inch])
+            plate_header.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (3, 0), colors.HexColor('#28a745')),
+                ('BACKGROUND', (4, 0), (4, 0), status_color),
+                ('TEXTCOLOR', (0, 0), (-1, -1), colors.white),
+                ('ALIGN', (0, 0), (0, 0), 'CENTER'),
+                ('ALIGN', (2, 0), (-1, 0), 'CENTER'),
+                ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, -1), 9),
+                ('TOPPADDING', (0, 0), (-1, -1), 5),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+                ('LEFTPADDING', (1, 0), (1, 0), 8),
+            ]))
+            plate_elements.append(plate_header)
+            
+            # Frame Range Banner (horizontal, right under plate header)
+            frame_banner_horiz = Table([[
+                f"{frame_range['head_start']} [{frame_range['head_frames']}] {frame_range['head_end']}",
+                f"{frame_range['shot_start']} [{frame_range['shot_frames']}] {frame_range['shot_end']}",
+                f"{frame_range['tail_start']} [{frame_range['tail_frames']}] {frame_range['tail_end']}",
+                f"TOTAL: {shot.total_source_frames()}"
+            ], [
+                "HEAD HANDLES",
+                "ACTION",
+                "TAIL HANDLES",
+                ""
+            ]], colWidths=[1.8*inch, 1.8*inch, 1.8*inch, 1.3*inch])
+            frame_banner_horiz.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#e9ecef')),
+                ('TEXTCOLOR', (0, 0), (-1, -1), colors.HexColor('#495057')),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Courier-Bold'),
+                ('FONTNAME', (0, 1), (-1, 1), 'Helvetica'),
+                ('FONTSIZE', (0, 0), (-1, 0), 8),
+                ('FONTSIZE', (0, 1), (-1, 1), 6),
+                ('TOPPADDING', (0, 0), (-1, -1), 3),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+            ]))
+            plate_elements.append(frame_banner_horiz)
+            plate_elements.append(Spacer(1, 0.08*inch))
+            
+            # Main layout: Reference image placeholder | Metadata boxes | Timecode section
+            # Left column: Reference placeholder + Metadata boxes
+            left_col = []
+            
+            # Reference image placeholder
+            ref_data = [['📷 Reference', '']]
+            ref_table = Table(ref_data, colWidths=[3.9*inch, 0.1*inch])
+            ref_table.setStyle(TableStyle([
+                ('BOX', (0, 0), (-1, -1), 1, colors.HexColor('#dee2e6')),
+                ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#f8f9fa')),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('TEXTCOLOR', (0, 0), (-1, -1), colors.HexColor('#adb5bd')),
+                ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+                ('FONTSIZE', (0, 0), (-1, -1), 8),
+                ('TOPPADDING', (0, 0), (-1, -1), 50),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 50),
+            ]))
+            left_col.append(ref_table)
+            left_col.append(Spacer(1, 0.06*inch))
+            
+            # Camera metadata
+            camera_rows = [['📷 Lens/Camera']]
+            camera_data_rows = []
+            if shot.camera:
+                camera_data_rows.append(['Camera', shot.camera])
+            if shot.lens:
+                camera_data_rows.append(['Lens', shot.lens])
+            if shot.focal_length:
+                camera_data_rows.append(['Focal Length', f"{shot.focal_length}mm"])
+            if shot.t_stop:
+                camera_data_rows.append(['Aperture', f"T{shot.t_stop}"])
+            if shot.iso:
+                camera_data_rows.append(['ISO', str(shot.iso)])
+            if shot.resolution:
+                camera_data_rows.append(['Resolution', shot.resolution])
+            if shot.cam_roll or shot.reel:
+                camera_data_rows.append(['Tape Name', shot.cam_roll or shot.reel])
+            if shot.shutter_angle or shot.shutter_speed:
+                camera_data_rows.append(['Shutter', str(shot.shutter_angle or shot.shutter_speed)])
+            if shot.camera_roll:
+                camera_data_rows.append(['Camera Roll', f"{shot.camera_roll}°"])
+            if shot.camera_tilt:
+                camera_data_rows.append(['Camera Tilt', f"{shot.camera_tilt}°"])
+            if shot.distance:
+                camera_data_rows.append(['Distance', shot.distance])
+            
+            # Build camera data in 2 columns
+            camera_grid = []
+            for i in range(0, len(camera_data_rows), 2):
+                if i + 1 < len(camera_data_rows):
+                    camera_grid.append([
+                        camera_data_rows[i][0], camera_data_rows[i][1],
+                        camera_data_rows[i+1][0], camera_data_rows[i+1][1]
+                    ])
+                else:
+                    camera_grid.append([
+                        camera_data_rows[i][0], camera_data_rows[i][1],
+                        '', ''
+                    ])
+            
+            camera_table = Table(camera_rows + camera_grid, colWidths=[0.95*inch, 1.15*inch, 0.9*inch, 1*inch])
+            camera_table.setStyle(TableStyle([
+                ('BOX', (0, 0), (-1, -1), 1, colors.HexColor('#dee2e6')),
+                ('INNERGRID', (0, 1), (-1, -1), 0.5, colors.HexColor('#e9ecef')),
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#f8f9fa')),
+                ('SPAN', (0, 0), (-1, 0)),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTNAME', (0, 1), (0, -1), 'Helvetica'),
+                ('FONTNAME', (2, 1), (2, -1), 'Helvetica'),
+                ('FONTSIZE', (0, 0), (-1, -1), 7),
+                ('TEXTCOLOR', (0, 1), (0, -1), colors.HexColor('#6c757d')),
+                ('TEXTCOLOR', (2, 1), (2, -1), colors.HexColor('#6c757d')),
+                ('TOPPADDING', (0, 0), (-1, -1), 5),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+                ('LEFTPADDING', (0, 0), (-1, -1), 8),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 4),
+                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ]))
+            left_col.append(camera_table)
+            left_col.append(Spacer(1, 0.06*inch))
+            
+            # Color & LUT metadata
+            color_rows = [['🎨 Color & LUT']]
+            color_data_rows = []
+            if shot.lut:
+                color_data_rows.append(['LUT Used', shot.lut])
+            if shot.color_space:
+                color_data_rows.append(['Color Space', shot.color_space])
+            if shot.gamma:
+                color_data_rows.append(['Gamma', shot.gamma])
+            if shot.codec:
+                color_data_rows.append(['Codec', shot.codec])
+            
+            # Build color data in 2 columns (except LUT which spans)
+            color_grid = []
+            if len(color_data_rows) > 0 and color_data_rows[0][0] == 'LUT Used':
+                color_grid.append([color_data_rows[0][0], color_data_rows[0][1], '', ''])
+                start_idx = 1
+            else:
+                start_idx = 0
+            
+            for i in range(start_idx, len(color_data_rows), 2):
+                if i + 1 < len(color_data_rows):
+                    color_grid.append([
+                        color_data_rows[i][0], color_data_rows[i][1],
+                        color_data_rows[i+1][0], color_data_rows[i+1][1]
+                    ])
+                else:
+                    color_grid.append([
+                        color_data_rows[i][0], color_data_rows[i][1],
+                        '', ''
+                    ])
+            
+            color_table = Table(color_rows + color_grid, colWidths=[1*inch, 1*inch, 1*inch, 1*inch])
+            color_styles = [
+                ('BOX', (0, 0), (-1, -1), 1, colors.HexColor('#dee2e6')),
+                ('INNERGRID', (0, 1), (-1, -1), 0.5, colors.HexColor('#e9ecef')),
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#f8f9fa')),
+                ('SPAN', (0, 0), (-1, 0)),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTNAME', (0, 1), (0, -1), 'Helvetica'),
+                ('FONTNAME', (2, 1), (2, -1), 'Helvetica'),
+                ('FONTSIZE', (0, 0), (-1, -1), 7),
+                ('TEXTCOLOR', (0, 1), (0, -1), colors.HexColor('#6c757d')),
+                ('TEXTCOLOR', (2, 1), (2, -1), colors.HexColor('#6c757d')),
+                ('TOPPADDING', (0, 0), (-1, -1), 4),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+                ('LEFTPADDING', (0, 0), (-1, -1), 6),
+                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ]
+            # Span LUT row if it exists
+            if len(color_data_rows) > 0 and color_data_rows[0][0] == 'LUT Used':
+                color_styles.append(('SPAN', (1, 1), (-1, 1)))
+            color_table.setStyle(TableStyle(color_styles))
+            left_col.append(color_table)
+            
+            # Right column: Timecode section
+            right_col = []
+            
+            # Timecode grid with handles (dark orange headers, light orange scan values)
+            tc_data = [
+                ['TC Cut In', 'TC Cut Out', 'Length'],
+                [shot.source_in or 'N/A', shot.source_out or 'N/A', str(shot.duration_frames or 0)],
+                ['TC Scan In', 'TC Scan Out', 'Total Scan'],
+                [shot.tc_scan_in() or 'N/A', shot.tc_scan_out() or 'N/A', str(shot.total_source_frames())],
+                ['Handles (Source)', '', ''],
+                [f"{shot.head_handles or 0}/{shot.tail_handles or 0}", '', ''],
+            ]
+            
+            # Add retime handles if needed
+            if shot.crank_speed and shot.crank_speed != 100.0:
+                output_head = int((shot.head_handles or 0) / (shot.crank_speed / 100.0))
+                output_tail = int((shot.tail_handles or 0) / (shot.crank_speed / 100.0))
+                tc_data.extend([
+                    ['Retime Handles (Output)', '', ''],
+                    [f"{output_head}/{output_tail}", '', '']
+                ])
+            
+            tc_table = Table(tc_data, colWidths=[1.5*inch, 1.5*inch, 1.2*inch])
+            tc_styles = [
+                ('BOX', (0, 0), (-1, -1), 1, colors.HexColor('#dee2e6')),
+                ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#e9ecef')),
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#ff8c00')),
+                ('BACKGROUND', (0, 1), (2, 1), colors.HexColor('#ffe5cc')),
+                ('BACKGROUND', (0, 2), (-1, 2), colors.HexColor('#ff8c00')),
+                ('BACKGROUND', (0, 3), (2, 3), colors.HexColor('#ffe5cc')),
+                ('BACKGROUND', (0, 4), (-1, 4), colors.HexColor('#f8f9fa')),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTNAME', (0, 2), (-1, 2), 'Helvetica-Bold'),
+                ('FONTNAME', (0, 4), (-1, 4), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, -1), 7),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+                ('TEXTCOLOR', (0, 2), (-1, 2), colors.white),
+                ('TEXTCOLOR', (0, 4), (-1, 4), colors.HexColor('#6c757d')),
+                ('TOPPADDING', (0, 0), (-1, -1), 5),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+                ('LEFTPADDING', (0, 0), (-1, -1), 6),
+                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                ('SPAN', (0, 5), (-1, 5)),
+            ]
+            if shot.crank_speed and shot.crank_speed != 100.0:
+                tc_styles.append(('SPAN', (0, 7), (-1, 7)))
+                tc_styles.append(('FONTNAME', (0, 6), (-1, 6), 'Helvetica-Bold'))
+                tc_styles.append(('TEXTCOLOR', (0, 6), (-1, 6), colors.HexColor('#6c757d')))
+            tc_table.setStyle(TableStyle(tc_styles))
+            right_col.append(tc_table)
+            right_col.append(Spacer(1, 0.1*inch))
+            
+            # Pull Date and Plate Rev (separate section with more spacing)
+            pull_date_rows = [
+                ['Pull Date', 'Plate Rev'],
+                [shot.pull_date or '', shot.plate_rev or '']
+            ]
+            pull_date_table = Table(pull_date_rows, colWidths=[2.05*inch, 2.05*inch])
+            pull_date_table.setStyle(TableStyle([
+                ('BOX', (0, 0), (-1, -1), 1, colors.HexColor('#dee2e6')),
+                ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#e9ecef')),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, -1), 7),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#6c757d')),
+                ('TOPPADDING', (0, 0), (-1, -1), 4),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+                ('LEFTPADDING', (0, 0), (-1, -1), 6),
+            ]))
+            right_col.append(pull_date_table)
+            right_col.append(Spacer(1, 0.12*inch))
+            
+            # Notes section - side by side boxes (visually separate)
+            notes_upper = [
+                [Paragraph('<b>Retime</b>', ParagraphStyle('label', fontSize=7)), Paragraph('<b>Resize/Reposition</b>', ParagraphStyle('label', fontSize=7))],
+                [Paragraph(shot.retime_notes or '', ParagraphStyle('content', fontSize=6)), Paragraph(shot.resize_reposition or '', ParagraphStyle('content', fontSize=6))]
+            ]
+            notes_upper_table = Table(notes_upper, colWidths=[2.05*inch, 2.05*inch], rowHeights=[14, 35])
+            notes_upper_table.setStyle(TableStyle([
+                ('BOX', (0, 0), (-1, -1), 1, colors.HexColor('#dee2e6')),
+                ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#e9ecef')),
+                ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+                ('TOPPADDING', (0, 0), (-1, -1), 4),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+                ('LEFTPADDING', (0, 0), (-1, -1), 6),
+            ]))
+            right_col.append(notes_upper_table)
+            right_col.append(Spacer(1, 0.06*inch))
+            
+            # Element notes
+            element_notes_rows = [
+                [Paragraph('<b>Element Notes</b>', ParagraphStyle('label', fontSize=7))],
+                [Paragraph(shot.element_notes or '', ParagraphStyle('content', fontSize=6))]
+            ]
+            element_notes_table = Table(element_notes_rows, colWidths=[4.1*inch], rowHeights=[14, 35])
+            element_notes_table.setStyle(TableStyle([
+                ('BOX', (0, 0), (-1, -1), 1, colors.HexColor('#dee2e6')),
+                ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#e9ecef')),
+                ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+                ('TOPPADDING', (0, 0), (-1, -1), 4),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+                ('LEFTPADDING', (0, 0), (-1, -1), 6),
+            ]))
+            right_col.append(element_notes_table)
+            
+            # Combine left and right columns
+            main_layout = Table([[left_col, right_col]], colWidths=[4*inch, 4.2*inch])
+            main_layout.setStyle(TableStyle([
+                ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+                ('LEFTPADDING', (0, 0), (-1, -1), 0),
+                ('RIGHTPADDING', (0, 0), (0, 0), 15),
+            ]))
+            plate_elements.append(main_layout)
+            
+            # Add plate to elements
+            elements.append(KeepTogether(plate_elements))
+            elements.append(Spacer(1, 0.15*inch))
+    
+    # Build PDF
+    doc.build(elements)
+    buffer.seek(0)
+    return buffer

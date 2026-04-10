@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div style="max-width: 800px; margin: 0 auto;">
+    <h2 style="margin-bottom: 1.5rem;">Import Camera Metadata</h2>
+    
+    <div class="card">
+        <form method="POST" enctype="multipart/form-data">
+            <div style="margin-bottom: 1.5rem;">
+                <label>Select CSV or ALE File</label>
+                <input type="file" name="metadata_file" accept=".csv,.ale" required 
+                       style="width: 100%; padding: 0.5rem; border: 2px solid #ddd; border-radius: 4px;">
+                <small style="color: #7f8c8d; display: block; margin-top: 0.5rem;">
+                    File must have a "File Name" column that matches your cam roll names (e.g., A001C010)
+                </small>
+            </div>
+            
+            <div style="display: flex; gap: 1rem;">
+                <button type="submit" class="btn">Import Metadata</button>
+                <a href="/" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+    
+    <div style="background: #e8f4f8; padding: 1.5rem; border-radius: 8px; margin-top: 2rem; border-left: 4px solid #3498db;">
+        <h3 style="margin-bottom: 1rem;">📋 CSV Requirements</h3>
+        <p style="margin-bottom: 0.5rem;"><strong>Required Column:</strong></p>
+        <ul style="margin-left: 1.5rem; margin-bottom: 1rem;">
+            <li><code>File Name</code> - Must match the cam roll/tape name in your shots</li>
+        </ul>
+        
+        <p style="margin-bottom: 0.5rem;"><strong>Optional Metadata Columns:</strong></p>
+        <ul style="margin-left: 1.5rem; color: #555;">
+            <li>Camera</li>
+            <li>Lens</li>
+            <li>Focal Length</li>
+            <li>T Stop</li>
+            <li>Shutter</li>
+            <li>ISO</li>
+            <li>WB (White Balance)</li>
+            <li>LUT</li>
+            <li>Resolution</li>
+            <li>Codec</li>
+            <li>Color Space</li>
+            <li>Gamma</li>
+            <li>File Path</li>
+        </ul>
+        
+        <p style="margin-top: 1rem; font-size: 0.9rem; color: #666;">
+            The system will match clips by name and update only the shots that have matching cam roll names.
+        </p>
+    </div>
+</div>
+{% endblock %}

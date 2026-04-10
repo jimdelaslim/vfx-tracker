@@ -1,0 +1,4093 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+/* VFX Code Container Styles */
+
+
+/* Internal Notes Panel */
+.notes-tab {
+    position: absolute;
+    right: 0;
+    bottom: 20px;
+    background: #6c757d;
+    color: white;
+    padding: 0.75rem 1rem;
+    cursor: pointer;
+    border-radius: 8px 0 0 8px;
+    font-size: 0.95rem;
+    font-weight: 700;
+    z-index: 10;
+    transition: all 0.3s;
+    box-shadow: -2px 2px 8px rgba(0,0,0,0.2);
+}
+
+.notes-tab:hover {
+    background: #5a6268;
+}
+
+.notes-panel {
+    position: fixed;
+    right: -350px;
+    top: 0;
+    height: 100vh;
+    width: 350px;
+    background: white;
+    border-left: 3px solid #6c757d;
+    transition: right 0.3s ease;
+    z-index: 10000;
+    display: flex;
+    flex-direction: column;
+    box-shadow: -2px 0 10px rgba(0,0,0,0.15);
+}
+
+.notes-panel.open {
+    right: 0;
+}
+
+.notes-panel-header {
+    padding: 1rem;
+    background: #6c757d;
+    color: white;
+    font-weight: 700;
+    font-size: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.notes-panel-close {
+    cursor: pointer;
+    font-size: 1.5rem;
+    line-height: 1;
+    padding: 0 0.5rem;
+}
+
+.notes-panel-content {
+    flex: 1;
+    padding: 1rem;
+    overflow-y: auto;
+}
+
+.notes-panel-content textarea {
+    width: 100%;
+    height: 100%;
+    min-height: 200px;
+    border: 2px solid #ddd;
+    border-radius: 6px;
+    padding: 0.75rem;
+    font-size: 0.9rem;
+    resize: vertical;
+}
+
+/* Batch Changes - Yellow highlight for linked fields */
+.batch-linked {
+    background-color: #fff3cd !important;
+    border-color: #ffc107 !important;
+}
+
+.vfx-code-checkbox:checked ~ * .batch-linkable {
+    background-color: #fff3cd;
+}
+
+/* VFX Code Container Styles */
+.vfx-code-container {
+    position: relative; /* For absolute positioning of notes tab */
+    margin-bottom: 1rem;
+    border: 2px solid;
+    border-radius: 8px;
+    overflow: hidden;
+    transition: border-color 0.3s;
+    font-size: 0.75em !important;
+    zoom: 0.85;
+}
+
+.vfx-code-container.status-prep { border-color: #e83e8c; }
+.vfx-code-container.status-ready { border-color: #fd7e14; }
+.vfx-code-container.status-turned-over { border-color: #198754; }
+.vfx-code-container.status-update { border-color: #ffc107; }
+.vfx-code-container.status-omitted { border-color: #000; }
+
+/* VFX Code Header */
+.vfx-code-header {
+    padding: 1rem 2rem;
+    border-bottom: 2px solid #e0e0e0;
+    transition: background-color 0.3s;
+}
+
+.status-prep .vfx-code-header { background: #e83e8c; }
+.status-ready .vfx-code-header { background: #fd7e14; }
+.status-turned-over .vfx-code-header { background: #198754; }
+.status-update .vfx-code-header { background: #ffc107; }
+.status-omitted .vfx-code-header { background: #000; }
+
+.vfx-code-title {
+    font-size: 1.8rem;
+    font-weight: 700;
+    text-align: center;
+    margin: 0;
+    padding: 0.5rem;
+    color: white;
+}
+
+/* Top Row: Shot Status + Frame Range */
+.top-row {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    border-bottom: 2px solid #e0e0e0;
+}
+
+.shot-status-section {
+    background: #f8f9fa;
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    justify-content: center;
+}
+
+.shot-status-label {
+    font-weight: 700;
+    font-size: 1.1rem;
+}
+
+.shot-status-dropdown {
+    padding: 0.75rem 1rem;
+    border: 2px solid #ddd;
+    border-radius: 6px;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+/* Frame Range Banner */
+.frame-range-banner {
+    background: white;
+    color: #333;
+    padding: 1.5rem;
+    text-align: center;
+}
+
+/* Frame Range Banner Borders - ONLY affects frame-range-banner */
+.status-prep .frame-range-banner {
+    border: 3px solid #e83e8c;
+}
+
+.status-ready .frame-range-banner {
+    border: 3px solid #fd7e14;
+}
+
+.status-turned-over .frame-range-banner {
+    border: 3px solid #198754;
+}
+
+.status-update .frame-range-banner {
+    border: 3px solid #ffc107;
+}
+
+.status-omitted .frame-range-banner {
+    border: 3px solid #000;
+}
+
+/* Frame number boxes */
+.frame-box {
+    padding: 0.4rem 0.8rem;
+    border-radius: 6px;
+    font-weight: 700;
+    font-size: 1.3rem !important;
+    margin: 0 0.4rem;
+    display: inline-block;
+    min-width: 45px;
+    text-align: center;
+    color: #333 !important;
+    border: 2px solid #ddd; /* default */
+    background: rgba(221, 221, 221, 0.15); /* default */
+}
+
+/* Frame boxes match shot status colors */
+.status-prep .frame-box {
+    border: 2px solid #e83e8c;
+    background: rgba(232, 62, 140, 0.15);
+}
+
+.status-ready .frame-box {
+    border: 2px solid #fd7e14;
+    background: rgba(253, 126, 20, 0.15);
+}
+
+.status-turned-over .frame-box {
+    border: 2px solid #198754;
+    background: rgba(25, 135, 84, 0.15);
+}
+
+.status-update .frame-box {
+    border: 2px solid #ffc107;
+    background: rgba(255, 193, 7, 0.15);
+}
+
+.status-omitted .frame-box {
+    border: 2px solid #000;
+    background: rgba(0, 0, 0, 0.15);
+}
+    font-size: 1.3rem !important;
+    margin: 0 0.4rem;
+    display: inline-block;
+    min-width: 45px;
+    text-align: center;
+    color: #333 !important;
+}
+
+
+
+
+
+
+
+    background: rgba(255,255,255,0.1);
+}
+
+
+.frame-range-title {
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+    font-weight: 600;
+}
+
+.frame-range-display {
+    font-size: 1.8rem;
+    font-family: monospace;
+    margin-bottom: 0.5rem;
+}
+
+.frame-range-labels {
+    display: flex;
+    justify-content: space-around;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    opacity: 0.9;
+}
+
+.frame-range-total {
+    margin-top: 0.75rem;
+    font-size: 1rem;
+    opacity: 0.95;
+}
+
+/* VFX Info Section (Top Left Area) */
+.vfx-info-area {
+    display: grid;
+    grid-template-columns: 350px 1fr;
+    gap: 0;
+    padding: 1.5rem;
+    border-bottom: 2px solid #e0e0e0;
+    transition: background-color 0.3s;
+}
+
+.status-prep .vfx-info-area { background: #e83e8c; }
+.status-ready .vfx-info-area { background: #fd7e14; }
+.status-turned-over .vfx-info-area { background: #198754; }
+.status-update .vfx-info-area { background: #ffc107; }
+.status-omitted .vfx-info-area { background: #000; }
+
+/* Text colors for dark backgrounds */
+.status-prep .vfx-info-area label,
+.status-turned-over .vfx-info-area label,
+.status-omitted .vfx-info-area label {
+    color: white !important;
+}
+
+.status-prep .vfx-info-area input::placeholder,
+.status-turned-over .vfx-info-area input::placeholder,
+.status-update .vfx-info-area input::placeholder {
+    color: #ddd;
+}
+
+
+.reference-image-box {
+    background: #fff;
+    border: 2px dashed #ddd;
+    border-radius: 8px;
+    height: 250px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    position: relative;
+    margin-right: 1.5rem;
+}
+
+.reference-image-box img {
+    max-width: 100%;
+    max-height: 100%;
+    border-radius: 6px;
+}
+
+.vfx-fields-grid {
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    gap: 1rem;
+    align-items: start;
+}
+
+.vfx-info-field label {
+    display: block;
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+    font-size: 0.9rem;
+}
+
+.vfx-info-field input,
+.vfx-info-field textarea {
+    width: 100%;
+    padding: 0.5rem;
+    border: 2px solid #ddd;
+    border-radius: 6px;
+    font-size: 0.9rem;
+}
+
+.vfx-info-field textarea {
+    min-height: 80px;
+    resize: vertical;
+}
+
+.vendor-inputs {
+    display: grid;
+    gap: 0.5rem;
+}
+
+.vendor-inputs input {
+    padding: 0.4rem;
+    font-size: 0.85rem;
+}
+
+/* Main Content Area: Plates + Edit Section */
+.main-content-area {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 0;
+    background: white;
+}
+
+/* Middle Column - Plates */
+.middle-column {
+    padding: 1.5rem;
+    overflow-y: auto;
+    max-height: 800px;
+    border-right: 2px solid #e0e0e0;
+}
+
+.vfx-elements-header {
+    padding: 0.5rem 1rem;
+    margin: -1.5rem -1.5rem 1.5rem -1.5rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    transition: background-color 0.3s;
+}
+
+.status-prep .vfx-elements-header { background: #e83e8c; color: white; }
+.status-ready .vfx-elements-header { background: #fd7e14; color: white; }
+.status-turned-over .vfx-elements-header { background: #198754; color: white; }
+.status-update .vfx-elements-header { background: #ffc107; color: #000; }
+.status-omitted .vfx-elements-header { background: #000; color: white; }
+
+.plate-card {
+    background: #f8f9fa;
+    border: 2px solid #495057;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+    transition: box-shadow 0.3s;
+}
+
+.plate-card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.plate-header {
+    display: grid;
+    grid-template-columns: 30px 80px 1fr auto auto auto;
+    gap: 1rem;
+    align-items: center;
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 2px solid #dee2e6;
+}
+
+.plate-number-box {
+    background: white;
+    border: 2px solid #495057;
+    border-radius: 6px;
+    padding: 0.5rem;
+    text-align: center;
+    font-weight: 700;
+    font-size: 1.2rem;
+}
+
+/* Ensure other card borders stay dark grey */
+.plate-card {
+    border: 2px solid #495057 !important;
+}
+
+.plate-number-box input {
+    width: 100%;
+    text-align: center;
+    border: none;
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #667eea;
+}
+
+.plate-element-name {
+    font-family: monospace;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #000 !important;
+}
+
+.plate-type-display {
+    background: #20b2aa;
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.plate-version {
+    background: #6c757d;
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.plate-status-badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.plate-status-badge.prep { background: #e83e8c; color: white; }
+.plate-status-badge.ready { background: #fd7e14; color: white; }
+.plate-status-badge.update { background: #ffc107; color: #000; }
+
+.plate-content {
+    display: grid;
+    grid-template-columns: 180px 1fr;
+    gap: 1.5rem;
+}
+
+.plate-reference-image {
+    width: 160px;
+    height: 120px;
+    background: #fff;
+    border: 2px dashed #ddd;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    color: #999;
+    cursor: pointer;
+    margin-bottom: 1rem;
+}
+
+.plate-reference-image img {
+    max-width: 100%;
+    max-height: 100%;
+    border-radius: 4px;
+}
+
+.plate-right-section {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: 1rem;
+}
+
+/* Plain white metadata boxes */
+.metadata-section {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.metadata-box {
+    padding: 0.75rem;
+    border-radius: 6px;
+    border: 2px solid #495057;
+    background: white;
+    font-size: 0.85rem;
+}
+
+.metadata-box h5 {
+    margin: 0 0 0.5rem 0;
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #495057;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #e9ecef;
+}
+
+.metadata-box.empty {
+    background: #f8f9fa;
+    text-align: center;
+    font-style: italic;
+    padding: 1.5rem;
+    color: #6c757d;
+}
+
+.metadata-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+}
+
+.metadata-item {
+    font-size: 0.8rem;
+}
+
+.metadata-label {
+    color: #6c757d;
+    font-size: 0.75rem;
+    display: block;
+}
+
+.metadata-value {
+    font-weight: 600;
+    color: #212529;
+}
+
+.plate-info-section {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.plate-info-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.5rem;
+}
+
+.plate-info-item {
+    font-size: 0.8rem;
+    background: white;
+    padding: 0.5rem;
+    border-radius: 4px;
+    border: 1px solid #e9ecef;
+}
+
+.plate-info-label {
+    color: #6c757d;
+    font-weight: 600;
+    display: block;
+    margin-bottom: 0.15rem;
+    font-size: 0.7rem;
+}
+
+.plate-info-value {
+    font-weight: 700;
+    font-family: monospace;
+    font-size: 0.8rem;
+    color: #212529;
+}
+
+.plate-info-value.orange {
+    color: #fd7e14;
+}
+
+.plate-notes-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+}
+
+.plate-note-field {
+    grid-column: span 2;
+}
+
+.plate-note-field.half {
+    grid-column: span 1;
+}
+
+.plate-note-field label {
+    display: block;
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+    font-size: 0.75rem;
+    color: #495057;
+}
+
+.plate-note-field textarea,
+.plate-note-field input {
+    width: 100%;
+    padding: 0.4rem;
+    border: 2px solid #ddd;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    resize: vertical;
+}
+
+.plate-note-field textarea {
+    min-height: 50px;
+}
+
+/* Right Column - Edit Section */
+.right-column {
+    background: #f8f9fa;
+    padding: 1.5rem;
+}
+
+.edit-section-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    text-align: center;
+    margin-bottom: 2rem;
+    padding-bottom: 0.75rem;
+    color: #000 !important;
+    border-bottom: 3px solid #495057 !important;
+    border-bottom: 3px solid #667eea;
+}
+
+.edit-field {
+    margin-bottom: 1.5rem;
+}
+
+.edit-field label {
+    display: block;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    text-align: center;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    color: #495057;
+}
+
+.edit-field input,
+.edit-field select {
+    width: 100%;
+    padding: 0.75rem;
+    border: 2px solid #ddd;
+    border-radius: 6px;
+    font-size: 1.1rem;
+    text-align: center;
+    font-weight: 600;
+}
+
+.handles-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+.crank-warning {
+    font-size: 0.75rem;
+    color: #f39c12;
+    text-align: center;
+    margin-top: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.reference-image-box.drag-over {
+    border: 3px dashed #667eea !important;
+    background: rgba(102, 126, 234, 0.1) !important;
+}
+
+.edit-section-dirty {
+    border: 3px solid #fbbf24 !important;
+    background: #fef3c7 !important;
+}
+</style>
+
+<div style="width: 100%; padding: 2rem;">
+    <!-- Project Header: Title/Logo + Stats + Export -->
+    <div style="display: grid; grid-template-columns: 1fr auto; gap: 2rem; align-items: center; margin-bottom: 2rem;">
+        
+        <div>
+            <!-- Project Title/Logo - BOTH shown together -->
+            <div style="flex-shrink: 0;">
+                
+                <!-- Logo (if exists) - Stacked on top -->
+                {% if project.logo_path %}
+                <div id="project-logo-display" style="margin-bottom: 1rem;">
+                    <img src="{{ url_for('static', filename=project.logo_path) }}" alt="{{ project.name }}" 
+                         style="max-width: 600px; max-height: 200px; cursor: pointer; display: block;"
+                         onclick="document.getElementById('project-logo-upload').click()">
+                </div>
+                {% endif %}
+                
+                <!-- Project Title (can be hidden) -->
+                <div id="project-title-container">
+                    <div id="project-title-display" style="cursor: pointer;" onclick="document.getElementById('project-title-edit').style.display='block'; this.style.display='none';">
+                        {% if project.name %}
+                        <h2 style="margin: 0; font-size: 2.5rem; font-weight: 700; color: white; text-shadow: -1px -1px 0 #495057, 1px -1px 0 #495057, -1px 1px 0 #495057, 1px 1px 0 #495057, 1px 1px 2px rgba(0,0,0,0.2);">
+                            {{ project.name }} 
+                            <small style="font-size: 0.5em; font-weight: 400; color: #495057; text-shadow: none;">
+                                (<span id="project-fps-display">{{ project.fps }}</span>fps)
+                            </small>
+                        </h2>
+                        {% endif %}
+                    </div>
+                    
+                    <div id="project-title-edit" style="display: none;">
+                        <input type="text" id="project-name-input" value="{{ project.name }}" 
+                               style="padding: 0.5rem; border: 2px solid #495057; border-radius: 6px; font-size: 1.2rem; width: 300px;">
+                        <button onclick="updateProjectName()" style="padding: 0.5rem 1rem; background: #495057; color: white; border: none; border-radius: 6px; cursor: pointer; margin-left: 0.5rem;">Save</button>
+                    </div>
+
+                </div>
+                
+                <input type="file" id="project-logo-upload" accept="image/*" style="display: none;" onchange="uploadProjectLogo(this.files[0])">
+            </div>
+        </div>
+            
+            <!-- Square Stats Cards -->
+            <div style="display: flex; gap: 0.75rem;">
+                <div onclick="filterByStatus('Prep')" style="background: white; width: 90px; height: 90px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+                    <div style="font-size: 0.7rem; color: #6c757d; text-transform: uppercase; font-weight: 600; margin-bottom: 0.25rem;">Prep</div>
+                    <div style="font-size: 2rem; font-weight: 700; color: #495057;">{{ status_counts.prep }}</div>
+                </div>
+                <div onclick="filterByStatus('Ready')" style="background: white; width: 90px; height: 90px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+                    <div style="font-size: 0.7rem; color: #6c757d; text-transform: uppercase; font-weight: 600; margin-bottom: 0.25rem;">Ready</div>
+                    <div style="font-size: 2rem; font-weight: 700; color: #495057;">{{ status_counts.ready }}</div>
+                </div>
+                <div onclick="filterByStatus('Turned Over')" style="background: white; width: 90px; height: 90px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+                    <div style="font-size: 0.7rem; color: #6c757d; text-transform: uppercase; font-weight: 600; margin-bottom: 0.25rem;">Turned Over</div>
+                    <div style="font-size: 2rem; font-weight: 700; color: #495057;">{{ status_counts.turnover }}</div>
+                </div>
+                <div onclick="filterByStatus('Update')" style="background: white; width: 90px; height: 90px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+                    <div style="font-size: 0.7rem; color: #6c757d; text-transform: uppercase; font-weight: 600; margin-bottom: 0.25rem;">Update</div>
+                    <div style="font-size: 2rem; font-weight: 700; color: #495057;">{{ status_counts['update'] }}</div>
+                </div>
+                <div onclick="filterByStatus('Omitted')" style="background: white; width: 90px; height: 90px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+                    <div style="font-size: 0.7rem; color: #6c757d; text-transform: uppercase; font-weight: 600; margin-bottom: 0.25rem;">Omitted</div>
+                    <div style="font-size: 2rem; font-weight: 700; color: #495057;">{{ status_counts.omitted }}</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Export buttons moved to left sidebar -->
+    </div>
+    
+    <!-- Fixed Left Sidebar -->
+    <div style="position: fixed; left: 20px; top: 200px; width: 200px; z-index: 1000;">
+        <div style="background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
+            <h3 style="margin: 0 0 1rem 0; font-size: 1rem; color: #000; font-weight: 800;">Import & Export</h3>
+            
+            <!-- Select All / Deselect All -->
+            <div style="margin-bottom: 1rem;">
+                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-weight: 600; margin-bottom: 0.5rem;">
+                    <input type="checkbox" id="select-all" onclick="toggleSelectAll()" style="width: 18px; height: 18px; cursor: pointer;">
+                    Select All
+                </label>
+                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-weight: 600;" onclick="deselectAll()">
+                    <input type="checkbox" style="width: 18px; height: 18px; cursor: pointer; pointer-events: none;" disabled>
+                    Deselect All
+                </label>
+            </div>
+            
+            <!-- Import Buttons -->
+            <div style="margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 2px solid #e5e7eb;">
+                <a href="{{ url_for('import_edl_route') }}" style="display: block; padding: 8px 12px; background: #20b2aa; color: white; text-decoration: none; border-radius: 6px; text-align: center; font-weight: 500; margin-bottom: 8px; font-size: 0.9rem;">
+                    Import EDL
+                </a>
+                <a href="{{ url_for('import_metadata') }}" style="display: block; padding: 8px 12px; background: #20b2aa; color: white; text-decoration: none; border-radius: 6px; text-align: center; font-weight: 500; font-size: 0.9rem;">
+                    Import Metadata
+                </a>
+            </div>
+            
+            <!-- Export Buttons -->
+            <div style="margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 2px solid #e5e7eb;">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem;">
+                    <h4 style="margin: 0; font-size: 0.9rem; font-weight: 600; color: #495057;">Export</h4>
+                    <span id="selectedCount" style="background: #6c757d; color: white; padding: 0.2rem 0.6rem; border-radius: 12px; font-size: 0.8rem; font-weight: 600;">(0)</span>
+                </div>
+                
+                <!-- Export - VFX -->
+                <div style="margin-bottom: 1rem;">
+                    <h5 style="margin: 0 0 0.5rem 0; font-size: 0.8rem; font-weight: 600; color: #6c757d;">VFX</h5>
+                    <div style="display: flex; flex-direction: column; gap: 0.4rem;">
+                        <button onclick="exportSelectedEDL()" class="btn btn-secondary" style="width: 100%; padding: 0.4rem; font-size: 0.8rem;">EDL</button>
+                        <button onclick="exportSelectedPDF()" class="btn btn-secondary" style="width: 100%; padding: 0.4rem; font-size: 0.8rem;">PDF</button>
+                        <button onclick="exportSelectedVFXCSV()" class="btn btn-secondary" style="width: 100%; padding: 0.4rem; font-size: 0.8rem;">CSV</button>
+                    </div>
+                </div>
+                
+                <!-- Export - Metadata -->
+                <div>
+                    <h5 style="margin: 0 0 0.5rem 0; font-size: 0.8rem; font-weight: 600; color: #6c757d;">Metadata</h5>
+                    <div style="display: flex; flex-direction: column; gap: 0.4rem;">
+                        <button onclick="exportSelectedMetadataPDF()" class="btn btn-secondary" style="width: 100%; padding: 0.4rem; font-size: 0.8rem;">PDF</button>
+                        <button onclick="exportSelectedCSV()" class="btn btn-secondary" style="width: 100%; padding: 0.4rem; font-size: 0.8rem;">CSV</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Delete Button -->
+            <button class="btn btn-danger" onclick="deleteSelected()" style="width: 100%; padding: 0.5rem; font-size: 0.85rem;background: #495057; border-color: #495057;">Delete</button>
+            
+            <!-- Back to Top Button -->
+            <button onclick="scrollToTop()" style="width: 100%; padding: 0.75rem; font-size: 0.9rem; background: #6c757d; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; margin-top: 1rem;">
+                ^ Back to Top
+            </button>
+        </div>
+    </div>
+    
+    <!-- Search and Sort Bar -->
+    <div style="background: white; padding: 1rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 2rem; display: grid; grid-template-columns: 1fr auto; gap: 1rem; align-items: center;">
+        <!-- Search -->
+        <input type="text" id="search-input" placeholder="Search by VFX code, clip name, vendor..." value="{{ search_term }}" 
+               style="padding: 0.5rem 1rem; border: 2px solid #ddd; border-radius: 6px; font-size: 0.9rem;"
+               onkeypress="if(event.key === 'Enter') filterShots()">
+        
+        <!-- Sort -->
+        <select id="sort-select" onchange="sortShots()" style="padding: 0.5rem 1rem; border: 2px solid #ddd; border-radius: 6px; font-size: 0.9rem;">
+            <option value="vfx_code" {% if sort_by == 'vfx_code' %}selected{% endif %}>VFX Code (A-Z)</option>
+            <option value="vfx_code_reverse" {% if sort_by == 'vfx_code_reverse' %}selected{% endif %}>VFX Code (Z-A)</option>
+            <option value="turnover_recent" {% if sort_by == 'turnover_recent' %}selected{% endif %}>TO Number (Recent First)</option>
+            <option value="turnover_oldest" {% if sort_by == 'turnover_oldest' %}selected{% endif %}>TO Number (Oldest First)</option>
+            <option value="date_recent" {% if sort_by == 'date_recent' %}selected{% endif %}>TO Date (Recent First)</option>
+            <option value="date_oldest" {% if sort_by == 'date_oldest' %}selected{% endif %}>TO Date (Oldest First)</option>
+        </select>
+    </div>
+
+{% if search_term or status_filter %}
+<div style="background: #e3f2fd; border: 1px solid #2196f3; border-radius: 6px; padding: 0.75rem; margin: 1rem 0; text-align: center; font-weight: 600;">
+    <span style="background: #2196f3; color: white; padding: 0.25rem 0.75rem; border-radius: 12px; margin-right: 0.5rem;">{{ vfx_codes|length }} result{% if vfx_codes|length != 1 %}s{% endif %}</span>
+    {% if search_term %}
+        Showing results for: <strong>"{{ search_term }}"</strong>
+    {% endif %}
+    {% if status_filter %}
+        {% if search_term %} | {% endif %}
+        Status: <strong>{{ status_filter }}</strong>
+    {% endif %}
+    <button onclick="window.location.href='/'" style="margin-left: 10px; padding: 4px 8px; background: #2196f3; color: white; border: none; border-radius: 4px; cursor: pointer;">Clear Filters</button>
+</div>
+{% endif %}
+
+
+    <!-- VFX Codes Loop -->
+    
+    <!-- VFX Codes Virtual Scrolling Container -->
+    <div id="vfx-viewport" class="vfx-viewport">
+        <!-- VFX codes will be moved here when in viewport -->
+    </div>
+    
+    <!-- Hidden pool of all VFX codes -->
+    <div id="vfx-pool" style="display: none;">
+    {% for vfx_code in vfx_codes %}
+    <div class="vfx-code-container status-{{ vfx_code.shot_status|lower|replace(' ', '-') }}" data-vfx-id="{{ vfx_code.id }}">
+        
+        <!-- VFX Code Title with Checkbox -->
+        <div class="vfx-code-header" style="display: flex; align-items: center; gap: 1rem;">
+            <input type="checkbox" class="vfx-code-checkbox" value="{{ vfx_code.id }}" 
+                   onchange="toggleVFXCodeShots({{ vfx_code.id }}, this.checked); handleBatchSelection({{ vfx_code.id }}, this.checked);"
+                   style="width: 24px; height: 24px; cursor: pointer;">
+            <h2 class="vfx-code-title" style="flex: 1;">{{ vfx_code.vfx_code }}</h2>
+            
+            <!-- Internal Notes Tab -->
+            <div class="notes-tab" onclick="toggleNotesPanel({{ vfx_code.id }})">
+                Notes >
+            </div>
+        </div>
+        
+        <!-- Internal Notes Panel -->
+        <div class="notes-panel" id="notes-panel-{{ vfx_code.id }}">
+            <div class="notes-panel-header">
+                <div>
+                    <div style="font-size: 0.85rem; opacity: 0.9;">Internal Notes</div>
+                    <div style="font-size: 1.1rem; font-weight: 700; margin-top: 0.25rem;">{{ vfx_code.vfx_code }}</div>
+                </div>
+                <span class="notes-panel-close" onclick="toggleNotesPanel({{ vfx_code.id }})">X</span>
+            </div>
+            <div class="notes-panel-content">
+                <textarea id="internal-notes-{{ vfx_code.id }}" 
+                          placeholder="Internal notes (not exported to PDFs)..."
+                          oninput="debouncedSaveNotes({{ vfx_code.id }})">{{ vfx_code.internal_notes or '' }}</textarea>
+            </div>
+        </div>
+
+        <!-- Top Row: Shot Status + Frame Range -->
+        <div class="top-row">
+            <!-- Shot Status Dropdown -->
+            <div class="shot-status-section">
+                <label class="shot-status-label">Shot Status</label>
+                <select class="shot-status-dropdown" onchange="updateShotStatus({{ vfx_code.id }}, this.value)">
+                    <option value="Prep" {% if vfx_code.shot_status == 'Prep' %}selected{% endif %}>Prep</option>
+                    <option value="Ready" {% if vfx_code.shot_status == 'Ready' %}selected{% endif %}>Ready</option>
+                    <option value="Turned Over" {% if vfx_code.shot_status == 'Turned Over' %}selected{% endif %}>Turned Over</option>
+                    <option value="Update" {% if vfx_code.shot_status == 'Update' %}selected{% endif %}>Update</option>
+                    <option value="Omitted" {% if vfx_code.shot_status == 'Omitted' %}selected{% endif %}>Omitted</option>
+                </select>
+            </div>
+
+            <!-- Frame Range Banner -->
+            <div class="frame-range-banner" id="frame-banner-{{ vfx_code.id }}">
+                <div class="frame-range-title">Frame Range</div>
+                <div class="frame-range-display" id="frame-display-{{ vfx_code.id }}">
+                    <span>1001 <span class="frame-box" id="head-box-{{ vfx_code.id }}">0</span> 1000</span>
+                    <span style="margin: 0 1rem;">•</span>
+                    <span>1001 <span class="frame-box" id="action-box-{{ vfx_code.id }}">0</span> 1001</span>
+                    <span style="margin: 0 1rem;">•</span>
+                    <span>1001 <span class="frame-box" id="tail-box-{{ vfx_code.id }}">0</span> 1001</span>
+                </div>
+                <div class="frame-range-labels">
+                    <span>HEAD HANDLES</span>
+                    <span>ACTION</span>
+                    <span>TAIL HANDLES</span>
+                </div>
+                <div class="frame-range-total" id="total-scan-{{ vfx_code.id }}">
+                    TOTAL SCAN: 0 frames
+                </div>
+            </div>
+        </div>
+
+        <!-- VFX Info Area (Image + TO# + Vendors + Scope + Editorial Note) -->
+        <div class="vfx-info-area">
+            <!-- Reference Image -->
+            <div>
+                <div class="reference-image-box" id="vfx-ref-box-{{ vfx_code.id }}">
+                    {% if vfx_code.reference_image %}
+                    <img class="lazy-image" data-src="{{ url_for('serve_reference_image', filename=vfx_code.reference_image) }}" alt="Reference">
+                    {% else %}
+                    <div style="text-align: center; color: #999;">
+                        <div style="font-size: 2rem;">[IMG]</div>
+                        <div style="font-weight: 700;">IMAGE REFERENCE</div>
+                        <div style="font-size: 0.8rem; margin-top: 0.5rem;">Click to upload</div>
+                    </div>
+                    {% endif %}
+                </div>
+                <input type="file" id="vfx-ref-{{ vfx_code.id }}" style="display: none;" accept="image/*" onchange="uploadVFXReference({{ vfx_code.id }}, this.files[0])">
+            </div>
+
+            <!-- VFX Fields Grid -->
+            <div class="vfx-fields-grid">
+                <!-- Column 1: TO# + TO Date + Vendors -->
+                <div>
+                    <div class="vfx-info-field" style="margin-bottom: 1rem;">
+                        <label>TO #</label>
+                        <input type="text" class="batch-linkable batch-turnover-number" 
+                               data-vfx-id="{{ vfx_code.id }}"
+                               value="{{ vfx_code.turnover_number or '' }}" 
+                               oninput="handleBatchInput('turnover_number', this.value)"
+                               onblur="updateVFXField({{ vfx_code.id }}, 'turnover_number', this.value)">
+                    </div>
+
+                    <div class="vfx-info-field" style="margin-bottom: 1rem;">
+                        <label>TO Date</label>
+                        <input type="date" class="batch-linkable batch-turnover-date"
+                               data-vfx-id="{{ vfx_code.id }}"
+                               value="{{ vfx_code.turnover_date.strftime('%Y-%m-%d') if vfx_code.turnover_date else '' }}"
+                               onchange="handleBatchInput('turnover_date', this.value); updateVFXField({{ vfx_code.id }}, 'turnover_date', this.value)">
+                    </div>
+
+                    <div class="vfx-info-field">
+                        <label>Vendor(s)</label>
+                        <div class="vendor-inputs">
+                            <input type="text" class="batch-linkable batch-vendor-1" 
+                                   data-vfx-id="{{ vfx_code.id }}"
+                                   placeholder="Vendor 1" value="{{ vfx_code.vendor_1 or '' }}"
+                                   onblur="updateVFXField({{ vfx_code.id }}, 'vendor_1', this.value)"
+                                   oninput="handleBatchInput('vendor_1', this.value)">
+                            <input type="text" class="batch-linkable batch-vendor-2"
+                                   data-vfx-id="{{ vfx_code.id }}"
+                                   placeholder="Vendor 2" value="{{ vfx_code.vendor_2 or '' }}"
+                                   onblur="updateVFXField({{ vfx_code.id }}, 'vendor_2', this.value)"
+                                   oninput="handleBatchInput('vendor_2', this.value)">
+                            <input type="text" class="batch-linkable batch-vendor-3"
+                                   data-vfx-id="{{ vfx_code.id }}"
+                                   placeholder="Vendor 3" value="{{ vfx_code.vendor_3 or '' }}"
+                                   onblur="updateVFXField({{ vfx_code.id }}, 'vendor_3', this.value)"
+                                   oninput="handleBatchInput('vendor_3', this.value)">
+                            <input type="text" class="batch-linkable batch-vendor-4"
+                                   data-vfx-id="{{ vfx_code.id }}"
+                                   placeholder="Vendor 4" value="{{ vfx_code.vendor_4 or '' }}"
+                                   onblur="updateVFXField({{ vfx_code.id }}, 'vendor_4', this.value)"
+                                   oninput="handleBatchInput('vendor_4', this.value)">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Column 2: Scope of Work + VFX Editorial Note (stacked) -->
+                <div style="display: flex; flex-direction: column; gap: 1rem;">
+                    <div class="vfx-info-field">
+                        <label>Scope of Work</label>
+                        <textarea onblur="updateVFXField({{ vfx_code.id }}, 'scope_of_work', this.value)" style="height: 120px;">{{ vfx_code.scope_of_work or '' }}</textarea>
+                    </div>
+
+                    <div class="vfx-info-field">
+                        <label>VFX Editorial Note</label>
+                        <textarea onblur="updateVFXField({{ vfx_code.id }}, 'vfx_editorial_note', this.value)" style="height: 120px;">{{ vfx_code.vfx_editorial_note or '' }}</textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content: Plates + Edit Section -->
+        <div class="main-content-area">
+            
+            <!-- MIDDLE COLUMN: Plates -->
+            <div class="middle-column">
+                <div class="vfx-elements-header">VFX ELEMENTS</div>
+
+                {% for shot in vfx_code.shots %}
+                <div class="plate-card" data-shot-id="{{ shot.id }}">
+                    <!-- Plate Header -->
+                    <div class="plate-header">
+                        <input type="checkbox" class="shot-checkbox" value="{{ shot.id }}" onchange="updateSelectionCount()" style="width: 20px; height: 20px; cursor: pointer;">
+                        <div class="plate-number-box">
+                            <input type="number" value="{{ shot.plate_number }}" min="0" 
+                                   onblur="updatePlateNumber({{ shot.id }}, this.value)"
+                                   style="color: {% if shot.plate_number == 0 %}#dc3545{% else %}#20b2aa{% endif %};">
+                        </div>
+                        <input type="text" class="plate-element-name" value="{{ shot.clip_name }}" data-shot-id="{{ shot.id }}" data-vfx-code="{{ vfx_code.vfx_code }}" style="font-family: monospace; font-size: 0.95rem; font-weight: 600; color: #000; border: 1px solid transparent; background: transparent; padding: 2px 4px; border-radius: 4px; width: 100%; min-width: 180px;" onfocus="this.style.borderColor='#20b2aa'; this.style.background='#fff'" onblur="this.style.borderColor='transparent'; this.style.background='transparent'; updateClipName({{ shot.id }}, this.value, this)">
+                        <input type="text" class="plate-type-display" value="{{ shot.plate_type or '' }}{{ shot.vfx_element or '' }}" data-shot-id="{{ shot.id }}" data-vfx-code="{{ vfx_code.vfx_code }}" data-plate-type="{{ shot.plate_type or '' }}" data-vfx-element="{{ shot.vfx_element or '' }}" style="text-align: center; border: none; font-size: 0.85rem; font-weight: 600; color: white; background: #20b2aa; padding: 0.25rem 0.5rem; border-radius: 4px; width: 70px; cursor: text; text-transform: uppercase;" onfocus="this.style.outline='2px solid #fff'" onblur="this.style.outline='none'; updatePlateType({{ shot.id }}, this.value, this)">
+                        <div class="plate-version" style="display: flex; align-items: center; justify-content: center; gap: 2px;"><span>v</span><input type="number" value="{{ shot.version }}" min="1" onblur="updateVersion({{ shot.id }}, this.value)" style="width: 30px; padding: 2px 4px; border: none; background: transparent; text-align: center; font-size: 0.8rem; color: white; font-weight: 500;"></div>
+                        <select class="plate-status-badge {{ shot.plate_status|lower }}" 
+                                onchange="updatePlateStatus({{ shot.id }}, this.value)">
+                            <option value="Prep" {% if shot.plate_status == 'Prep' %}selected{% endif %}>Prep</option>
+                            <option value="Ready" {% if shot.plate_status == 'Ready' %}selected{% endif %}>Ready</option>
+                            <option value="UPDATE" {% if shot.plate_status == 'UPDATE' %}selected{% endif %}>UPDATE</option>
+                        </select>
+                    </div>
+                    
+                    {% if shot.detected_respeed and shot.detected_respeed != 100.0 %}
+                    <div class="respeed-banner" data-shot-id="{{ shot.id }}" data-detected="{{ shot.detected_respeed }}">
+                        {% if shot.crank_speed == shot.detected_respeed %}
+                    <div style="background: #d4edda; border-left: 4px solid #28a745; padding: 0.75rem; margin: 0.5rem; font-size: 0.85rem;">
+                        <strong> RESPEED APPLIED:</strong> Crank speed matches detected respeed ({{ "%.1f"|format(shot.crank_speed) }}%)
+                    </div>
+                        {% else %}
+                    <div style="background: #fff3cd; border-left: 4px solid #f39c12; padding: 0.75rem; margin: 0.5rem; font-size: 0.85rem;">
+                        <strong>[!] RESPEED DETECTED:</strong> This clip may need retiming. 
+                        Detected speed: {{ "%.1f"|format(shot.detected_respeed) }}% 
+                        (currently set to {{ "%.1f"|format(shot.crank_speed) }}%)
+                    </div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+
+                    <!-- Plate Content -->
+                    <div class="plate-content">
+                        <!-- Left: Reference Image -->
+                        <div>
+                            <div class="plate-reference-image" id="plate-ref-box-{{ shot.id }}">
+                                {% if shot.reference_image %}
+                                <img class="lazy-image" data-src="{{ url_for('serve_reference_image', filename=shot.reference_image) }}" alt="Ref">
+                                {% else %}
+                                <span>Reference</span>
+                                {% endif %}
+                            </div>
+                            <input type="file" id="plate-ref-{{ shot.id }}" style="display: none;" accept="image/*">
+                        </div>
+
+                        <!-- Right: Metadata (left) + Info (right) -->
+                        <div class="plate-right-section">
+                            <!-- Left: Metadata Boxes -->
+                            <div class="metadata-section">
+                                <!-- Camera Metadata -->
+                                {% if shot.camera or shot.lens %}
+                                <div class="metadata-box">
+                                    <h5>Lens/Camera</h5>
+                                    <div class="metadata-grid">
+                                        {% if shot.camera %}
+                                        <div class="metadata-item">
+                                            <span class="metadata-label">Camera</span>
+                                            <span class="metadata-value">{{ shot.camera }}</span>
+                                        </div>
+                                        {% endif %}
+                                        {% if shot.lens %}
+                                        <div class="metadata-item">
+                                            <span class="metadata-label">Lens</span>
+                                            <span class="metadata-value">{{ shot.lens }}</span>
+                                        </div>
+                                        {% endif %}
+                                        {% if shot.focal_length %}
+                                        <div class="metadata-item">
+                                            <span class="metadata-label">Focal Length</span>
+                                            <span class="metadata-value">{{ shot.focal_length }}mm</span>
+                                        </div>
+                                        {% endif %}
+                                        {% if shot.t_stop %}
+                                        <div class="metadata-item">
+                                            <span class="metadata-label">Aperture</span>
+                                            <span class="metadata-value">T{{ shot.t_stop }}</span>
+                                        </div>
+                                        {% endif %}
+                                        {% if shot.iso %}
+                                        <div class="metadata-item">
+                                            <span class="metadata-label">ISO</span>
+                                            <span class="metadata-value">{{ shot.iso }}</span>
+                                        </div>
+                                        {% endif %}
+                                        {% if shot.resolution %}
+                                        <div class="metadata-item">
+                                            <span class="metadata-label">Resolution</span>
+                                            <span class="metadata-value">{{ shot.resolution }}</span>
+                                        </div>
+                                        {% endif %}
+                                        {% if shot.shot_frame_rate or shot.fps %}
+                                        <div class="metadata-item">
+                                            <span class="metadata-label">FPS</span>
+                                            <span class="metadata-value">{{ shot.shot_frame_rate or shot.fps }}</span>
+                                        </div>
+                                        {% endif %}
+                                        {% if shot.cam_roll or shot.reel %}
+                                        <div class="metadata-item">
+                                            <span class="metadata-label">Tape Name</span>
+                                            <span class="metadata-value">{{ shot.cam_roll or shot.reel }}</span>
+                                        </div>
+                                        {% endif %}
+                                        {% if shot.camera_clipname %}
+                                        <div class="metadata-item">
+                                            <span class="metadata-label">Camera Clipname</span>
+                                            <span class="metadata-value">{{ shot.camera_clipname }}</span>
+                                        </div>
+                                        {% endif %}
+                                        {% if shot.shutter_angle or shot.shutter_speed %}
+                                        <div class="metadata-item">
+                                            <span class="metadata-label">Shutter</span>
+                                            <span class="metadata-value">{{ shot.shutter_angle or shot.shutter_speed }}</span>
+                                        </div>
+                                        {% endif %}
+                                        {% if shot.camera_roll %}
+                                        <div class="metadata-item">
+                                            <span class="metadata-label">Camera Roll</span>
+                                            <span class="metadata-value">{{ shot.camera_roll }}°</span>
+                                        </div>
+                                        {% endif %}
+                                        {% if shot.camera_tilt %}
+                                        <div class="metadata-item">
+                                            <span class="metadata-label">Camera Tilt</span>
+                                            <span class="metadata-value">{{ shot.camera_tilt }}°</span>
+                                        </div>
+                                        {% endif %}
+                                        {% if shot.distance %}
+                                        <div class="metadata-item">
+                                            <span class="metadata-label">Distance</span>
+                                            <span class="metadata-value">{{ shot.distance }}</span>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                {% else %}
+                                <div class="metadata-box empty">
+                                    Metadata not imported
+                                </div>
+                                {% endif %}
+
+                                <!-- Color Metadata -->
+                                {% if shot.lut or shot.color_space %}
+                                <div class="metadata-box">
+                                    <h5>Color & LUT</h5>
+                                    <div class="metadata-grid">
+                                        {% if shot.lut %}
+                                        <div class="metadata-item" style="grid-column: 1 / -1;">
+                                            <span class="metadata-label">LUT Used</span>
+                                            <span class="metadata-value" style="font-size: 0.7rem; word-break: break-all;">{{ shot.lut }}</span>
+                                        </div>
+                                        {% endif %}
+                                        {% if shot.color_space %}
+                                        <div class="metadata-item">
+                                            <span class="metadata-label">Color Space</span>
+                                            <span class="metadata-value">{{ shot.color_space }}</span>
+                                        </div>
+                                        {% endif %}
+                                        {% if shot.gamma %}
+                                        <div class="metadata-item">
+                                            <span class="metadata-label">Gamma</span>
+                                            <span class="metadata-value">{{ shot.gamma }}</span>
+                                        </div>
+                                        {% endif %}
+                                        {% if shot.codec %}
+                                        <div class="metadata-item">
+                                            <span class="metadata-label">Codec</span>
+                                            <span class="metadata-value">{{ shot.codec }}</span>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                {% else %}
+                                <div class="metadata-box empty">
+                                    Metadata not imported
+                                </div>
+                                {% endif %}
+                            </div>
+
+                            <!-- Right: Timecode + Frame Info + Notes -->
+                            <div class="plate-info-section">
+                                <!-- Timecode Grid (Bordered Box) -->
+                                <div style="border: 2px solid #495057; border-radius: 6px; padding: 0.75rem; background: white; margin-bottom: 0.75rem;">
+                                    <div class="plate-info-grid">
+                                        <div class="plate-info-item">
+                                            <span class="plate-info-label">TC Cut In</span>
+                                            <span class="plate-info-value">{{ shot.source_in or 'N/A' }}</span>
+                                        </div>
+                                        <div class="plate-info-item">
+                                            <span class="plate-info-label">TC Cut Out</span>
+                                            <span class="plate-info-value">{{ shot.source_out or 'N/A' }}</span>
+                                        </div>
+                                        <div class="plate-info-item">
+                                            <span class="plate-info-label">Length</span>
+                                            <span class="plate-info-value">{{ shot.duration_frames or 0 }}</span>
+                                        </div>
+                                        <div class="plate-info-item">
+                                            <span class="plate-info-label">TC Scan In</span>
+                                            <span class="plate-info-value orange tc-scan-in" data-shot-id="{{ shot.id }}">{{ shot.tc_scan_in() or 'N/A' }}</span>
+                                        </div>
+                                        <div class="plate-info-item">
+                                            <span class="plate-info-label">TC Scan Out</span>
+                                            <span class="plate-info-value orange tc-scan-out" data-shot-id="{{ shot.id }}">{{ shot.tc_scan_out() or 'N/A' }}</span>
+                                        </div>
+                                        <div class="plate-info-item">
+                                            <span class="plate-info-label">Total Scan</span>
+                                            <span class="plate-info-value tc-total-scan" data-shot-id="{{ shot.id }}">{{ shot.total_source_frames() }}</span>
+                                        </div>
+                                        <div class="plate-info-item" style="grid-column: 1 / -1;">
+                                            <span class="plate-info-label">Range</span>
+                                            <span class="plate-info-value tc-range" data-shot-id="{{ shot.id }}" style="font-size: 0.7rem;">
+                                                {% set fr = shot.frame_range_display() %}
+                                                {{ fr.head_start }}[{{ fr.head_frames }}]{{ fr.head_end }} • {{ fr.shot_start }}[{{ fr.shot_frames }}]{{ fr.shot_end }} • {{ fr.tail_start }}[{{ fr.tail_frames }}]{{ fr.tail_end }}
+                                            </span>
+                                        </div>
+                                        <div class="plate-info-item">
+                                            <span class="plate-info-label">Handles (Source)</span>
+                                            <span class="plate-info-value tc-handles" data-shot-id="{{ shot.id }}">{{ shot.head_handles or 0 }}/{{ shot.tail_handles or 0 }}</span>
+                                        </div>
+                                        <div class="retime-handles-container" data-shot-id="{{ shot.id }}" {% if shot.crank_speed == 100.0 %}style="display:none"{% endif %}>
+                                        <div class="plate-info-item">
+                                            <span class="plate-info-label">Retime Handles (Output)</span>
+                                            <span class="plate-info-value tc-retime-handles" data-shot-id="{{ shot.id }}">
+                                                {% set output_head = (shot.head_handles or 0) / ((shot.crank_speed or 100) / 100.0) %}
+                                                {% set output_tail = (shot.tail_handles or 0) / ((shot.crank_speed or 100) / 100.0) %}
+                                                {{ "%.0f"|format(output_head) }}/{{ "%.0f"|format(output_tail) }}
+                                            </span>
+                                        </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Pull Date + Plate Rev (Bordered Box) -->
+                                <div style="border: 2px solid #495057; border-radius: 6px; padding: 0.75rem; background: white; margin-bottom: 0.75rem;">
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+                                        <div class="plate-info-item">
+                                            <span class="plate-info-label">Pull Date</span>
+                                            <input type="date" value="{{ shot.pull_date.strftime('%Y-%m-%d') if shot.pull_date else '' }}" 
+                                                   onchange="updatePlateField({{ shot.id }}, 'pull_date', this.value)"
+                                                   style="border: 1px solid #ddd; padding: 0.4rem; font-size: 0.8rem; border-radius: 4px; width: 100%;">
+                                        </div>
+                                        <div class="plate-info-item">
+                                            <span class="plate-info-label">Plate Rev</span>
+                                            <input type="text" value="{{ shot.plate_rev or '' }}"
+                                                   onblur="updatePlateField({{ shot.id }}, 'plate_rev', this.value)"
+                                                   style="border: 1px solid #ddd; padding: 0.4rem; font-size: 0.8rem; border-radius: 4px; width: 100%;">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Notes Fields -->
+                                <div class="plate-notes-grid">
+                                    <div class="plate-note-field half">
+                                        <label>Retime</label>
+                                        <textarea onblur="updatePlateField({{ shot.id }}, 'retime_notes', this.value)">{{ shot.retime_notes or '' }}</textarea>
+                                    </div>
+                                    <div class="plate-note-field half">
+                                        <label>Resize/Reposition</label>
+                                        <textarea onblur="updatePlateField({{ shot.id }}, 'resize_reposition', this.value)">{{ shot.resize_reposition or '' }}</textarea>
+                                    </div>
+                                    <div class="plate-note-field">
+                                        <label>Element Notes</label>
+                                        <textarea onblur="updatePlateField({{ shot.id }}, 'element_notes', this.value)">{{ shot.element_notes or '' }}</textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- RIGHT COLUMN: Edit Section -->
+            <div class="right-column" id="edit-section-{{ vfx_code.id }}">
+                <h3 class="edit-section-title">Edit Section</h3>
+
+                <div class="edit-field">
+                    <label>Plate #</label>
+                    <input type="number" id="edit-plate-{{ vfx_code.id }}" min="0" placeholder="Select plate..."
+                           oninput="loadPlateToEdit({{ vfx_code.id }}, this.value)">
+                </div>
+
+                <div class="edit-field">
+                    <label>Start Frame</label>
+                    <input type="number" id="edit-start-{{ vfx_code.id }}" min="1000" value="1001" disabled oninput="updateEditedPlate({{ vfx_code.id }})">
+                </div>
+                
+                <div class="edit-field">
+                    <label>Handles</label>
+                    <div class="handles-row">
+                        <div>
+                            <label style="font-size: 0.75rem; text-transform: none;">Head</label>
+                            <input type="number" id="edit-head-{{ vfx_code.id }}" min="0" disabled oninput="updateEditedPlate({{ vfx_code.id }})">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.75rem; text-transform: none;">Tails</label>
+                            <input type="number" id="edit-tail-{{ vfx_code.id }}" min="0" disabled oninput="updateEditedPlate({{ vfx_code.id }})">
+                        </div>
+                    </div>
+                </div>
+
+                <div id="handle-warning-{{ vfx_code.id }}" style="display: none; background: #f8d7da; border: 2px solid #dc3545; border-radius: 6px; padding: 0.75rem; margin-bottom: 1rem; font-size: 0.85rem; color: #721c24;"></div>
+                
+                <div class="edit-field">
+                    <label>Crank Speed (%)</label>
+                    <input type="number" step="0.1" id="edit-crank-{{ vfx_code.id }}" disabled oninput="updateEditedPlate({{ vfx_code.id }})">
+
+                </div>
+                
+                <!-- Update Timecodes Button -->
+                <button id="update-tc-btn-{{ vfx_code.id }}" 
+                        onclick="updateTimecodes({{ vfx_code.id }})" 
+                        style="display: none; width: 100%; margin-top: 20px; padding: 14px; background: #10b981; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 1rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                    Update Timecodes
+                </button>
+
+                </div>
+        </div>
+    </div>
+    {% endfor %}
+    </div>
+
+
+</div>
+
+<script>
+
+// Status filter functions
+// Track current filter state
+let currentFilter = null;
+
+function filterByStatus(status) {
+    // Get current URL parameters
+    const params = new URLSearchParams(window.location.search);
+    
+    // Toggle status filter
+    if (params.get('status') === status) {
+        // If clicking same status, clear filter
+        params.delete('status');
+    } else {
+        params.set('status', status);
+    }
+    
+    // Reload page with new parameters
+    window.location.href = '/?' + params.toString();
+}
+
+function clearFilter() {
+    // Get current URL parameters
+    const params = new URLSearchParams(window.location.search);
+    
+    // Remove status filter
+    params.delete('status');
+    
+    // Reload page
+    window.location.href = '/?' + params.toString();
+    
+    const filterMessage = document.getElementById("filter-message");
+    if (filterMessage) filterMessage.remove();
+}
+
+
+
+// Update project name
+function updateProjectName() {
+    const name = document.getElementById('project-name-input').value;
+    if (!name || name.trim() === '') {
+        alert('Please enter a project name');
+        return;
+    }
+    
+    fetchWithTimeout('/project/{{ project.id }}/update', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({name: name})
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            console.error('Failed to update project name');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+    });
+}
+
+// Upload project logo
+function uploadProjectLogo(file) {
+    if (!file) {
+        alert('No file selected');
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('logo', file);
+    
+    fetchWithTimeout('/project/{{ project.id }}/upload_logo', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            console.error('Failed to upload logo:', data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+    });
+}
+
+// Update Shot Status
+function updateShotStatus(vfxId, status) {
+    fetchWithTimeout('/vfx/' + vfxId + '/update/status', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({shot_status: status})
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const container = document.querySelector(`[data-vfx-id="${vfxId}"]`);
+            container.className = `vfx-code-container status-${status.toLowerCase().replace(' ', '-')}`;
+        }
+    });
+}
+
+// Helper: fetch with timeout to prevent UI freezes
+function fetchWithTimeout(url, options, timeout = 5000) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeout);
+    return fetch(url, { ...options, signal: controller.signal })
+        .finally(() => clearTimeout(timer))
+        .catch(err => {
+            if (err.name === 'AbortError') console.warn('Request timed out:', url);
+            else console.error('Fetch error:', url, err);
+            return { json: () => ({ success: false }), ok: false };
+        });
+}
+
+function updateVFXField(vfxId, field, value) {
+    fetchWithTimeout('/vfx/' + vfxId + '/update/field', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({[field]: value})
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+        }
+    });
+}
+
+function updatePlateNumber(shotId, plateNum) {
+    fetchWithTimeout('/shot/' + shotId + '/update/field', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({plate_number: plateNum})
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success && plateNum == 0) {
+            alert('[!] Remember to assign a plate number!');
+        }
+    });
+}
+
+function updatePlateStatus(shotId, status) {
+    fetchWithTimeout('/shot/' + shotId + '/update/field', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({plate_status: status})
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success && status === 'UPDATE') {
+            const card = document.querySelector(`[data-shot-id="${shotId}"]`);
+            const vfxContainer = card.closest('[data-vfx-id]');
+            const vfxId = vfxContainer.dataset.vfxId;
+            
+            const statusSelect = vfxContainer.querySelector('.shot-status-dropdown');
+            statusSelect.value = 'Update';
+            updateShotStatus(vfxId, 'Update');
+        }
+    });
+}
+
+function updatePlateNumber(shotId, plateNum) {
+    fetchWithTimeout('/shot/' + shotId + '/update/field', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({plate_number: parseInt(plateNum) || 0})
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Update color based on value
+            const input = document.querySelector(`[data-shot-id="${shotId}"] .plate-number-box input`);
+            if (parseInt(plateNum) === 0) {
+                input.style.color = '#dc3545'; // Red for 0
+            } else {
+                input.style.color = '#20b2aa'; // Teal for assigned
+            }
+        }
+    });
+}
+
+function updatePlateStatus(shotId, status) {
+    fetchWithTimeout('/shot/' + shotId + '/update/field', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({plate_status: status})
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+        }
+    });
+}
+
+function updatePlateField(shotId, field, value) {
+    fetchWithTimeout('/shot/' + shotId + '/update/field', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({[field]: value})
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+        }
+    });
+}
+
+function updateFrameBanner(vfxId, shotData) {
+    // Calculate output frames for display (divide source by crank multiplier)
+    const crank = parseFloat(shotData.crank_speed) || 100.0;
+    const crankMultiplier = crank / 100.0;
+    
+    const headHandles = Math.round((shotData.head_handles || 0) / crankMultiplier);
+    const tailHandles = Math.round((shotData.tail_handles || 0) / crankMultiplier);
+    const actionFrames = Math.round((shotData.duration_frames || 0) / crankMultiplier);
+    
+    // Calculate frame positions starting at custom start frame
+    const headStart = parseInt(shotData.start_frame) || 1001;
+    const headEnd = headStart + headHandles - 1;
+    const actionStart = headEnd + 1;
+    const actionEnd = actionStart + actionFrames - 1;
+    const tailStart = actionEnd + 1;
+    const tailEnd = tailStart + tailHandles - 1;
+    
+    // Update the display
+    const frameDisplay = document.getElementById(`frame-display-${vfxId}`);
+    frameDisplay.innerHTML = `
+        <span>${headStart} <span class="frame-box" id="head-box-${vfxId}">${headHandles}</span> ${headEnd}</span>
+        <span style="margin: 0 1rem;">•</span>
+        <span>${actionStart} <span class="frame-box" id="action-box-${vfxId}">${actionFrames}</span> ${actionEnd}</span>
+        <span style="margin: 0 1rem;">•</span>
+        <span>${tailStart} <span class="frame-box" id="tail-box-${vfxId}">${tailHandles}</span> ${tailEnd}</span>
+    `;
+    
+    // Update total scan (SOURCE frames for vendor)
+    const sourceFrames = (shotData.duration_frames || 0) + (shotData.head_handles || 0) + (shotData.tail_handles || 0);
+    const totalScan = document.getElementById(`total-scan-${vfxId}`);
+    totalScan.textContent = `TOTAL SCAN: ${sourceFrames} frames`;
+}
+
+function loadPlateToEdit(vfxId, plateNum) {
+    // Remember this selection
+    localStorage.setItem(`selectedPlate_${vfxId}`, plateNum);
+    const container = document.querySelector(`[data-vfx-id="${vfxId}"]`);
+    const plateCards = container.querySelectorAll('.plate-card');
+    
+    let selectedShot = null;
+    plateCards.forEach(card => {
+        const input = card.querySelector('.plate-number-box input');
+        if (parseInt(input.value) === parseInt(plateNum)) {
+            selectedShot = card.dataset.shotId;
+        }
+    });
+    
+    if (selectedShot) {
+        fetchWithTimeout('/shot/' + selectedShot + '/data')
+        .then(response => response.json())
+        .then(data => {
+            // Update edit fields
+            document.getElementById(`edit-head-${vfxId}`).value = data.head_handles || 0;
+            document.getElementById(`edit-head-${vfxId}`).dataset.durationFrames = data.duration_frames || 0;
+            document.getElementById(`edit-head-${vfxId}`).dataset.shotId = selectedShot;
+            document.getElementById(`edit-tail-${vfxId}`).value = data.tail_handles || 0;
+            document.getElementById(`edit-crank-${vfxId}`).value = data.crank_speed || 100;
+            document.getElementById(`edit-start-${vfxId}`).value = data.start_frame || 1001;
+            
+            // Enable edit fields
+            document.getElementById(`edit-head-${vfxId}`).disabled = false;
+            document.getElementById(`edit-tail-${vfxId}`).disabled = false;
+            document.getElementById(`edit-crank-${vfxId}`).disabled = false;
+            document.getElementById(`edit-start-${vfxId}`).disabled = false;
+            
+            // UPDATE FRAME BANNER with selected plate's data
+            updateFrameBanner(vfxId, data);
+        });
+    }
+    // Plate not found - silently ignore
+}
+
+function applyPlateEdit(vfxId) {
+    const shotId = document.getElementById(`apply-edit-${vfxId}`).dataset.shotId;
+    const head = document.getElementById(`edit-head-${vfxId}`).value;
+    const tail = document.getElementById(`edit-tail-${vfxId}`).value;
+    const crank = document.getElementById(`edit-crank-${vfxId}`).value;
+    
+    fetchWithTimeout('/shot/' + shotId + '/update/field', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            head_handles: head,
+            tail_handles: tail,
+            crank_speed: crank
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('[OK] Plate updated! Reloading...');
+            location.reload();
+        }
+    });
+}
+
+// Update plate status badge color immediately on change
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.plate-status-badge').forEach(function(select) {
+        // Set initial color
+        updatePlateStatusColor(select);
+        
+        // Update color on change
+        select.addEventListener('change', function() {
+            updatePlateStatusColor(select);
+        });
+    });
+});
+
+function updatePlateStatusColor(select) {
+    const value = select.value.toLowerCase();
+    select.classList.remove('prep', 'ready', 'update');
+    select.classList.add(value);
+    
+    // Update background color
+    if (value === 'prep') {
+        select.style.background = '#e83e8c';
+        select.style.color = 'white';
+    } else if (value === 'ready') {
+        select.style.background = '#fd7e14';
+        select.style.color = 'white';
+    } else if (value === 'update') {
+        select.style.background = '#ffc107';
+        select.style.color = '#000';
+    }
+}
+
+
+
+
+
+// Toggle all shots in a VFX code
+
+async function updateSelectionCount() {
+    const shotIds = await getSelectedShotIds();
+    const count = shotIds.length;
+    
+    const span = document.getElementById('selectedCount');
+    if (span) {
+        span.textContent = '(' + count + ')';
+        span.style.setProperty('background', count > 0 ? '#2196f3' : '#6c757d', 'important');
+        span.style.setProperty('color', 'white', 'important');
+    }
+}
+
+function toggleVFXCodeShots(vfxId, checked) {
+    console.log(`[Toggle Shots] vfxId: ${vfxId}, checked: ${checked}`);
+    
+    // Find container in both viewport and pool
+    const containers = document.querySelectorAll('.vfx-code-container');
+    console.log(`[Toggle Shots] Found ${containers.length} containers`);
+    
+    let foundContainer = false;
+    containers.forEach(container => {
+        const headerCheckbox = container.querySelector('.vfx-code-checkbox');
+        if (headerCheckbox && parseInt(headerCheckbox.value) === vfxId) {
+            foundContainer = true;
+            const shotCheckboxes = container.querySelectorAll('.shot-checkbox');
+            console.log(`[Toggle Shots] Found matching container with ${shotCheckboxes.length} shots`);
+            shotCheckboxes.forEach(cb => {
+                cb.checked = checked;
+            });
+        }
+    });
+    
+    if (!foundContainer) {
+        console.warn(`[Toggle Shots] No container found for vfxId ${vfxId}`);
+    }
+    
+    updateSelectionCount();
+}
+
+
+function toggleSelectAll() {
+    const selectAll = document.getElementById('select-all');
+    
+    // Only select VISIBLE VFX codes (those not hidden by search/filter)
+    const vfxContainers = document.querySelectorAll('.vfx-code-container');
+    
+    vfxContainers.forEach(container => {
+        // Skip hidden containers
+        if (container.style.display === 'none') {
+            return;
+        }
+        
+        // Find and update the VFX checkbox
+        const vfxCheckbox = container.querySelector('.vfx-code-checkbox');
+        if (vfxCheckbox) {
+            vfxCheckbox.checked = selectAll.checked;
+            const vfxId = parseInt(vfxCheckbox.value);
+            handleBatchSelection(vfxId, selectAll.checked);
+        }
+        
+        // Find and update all shot checkboxes within this visible container
+        const shotCheckboxes = container.querySelectorAll('.shot-checkbox');
+        shotCheckboxes.forEach(cb => cb.checked = selectAll.checked);
+    });
+    
+    updateSelectionCount();
+}
+
+function deselectAll() {
+    // Deselect ALL checkboxes (visible and hidden)
+    const allVfxCheckboxes = document.querySelectorAll('.vfx-code-checkbox');
+    const allShotCheckboxes = document.querySelectorAll('.shot-checkbox');
+    const selectAllCheckbox = document.getElementById('select-all');
+    
+    // Uncheck select-all checkbox
+    if (selectAllCheckbox) {
+        selectAllCheckbox.checked = false;
+    }
+    
+    // Deselect all VFX checkboxes and clear batch selection
+    allVfxCheckboxes.forEach(cb => {
+        if (cb.checked) {
+            cb.checked = false;
+            const vfxId = parseInt(cb.value);
+            handleBatchSelection(vfxId, false);
+        }
+    });
+    
+    // Deselect all shot checkboxes
+    allShotCheckboxes.forEach(cb => cb.checked = false);
+    
+    updateSelectionCount();
+}
+
+// Export functions
+function setExportIds() {
+    const checkboxes = document.querySelectorAll('.shot-checkbox:checked');
+    const ids = Array.from(checkboxes).map(cb => cb.value).join(',');
+    document.getElementById('export-edl-ids').value = ids;
+    document.getElementById('export-csv-ids').value = ids;
+}
+
+function validateSelection() {
+    const checkboxes = document.querySelectorAll('.shot-checkbox:checked');
+    if (checkboxes.length === 0) {
+        alert('Please select at least one shot to export');
+        return false;
+    }
+    return true;
+}
+
+function exportSelectedPDFs() {
+    const checkboxes = document.querySelectorAll('.shot-checkbox:checked');
+    if (checkboxes.length === 0) {
+        alert('Please select at least one shot to export');
+        return;
+    }
+    checkboxes.forEach(cb => {
+        window.open(`/shot/${cb.value}/pdf`, '_blank');
+    });
+}
+
+// Search functionality
+function filterShots() {
+    const searchTerm = document.getElementById('search-input').value.trim();
+    
+    // Get current URL parameters
+    const params = new URLSearchParams(window.location.search);
+    
+    // Update or remove search parameter
+    if (searchTerm) {
+        params.set('search', searchTerm);
+    } else {
+        params.delete('search');
+    }
+    
+    // Reload page with new parameters
+    window.location.href = '/?' + params.toString();
+}
+
+// Sort functionality
+function sortShots() {
+    const sortBy = document.getElementById('sort-select').value;
+    
+    // Get current URL parameters
+    const params = new URLSearchParams(window.location.search);
+    
+    // Update sort parameter
+    params.set('sort', sortBy);
+    
+    // Reload page with new parameters
+    window.location.href = '/?' + params.toString();
+}
+
+// Delete selected
+// Delete selected
+
+function exportSelected() {
+    const selected = Array.from(document.querySelectorAll('.shot-select:checked'))
+        .map(cb => cb.value);
+    
+    if (selected.length === 0) {
+        alert('Please select at least one shot to export');
+        return;
+    }
+    
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '/export/edl/selected';
+    
+    const input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = 'shot_ids';
+    input.value = selected.join(',');
+    
+    form.appendChild(input);
+    document.body.appendChild(form);
+    form.submit();
+}
+
+
+async function getSelectedShotIds() {
+    // Get all checked checkboxes (both VFX headers and individual shots)
+    const vfxChecks = Array.from(document.querySelectorAll('.vfx-code-checkbox:checked'));
+    const shotChecks = Array.from(document.querySelectorAll('.shot-checkbox:checked'));
+    
+    let allShotIds = [];
+    
+    // If VFX header checkboxes are checked, get all shots within those VFX codes
+    vfxChecks.forEach(checkbox => {
+        const vfxContainer = checkbox.closest('.vfx-code-container');
+        if (vfxContainer) {
+            const shotsInVfx = vfxContainer.querySelectorAll('.shot-checkbox');
+            shotsInVfx.forEach(shotCheckbox => {
+                if (!allShotIds.includes(shotCheckbox.value)) {
+                    allShotIds.push(shotCheckbox.value);
+                }
+            });
+        }
+    });
+    
+    // Add individually checked shots
+    shotChecks.forEach(checkbox => {
+        if (!allShotIds.includes(checkbox.value)) {
+            allShotIds.push(checkbox.value);
+        }
+    });
+    
+    return allShotIds;
+}
+
+
+async function exportSelectedEDL() {
+    const shotIds = await getSelectedShotIds();
+    if (shotIds.length === 0) {
+        alert('Please select at least one shot to export');
+        return;
+    }
+    
+    // Generate smart filename based on selection
+    let defaultFilename = 'selected_shots.edl';
+    
+    // Check if VFX header checkboxes are selected (find ALL, not just first)
+    const allVfxHeaderChecks = document.querySelectorAll('.vfx-code-checkbox:checked');
+    const individualShotChecks = document.querySelectorAll('.shot-checkbox:checked');
+    
+    console.log('[EDL Export] VFX headers checked:', allVfxHeaderChecks.length);
+    console.log('[EDL Export] Individual shots:', individualShotChecks.length);
+    
+    if (allVfxHeaderChecks.length === 1) {
+        // Single VFX header: use that VFX code name
+        const vfxContainer = allVfxHeaderChecks[0].closest('.vfx-code-container');
+        const vfxCode = vfxContainer?.querySelector('.vfx-code-title')?.textContent.trim();
+        if (vfxCode) {
+            defaultFilename = `${vfxCode}.edl`;
+            console.log('[EDL Export] Single VFX - Using name:', defaultFilename);
+        }
+    } else if (allVfxHeaderChecks.length > 1) {
+        // Multiple VFX headers: use generic name
+        defaultFilename = 'multiple_vfx_codes.edl';
+        console.log('[EDL Export] Multiple VFX headers - using generic name');
+    } else if (individualShotChecks.length === 1) {
+        // Single shot selected: use clip name
+        const plateCard = individualShotChecks[0].closest('.plate-card');
+        const clipName = plateCard?.querySelector('.plate-element-name')?.value?.trim();
+        if (clipName) {
+            defaultFilename = `${clipName}.edl`;
+        }
+    } else if (individualShotChecks.length > 1) {
+        // Multiple shots: use generic name
+        defaultFilename = 'selected_shots.edl';
+    }
+    
+    // Show save dialog
+    const result = await window.electron.saveExportDialog({
+        type: 'edl',
+        defaultFilename: defaultFilename
+    });
+    
+    if (!result.success) {
+        return;
+    }
+    
+    // Get checked VFX code IDs
+    const vfxCodeIds = Array.from(document.querySelectorAll('.vfx-code-checkbox:checked'))
+        .map(cb => cb.value);
+    
+    // Fetch EDL data from Flask
+    const response = await fetch('/export/edl/selected', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+            shot_ids: shotIds.join(','),
+            vfx_code_ids: vfxCodeIds.join(',')
+        })
+    });
+    
+    if (!response.ok) {
+        alert('Failed to generate EDL');
+        return;
+    }
+    
+    const edlText = await response.text();
+    const edlBase64 = btoa(edlText);
+    
+    const writeResult = await window.electron.writeExportFile({
+        filePath: result.filePath,
+        data: edlBase64
+    });
+    
+    if (!writeResult.success) {
+        alert('Failed to write EDL file: ' + writeResult.error);
+    }
+}
+
+async function exportSelectedCSV() {
+    const shotIds = await getSelectedShotIds();
+    if (shotIds.length === 0) {
+        alert('Please select at least one shot or VFX group to export');
+        return;
+    }
+    
+    // Check if multiple VFX codes are selected
+    const allVfxHeaderChecks = document.querySelectorAll('.vfx-code-checkbox:checked');
+    let exportMode = 'single';
+    
+    if (allVfxHeaderChecks.length > 1) {
+        const dialogHtml = `
+            <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 10000;">
+                <div style="background: white; padding: 2rem; border-radius: 12px; max-width: 500px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+                    <h3 style="margin-top: 0; color: #333;">Multiple VFX Codes Selected</h3>
+                    <p style="color: #666; line-height: 1.5;">How would you like to export the metadata CSVs?</p>
+                    <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+                        <button id="metadata-csv-separate-btn" style="flex: 1; padding: 0.75rem 1.5rem; background: #20b2aa; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 1rem; font-weight: 600;">
+                            Separate CSVs
+                        </button>
+                        <button id="metadata-csv-combined-btn" style="flex: 1; padding: 0.75rem 1.5rem; background: #6c757d; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 1rem; font-weight: 600;">
+                            Combined CSV
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        const dialogDiv = document.createElement('div');
+        dialogDiv.innerHTML = dialogHtml;
+        document.body.appendChild(dialogDiv);
+        
+        exportMode = await new Promise((resolve) => {
+            document.getElementById('metadata-csv-separate-btn').onclick = () => {
+                document.body.removeChild(dialogDiv);
+                resolve('split');
+            };
+            document.getElementById('metadata-csv-combined-btn').onclick = () => {
+                document.body.removeChild(dialogDiv);
+                resolve('combined');
+            };
+        });
+    }
+    
+    // Generate smart filename
+    let defaultFilename = 'vfx_export.csv';
+    
+    const selectedShots = shotIds.map(id => {
+        const checkbox = document.querySelector(`.shot-checkbox[value="${id}"]`);
+        if (!checkbox) return null;
+        const plateCard = checkbox.closest('.plate-card');
+        if (!plateCard) return null;
+        const clipName = plateCard.querySelector('.plate-element-name')?.value?.trim();
+        const vfxContainer = plateCard.closest('.vfx-code-container');
+        const vfxCode = vfxContainer?.querySelector('.vfx-code-title')?.textContent.trim();
+        return { clipName, vfxCode };
+    }).filter(Boolean);
+    
+    const vfxCheckboxSelected = selectedShots.length > 0 && 
+        document.querySelector(`.vfx-code-checkbox:checked[value]`);
+    
+    if (selectedShots.length === 1 && selectedShots[0].clipName && !vfxCheckboxSelected) {
+        defaultFilename = `${selectedShots[0].clipName}_metadata.csv`;
+    } else if (selectedShots.length >= 1) {
+        const vfxCodes = [...new Set(selectedShots.map(s => s.vfxCode).filter(Boolean))];
+        if (vfxCodes.length === 1 && vfxCodes[0]) {
+            defaultFilename = `${vfxCodes[0]}_metadata.csv`;
+        } else if (vfxCodes.length > 1) {
+            defaultFilename = 'selected_shots_metadata.csv';
+        }
+    }
+    
+    // Get checked VFX code IDs
+    const vfxCodeIds = Array.from(document.querySelectorAll('.vfx-code-checkbox:checked'))
+        .map(cb => cb.value);
+    
+    // Fetch CSV data from Flask
+    const response = await fetch('/export/metadata/csv/selected', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+            shot_ids: shotIds.join(','),
+            vfx_code_ids: vfxCodeIds.join(','),
+            export_mode: exportMode
+        })
+    });
+    
+    if (!response.ok) {
+        alert('Failed to generate CSV');
+        return;
+    }
+    
+    // Handle split mode vs single mode
+    if (exportMode === 'split') {
+        // SPLIT MODE: Pick folder and save multiple CSVs
+        const folderResult = await window.electron.pickFolder();
+        
+        if (!folderResult.success) {
+            return;
+        }
+        
+        const csvData = await response.json();
+        
+        let successCount = 0;
+        for (const [filename, csvContent] of Object.entries(csvData.csvs)) {
+            const filePath = folderResult.folderPath + '/' + filename;
+            const base64 = btoa(unescape(encodeURIComponent(csvContent)));
+            const writeResult = await window.electron.writeExportFile({
+                filePath: filePath,
+                data: base64
+            });
+            if (writeResult.success) successCount++;
+        }
+        
+        alert(`Exported ${successCount} of ${Object.keys(csvData.csvs).length} metadata CSVs to folder`);
+    } else {
+        // SINGLE/COMBINED MODE: Save one CSV
+        const result = await window.electron.saveExportDialog({
+            type: 'csv',
+            defaultFilename: defaultFilename
+        });
+        
+        if (!result.success) return;
+        
+        const csvText = await response.text();
+        const csvBase64 = btoa(csvText);
+        
+        const writeResult = await window.electron.writeExportFile({
+            filePath: result.filePath,
+            data: csvBase64
+        });
+        
+        if (!writeResult.success) {
+            alert('Failed to write CSV file: ' + writeResult.error);
+        }
+    }
+}
+
+
+async function exportSelectedMetadataPDF() {
+    const shotIds = await getSelectedShotIds();
+    if (shotIds.length === 0) {
+        alert('Please select at least one shot');
+        return;
+    }
+    
+    // Check if multiple VFX codes are selected
+    const allVfxHeaderChecks = document.querySelectorAll('.vfx-code-checkbox:checked');
+    let exportMode = 'single';
+    
+    if (allVfxHeaderChecks.length > 1) {
+        // Custom dialog for better UX
+        const dialogHtml = `
+            <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 10000;">
+                <div style="background: white; padding: 2rem; border-radius: 12px; max-width: 500px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+                    <h3 style="margin-top: 0; color: #333;">Multiple VFX Codes Selected</h3>
+                    <p style="color: #666; line-height: 1.5;">How would you like to export the metadata PDFs?</p>
+                    <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+                        <button id="metadata-separate-btn" style="flex: 1; padding: 0.75rem 1.5rem; background: #20b2aa; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 1rem; font-weight: 600;">
+                            Separate PDFs
+                        </button>
+                        <button id="metadata-combined-btn" style="flex: 1; padding: 0.75rem 1.5rem; background: #6c757d; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 1rem; font-weight: 600;">
+                            Combined PDF
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        const dialogDiv = document.createElement('div');
+        dialogDiv.innerHTML = dialogHtml;
+        document.body.appendChild(dialogDiv);
+        
+        exportMode = await new Promise((resolve) => {
+            document.getElementById('metadata-separate-btn').onclick = () => {
+                document.body.removeChild(dialogDiv);
+                resolve('split');
+            };
+            document.getElementById('metadata-combined-btn').onclick = () => {
+                document.body.removeChild(dialogDiv);
+                resolve('combined');
+            };
+        });
+    }
+    
+    // Get checked VFX code IDs
+    const vfxCodeIds = Array.from(document.querySelectorAll('.vfx-code-checkbox:checked'))
+        .map(cb => cb.value);
+    
+    // Fetch metadata PDF from Flask
+    const response = await fetch('/export/metadata/pdf/selected', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+            shot_ids: shotIds.join(','),
+            vfx_code_ids: vfxCodeIds.join(','),
+            export_mode: exportMode
+        })
+    });
+    
+    if (!response.ok) {
+        alert('Failed to generate metadata PDF');
+        return;
+    }
+    
+    // Handle split mode vs single mode
+    if (exportMode === 'split') {
+        // SPLIT MODE: Pick folder and save multiple PDFs
+        const folderResult = await window.electron.pickFolder();
+        
+        if (!folderResult.success) {
+            return;
+        }
+        
+        const pdfData = await response.json();
+        
+        let successCount = 0;
+        for (const [filename, base64Data] of Object.entries(pdfData.pdfs)) {
+            const filePath = folderResult.folderPath + '/' + filename;
+            const writeResult = await window.electron.writeExportFile({
+                filePath: filePath,
+                data: base64Data
+            });
+            if (writeResult.success) successCount++;
+        }
+        
+        alert(`Exported ${successCount} of ${Object.keys(pdfData.pdfs).length} metadata PDFs to folder`);
+    } else {
+        // SINGLE/COMBINED MODE: Save one PDF
+        let defaultFilename = 'metadata.pdf';
+        
+        // Smart filename based on selection
+        const metaShots = shotIds.map(id => {
+            const checkbox = document.querySelector(`.shot-checkbox[value="${id}"]`);
+            if (!checkbox) return null;
+            const plateCard = checkbox.closest('.plate-card');
+            if (!plateCard) return null;
+            const clipName = plateCard.querySelector('.plate-element-name')?.value?.trim();
+            const vfxContainer = plateCard.closest('.vfx-code-container');
+            const vfxCode = vfxContainer?.querySelector('.vfx-code-title')?.textContent.trim();
+            return { clipName, vfxCode };
+        }).filter(Boolean);
+        
+        const metaVfxChecked = document.querySelectorAll('.vfx-code-checkbox:checked');
+        if (metaShots.length === 1 && metaShots[0].clipName && metaVfxChecked.length === 0) {
+            defaultFilename = metaShots[0].clipName + '_metadata.pdf';
+        } else if (metaShots.length >= 1) {
+            const vfxCodes = [...new Set(metaShots.map(s => s.vfxCode).filter(Boolean))];
+            if (vfxCodes.length === 1 && vfxCodes[0]) {
+                defaultFilename = vfxCodes[0] + '_metadata.pdf';
+            } else if (vfxCodes.length > 1) {
+                defaultFilename = 'selected_shots_metadata.pdf';
+            }
+        }
+        const result = await window.electron.saveExportDialog({
+            type: 'pdf',
+            defaultFilename: defaultFilename
+        });
+        
+        if (!result.success) return;
+        
+        const pdfBlob = await response.blob();
+        const arrayBuffer = await pdfBlob.arrayBuffer();
+        
+        const bytes = new Uint8Array(arrayBuffer);
+        let binary = '';
+        const chunkSize = 8192;
+        for (let i = 0; i < bytes.length; i += chunkSize) {
+            const chunk = bytes.subarray(i, i + chunkSize);
+            binary += String.fromCharCode.apply(null, chunk);
+        }
+        const pdfBase64 = btoa(binary);
+        
+        const writeResult = await window.electron.writeExportFile({
+            filePath: result.filePath,
+            data: pdfBase64
+        });
+        
+        if (!writeResult.success) {
+            alert('Failed to write PDF file: ' + writeResult.error);
+        }
+    }
+}
+
+async function exportSelectedVFXCSV() {
+    // Get checked VFX code checkboxes AND individual plate checkboxes
+    const vfxHeaderChecks = document.querySelectorAll('.vfx-code-checkbox:checked');
+    const plateChecks = document.querySelectorAll('.shot-checkbox:checked');
+    
+    // Collect VFX code IDs from header checkboxes
+    const vfxCodeIds = Array.from(vfxHeaderChecks).map(cb => cb.value);
+    
+    // Collect shot IDs from individual plate checkboxes
+    const shotIds = Array.from(plateChecks).map(cb => cb.value);
+    
+    if (vfxCodeIds.length === 0 && shotIds.length === 0) {
+        alert('Please select at least one VFX code or individual plate');
+        return;
+    }
+    
+    let exportMode = 'single';
+    
+    // If multiple VFX codes selected, ask for split vs combined
+    if (vfxCodeIds.length > 1) {
+        const dialogHtml = `
+            <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 10000;">
+                <div style="background: white; padding: 2rem; border-radius: 12px; max-width: 500px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+                    <h3 style="margin-top: 0; color: #333;">Multiple VFX Codes Selected</h3>
+                    <p style="color: #666; line-height: 1.5;">How would you like to export the VFX CSVs?</p>
+                    <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+                        <button id="vfx-csv-separate-btn" style="flex: 1; padding: 0.75rem 1.5rem; background: #20b2aa; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 1rem; font-weight: 600;">
+                            Separate CSVs
+                        </button>
+                        <button id="vfx-csv-combined-btn" style="flex: 1; padding: 0.75rem 1.5rem; background: #6c757d; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 1rem; font-weight: 600;">
+                            Combined CSV
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        const dialogDiv = document.createElement('div');
+        dialogDiv.innerHTML = dialogHtml;
+        document.body.appendChild(dialogDiv);
+        
+        exportMode = await new Promise((resolve) => {
+            document.getElementById('vfx-csv-separate-btn').onclick = () => {
+                document.body.removeChild(dialogDiv);
+                resolve('split');
+            };
+            document.getElementById('vfx-csv-combined-btn').onclick = () => {
+                document.body.removeChild(dialogDiv);
+                resolve('combined');
+            };
+        });
+    }
+    
+    // Fetch CSV data
+    const response = await fetch('/export/vfx_csv/selected', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            vfx_code_ids: vfxCodeIds.join(','),
+            shot_ids: shotIds.join(','),
+            export_mode: exportMode
+        })
+    });
+    
+    if (!response.ok) {
+        alert('Failed to generate CSV');
+        return;
+    }
+    
+    // Handle split mode vs single mode
+    if (exportMode === 'split') {
+        // SPLIT MODE: Pick folder and save multiple CSVs
+        const folderResult = await window.electron.pickFolder();
+        
+        if (!folderResult.success) {
+            return;
+        }
+        
+        const csvData = await response.json();
+        
+        let successCount = 0;
+        for (const [filename, csvContent] of Object.entries(csvData.csvs)) {
+            const filePath = folderResult.folderPath + '/' + filename;
+            const base64 = btoa(unescape(encodeURIComponent(csvContent)));
+            const writeResult = await window.electron.writeExportFile({
+                filePath: filePath,
+                data: base64
+            });
+            if (writeResult.success) successCount++;
+        }
+        
+        alert(`Exported ${successCount} of ${Object.keys(csvData.csvs).length} CSVs to folder`);
+    } else {
+        // SINGLE/COMBINED MODE: Save one CSV with smart filename
+        let defaultFilename = 'vfx_export.csv';
+        
+        // Smart filename based on selection
+        const vfxHeaders = document.querySelectorAll('.vfx-code-checkbox:checked');
+        const plateCbs = document.querySelectorAll('.shot-checkbox:checked');
+        
+        if (vfxHeaders.length === 0 && plateCbs.length === 1) {
+            // Single plate selected
+            const plateCard = plateCbs[0].closest('.plate-card');
+            const clipName = plateCard?.querySelector('.plate-element-name')?.value?.trim();
+            if (clipName) defaultFilename = clipName + '_vfx_data.csv';
+        } else if (vfxHeaders.length === 1) {
+            // Single VFX header
+            const vfxContainer = vfxHeaders[0].closest('.vfx-code-container');
+            const vfxCode = vfxContainer?.querySelector('.vfx-code-title')?.textContent.trim();
+            if (vfxCode) defaultFilename = vfxCode + '_vfx_data.csv';
+        } else if (vfxHeaders.length > 1) {
+            defaultFilename = 'selected_shots_vfx_data.csv';
+        }
+        
+        const result = await window.electron.saveExportDialog({
+            type: 'csv',
+            defaultFilename: defaultFilename
+        });
+        
+        if (!result.success) return;
+        
+        const csvText = await response.text();
+        const base64 = btoa(unescape(encodeURIComponent(csvText)));
+        await window.electron.writeExportFile({
+            filePath: result.filePath,
+            data: base64
+        });
+    }
+}
+
+async function exportSelectedPDF() {
+    const shotIds = await getSelectedShotIds();
+    if (shotIds.length === 0) {
+        alert('Please select at least one shot or VFX group to export');
+        return;
+    }
+    
+    // Check if multiple VFX codes are selected
+    const allVfxHeaderChecks = document.querySelectorAll('.vfx-code-checkbox:checked');
+    let exportMode = 'single';  // Default: single PDF
+    
+    if (allVfxHeaderChecks.length > 1) {
+        // Custom dialog for better UX
+        const dialogHtml = `
+            <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 10000;">
+                <div style="background: white; padding: 2rem; border-radius: 12px; max-width: 500px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+                    <h3 style="margin-top: 0; color: #333;">Multiple VFX Codes Selected</h3>
+                    <p style="color: #666; line-height: 1.5;">How would you like to export the PDFs?</p>
+                    <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+                        <button id="pdf-separate-btn" style="flex: 1; padding: 0.75rem 1.5rem; background: #20b2aa; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 1rem; font-weight: 600;">
+                            Separate PDFs
+                        </button>
+                        <button id="pdf-combined-btn" style="flex: 1; padding: 0.75rem 1.5rem; background: #6c757d; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 1rem; font-weight: 600;">
+                            Combined PDF
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        const dialogDiv = document.createElement('div');
+        dialogDiv.innerHTML = dialogHtml;
+        document.body.appendChild(dialogDiv);
+        
+        exportMode = await new Promise((resolve) => {
+            document.getElementById('pdf-separate-btn').onclick = () => {
+                document.body.removeChild(dialogDiv);
+                resolve('split');
+            };
+            document.getElementById('pdf-combined-btn').onclick = () => {
+                document.body.removeChild(dialogDiv);
+                resolve('combined');
+            };
+        });
+    }
+    
+    // Generate smart filename (same logic as EDL)
+    let defaultFilename = 'selected_shots_info.pdf';
+    
+    const selectedShots = shotIds.map(id => {
+        const checkbox = document.querySelector(`.shot-checkbox[value="${id}"]`);
+        if (!checkbox) return null;
+        const plateCard = checkbox.closest('.plate-card');
+        if (!plateCard) return null;
+        const clipName = plateCard.querySelector('.plate-element-name')?.value?.trim();
+        const vfxContainer = plateCard.closest('.vfx-code-container');
+        const vfxCode = vfxContainer?.querySelector('.vfx-code-title')?.textContent.trim();
+        return { clipName, vfxCode };
+    }).filter(Boolean);
+    
+    const vfxCheckboxSelected = selectedShots.length > 0 && 
+        document.querySelector(`.vfx-code-checkbox:checked[value]`);
+    
+    if (selectedShots.length === 1 && selectedShots[0].clipName && !vfxCheckboxSelected) {
+        defaultFilename = `${selectedShots[0].clipName}_info.pdf`;
+    } else if (selectedShots.length >= 1) {
+        const vfxCodes = [...new Set(selectedShots.map(s => s.vfxCode).filter(Boolean))];
+        if (vfxCodes.length === 1 && vfxCodes[0]) {
+            defaultFilename = `${vfxCodes[0]}_info.pdf`;
+        } else if (vfxCodes.length > 1) {
+            defaultFilename = 'selected_shots_info.pdf';
+        }
+    }
+    
+    // Get checked VFX code IDs
+    const vfxCodeIds = Array.from(document.querySelectorAll('.vfx-code-checkbox:checked'))
+        .map(cb => cb.value);
+    
+    // Fetch PDF data from Flask
+    const response = await fetch('/export/pdf/selected', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+            shot_ids: shotIds.join(','),
+            vfx_code_ids: vfxCodeIds.join(','),
+            export_mode: exportMode
+        })
+    });
+    
+    if (!response.ok) {
+        alert('Failed to generate PDF');
+        return;
+    }
+    
+    // Handle split mode vs single mode
+    if (exportMode === 'split') {
+        // SPLIT MODE: Pick folder and save multiple PDFs
+        const folderResult = await window.electron.pickFolder();
+        
+        if (!folderResult.success) {
+            return;
+        }
+        
+        // Response contains JSON with multiple PDFs
+        const pdfData = await response.json();
+        
+        // Write each PDF to the folder
+        let successCount = 0;
+        for (const [filename, base64Data] of Object.entries(pdfData.pdfs)) {
+            const filePath = folderResult.folderPath + '/' + filename;
+            const writeResult = await window.electron.writeExportFile({
+                filePath: filePath,
+                data: base64Data
+            });
+            if (writeResult.success) successCount++;
+        }
+        
+        alert(`Exported ${successCount} of ${Object.keys(pdfData.pdfs).length} PDFs to folder`);
+    } else {
+        // SINGLE/COMBINED MODE: Save one PDF
+        const result = await window.electron.saveExportDialog({
+            type: 'pdf',
+            defaultFilename: defaultFilename
+        });
+        
+        if (!result.success) return;
+        
+        // Get PDF as blob
+        const pdfBlob = await response.blob();
+        const arrayBuffer = await pdfBlob.arrayBuffer();
+        
+        // Convert to base64 in chunks to avoid stack overflow
+        const bytes = new Uint8Array(arrayBuffer);
+        let binary = '';
+        const chunkSize = 8192;
+        for (let i = 0; i < bytes.length; i += chunkSize) {
+            const chunk = bytes.subarray(i, i + chunkSize);
+            binary += String.fromCharCode.apply(null, chunk);
+        }
+        const pdfBase64 = btoa(binary);
+        
+        // Write to chosen file
+        const writeResult = await window.electron.writeExportFile({
+            filePath: result.filePath,
+            data: pdfBase64
+        });
+        
+        if (writeResult.success) {
+            // PDF exported successfully
+        } else {
+            alert('Failed to write PDF file: ' + writeResult.error);
+        }
+    }
+}
+
+
+function deleteSelected() {
+    const shotCheckboxes = document.querySelectorAll('.shot-checkbox:checked');
+    const vfxCheckboxes = document.querySelectorAll('.vfx-code-checkbox:checked');
+    
+    
+    if (shotCheckboxes.length === 0 && vfxCheckboxes.length === 0) {
+        alert('Please select at least one shot or VFX code to delete');
+        return;
+    }
+    
+    let message = '';
+    if (vfxCheckboxes.length > 0 && shotCheckboxes.length > 0) {
+        message = `Delete ${vfxCheckboxes.length} VFX code(s) and ${shotCheckboxes.length} individual shot(s)?`;
+    } else if (vfxCheckboxes.length > 0) {
+        message = `Delete ${vfxCheckboxes.length} VFX code(s) and all their shots?`;
+    } else {
+        message = `Delete ${shotCheckboxes.length} selected shot(s)?`;
+    }
+    
+    if (!confirm(message)) {
+        return;
+    }
+    
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '/delete-selected';
+    
+    if (shotCheckboxes.length > 0) {
+        const shotIds = Array.from(shotCheckboxes).map(cb => cb.value).join(',');
+        const shotInput = document.createElement('input');
+        shotInput.type = 'hidden';
+        shotInput.name = 'shot_ids';
+        shotInput.value = shotIds;
+        form.appendChild(shotInput);
+    }
+    
+    if (vfxCheckboxes.length > 0) {
+        const vfxIds = Array.from(vfxCheckboxes).map(cb => cb.value).join(',');
+        const vfxInput = document.createElement('input');
+        vfxInput.type = 'hidden';
+        vfxInput.name = 'vfx_ids';
+        vfxInput.value = vfxIds;
+        form.appendChild(vfxInput);
+    }
+    
+    // Save scroll position before submit
+    sessionStorage.setItem('scrollPositionAfterDelete', window.scrollY);
+    
+    document.body.appendChild(form);
+    form.submit();
+}
+
+
+
+
+// Remove project logo
+function removeProjectLogo() {
+    if (!confirm('Remove logo and switch back to text?')) {
+        return;
+    }
+    
+    fetchWithTimeout('/project/{{ project.id }}/remove_logo', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'}
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            console.error('Failed to remove logo');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+    });
+}
+
+
+function updateEditedPlate(vfxId) {
+    const shotId = document.getElementById(`edit-head-${vfxId}`).dataset.shotId;
+    if (!shotId) return;
+    
+    const head = parseInt(document.getElementById(`edit-head-${vfxId}`).value) || 0;
+    const tail = parseInt(document.getElementById(`edit-tail-${vfxId}`).value) || 0;
+    const crank = parseFloat(document.getElementById(`edit-crank-${vfxId}`).value) || 100;
+    const startFrame = parseInt(document.getElementById(`edit-start-${vfxId}`).value) || 1001;
+    
+    // Save to database
+    fetchWithTimeout('/shot/' + shotId + '/update/field', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            head_handles: head,
+            tail_handles: tail,
+            crank_speed: crank,
+            start_frame: startFrame
+        })
+    });
+    
+    // Get duration from the data attribute
+    const duration = parseInt(document.getElementById(`edit-head-${vfxId}`).dataset.durationFrames) || 0;
+    
+    // Validate handles
+    validateHandles(vfxId);
+    
+    // Update banner immediately
+    updateFrameBanner(vfxId, {
+        head_handles: head,
+        tail_handles: tail,
+        crank_speed: crank,
+        duration_frames: duration,
+        start_frame: startFrame
+    });
+    
+    // Update plate area immediately
+    updatePlateDisplay(shotId, head, tail, crank, startFrame);
+    
+    // Mark section as dirty to show update button
+    markEditSectionDirty(vfxId);
+    
+    // Validate handles
+    validateHandles(vfxId);
+}
+
+
+// Restore selected plate numbers on page load
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('[id^="edit-plate-"]').forEach(input => {
+        const vfxId = input.id.replace('edit-plate-', '');
+        const savedPlate = localStorage.getItem(`selectedPlate_${vfxId}`);
+        if (savedPlate) {
+            input.value = savedPlate;
+            loadPlateToEdit(parseInt(vfxId), savedPlate);
+        }
+    });
+});
+
+
+// Validate handles against available source material
+function validateHandles(vfxId) {
+    const shotId = document.getElementById(`edit-head-${vfxId}`).dataset.shotId;
+    if (!shotId) return;
+    
+    fetchWithTimeout('/shot/' + shotId + '/validate-handles')
+        .then(r => r.json())
+        .then(data => {
+            const warningDiv = document.getElementById(`handle-warning-${vfxId}`);
+            if (!warningDiv) return;
+            
+            if (data.valid) {
+                warningDiv.style.display = 'none';
+            } else {
+                warningDiv.style.display = 'block';
+                let msg = '[!] HANDLES EXCEED SOURCE MATERIAL:<br>';
+                if (data.head_overflow > 0) {
+                    msg += `Head: ${data.head_overflow} frames over<br>`;
+                }
+                if (data.tail_overflow > 0) {
+                    msg += `Tail: ${data.tail_overflow} frames over<br>`;
+                }
+                msg += `Source range: ${data.source_start} to ${data.source_end}`;
+                warningDiv.innerHTML = msg;
+            }
+        });
+}
+
+
+// Restore scroll position after delete (for delete operation only)
+window.addEventListener('load', function() {
+    const savedScrollAfterDelete = sessionStorage.getItem('scrollPositionAfterDelete');
+    if (savedScrollAfterDelete) {
+        window.scrollTo(0, parseInt(savedScrollAfterDelete));
+        sessionStorage.removeItem('scrollPositionAfterDelete');
+    }
+});
+
+
+// Image upload handling
+function setupImageUpload(boxId, inputId, shotId, isVFX) {
+    const box = document.getElementById(boxId);
+    const input = document.getElementById(inputId);
+    
+    if (!box || !input) return;
+    
+    // Prevent default drag behaviors
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        box.addEventListener(eventName, preventDefaults, false);
+        document.body.addEventListener(eventName, preventDefaults, false);
+    });
+    
+    function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+    
+    // Highlight drop area when dragging over
+    ['dragenter', 'dragover'].forEach(eventName => {
+        box.addEventListener(eventName, () => box.classList.add('drag-over'), false);
+    });
+    
+    ['dragleave', 'drop'].forEach(eventName => {
+        box.addEventListener(eventName, () => box.classList.remove('drag-over'), false);
+    });
+    
+    // Handle dropped files
+    box.addEventListener('drop', function(e) {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+        
+        if (files.length > 0) {
+            handleImageUpload(files[0], shotId, isVFX);
+        }
+    }, false);
+    
+    // Handle click to upload
+    box.addEventListener('click', function() {
+        input.click();
+    });
+    
+    // Handle file input change
+    input.addEventListener('change', function() {
+        if (this.files.length > 0) {
+            handleImageUpload(this.files[0], shotId, isVFX);
+        }
+    });
+}
+
+function handleImageUpload(file, id, isVFX) {
+    if (!file.type.startsWith('image/')) {
+        alert('Please upload an image file');
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('image', file);
+    
+    const url = isVFX ? `/vfx/${id}/upload-reference` : `/shot/${id}/upload-reference`;
+    
+    fetchWithTimeout(url, {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Update the image without reloading the page
+            const boxId = isVFX ? `vfx-ref-box-${id}` : `plate-ref-box-${id}`;
+            const box = document.getElementById(boxId);
+            
+            if (box) {
+                // Create preview from the uploaded file
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    // Replace the box content with the new image
+                    box.innerHTML = `<img src="${e.target.result}" alt="Reference">`;
+                };
+                reader.readAsDataURL(file);
+            }
+            
+        } else {
+            alert('Upload failed: ' + (data.error || 'Unknown error'));
+        }
+    })
+    .catch(error => {
+        console.error('Upload error:', error);
+        alert('Upload failed');
+    });
+}
+
+// Lazy Loading Implementation - Distance-based with max 30 images loaded
+let loadedCount = 0;
+let totalLazyImages = 0;
+const MAX_LOADED_IMAGES = 30;
+const loadedImages = new Set();
+
+// Calculate distance from viewport
+function getDistanceFromViewport(element) {
+    const rect = element.getBoundingClientRect();
+    const viewportHeight = window.innerHeight;
+    
+    if (rect.top > viewportHeight) {
+        return rect.top - viewportHeight;
+    } else if (rect.bottom < 0) {
+        return Math.abs(rect.bottom);
+    } else {
+        return 0;
+    }
+}
+
+// Load an image
+function loadImage(img) {
+    const dataSrc = img.getAttribute('data-src');
+    if (dataSrc && !loadedImages.has(img)) {
+        img.src = dataSrc;
+        img.setAttribute('data-original-src', dataSrc); // Store for unloading
+        img.removeAttribute('data-src');
+        img.classList.remove('lazy-image');
+        img.classList.add('loaded');
+        loadedImages.add(img);
+        loadedCount++;
+    }
+}
+
+// Unload an image
+function unloadImage(img) {
+    const originalSrc = img.getAttribute('data-original-src');
+    if (originalSrc && loadedImages.has(img)) {
+        img.setAttribute('data-src', originalSrc);
+        img.src = '';
+        img.classList.add('lazy-image');
+        img.classList.remove('loaded');
+        loadedImages.delete(img);
+        loadedCount--;
+    }
+}
+
+// Manage which images should be loaded
+function manageImages() {
+    const allImages = Array.from(document.querySelectorAll('img.lazy-image, img.loaded'));
+    
+    const imagesWithDistance = allImages.map(img => ({
+        img: img,
+        distance: getDistanceFromViewport(img)
+    }));
+    
+    imagesWithDistance.sort((a, b) => a.distance - b.distance);
+    
+    const imagesToLoad = imagesWithDistance.slice(0, MAX_LOADED_IMAGES);
+    const imagesToUnload = imagesWithDistance.slice(MAX_LOADED_IMAGES);
+    
+    
+    imagesToLoad.forEach(item => loadImage(item.img));
+    imagesToUnload.forEach(item => unloadImage(item.img));
+}
+
+// Observe all lazy images
+function observeLazyImages() {
+    const allLazyImages = document.querySelectorAll('img.lazy-image');
+    totalLazyImages = allLazyImages.length;
+    
+    
+    // Initial load - only load first 10 images
+    const allImages = Array.from(document.querySelectorAll('img.lazy-image, img.loaded'));
+    const imagesWithDistance = allImages.map(img => ({
+        img: img,
+        distance: getDistanceFromViewport(img)
+    }));
+    imagesWithDistance.sort((a, b) => a.distance - b.distance);
+    
+    // Load only first 10 on initial page load
+    const initialLoadCount = Math.min(10, imagesWithDistance.length);
+    for (let i = 0; i < initialLoadCount; i++) {
+        loadImage(imagesWithDistance[i].img);
+    }
+    
+    let scrollTimeout;
+    
+    window.addEventListener('scroll', () => {
+        clearTimeout(scrollTimeout);
+        scrollTimeout = setTimeout(manageImages, 100);
+    });
+    
+    const middleColumns = document.querySelectorAll('.middle-column');
+    
+    middleColumns.forEach((container, index) => {
+        container.addEventListener('scroll', () => {
+            clearTimeout(scrollTimeout);
+            scrollTimeout = setTimeout(manageImages, 100);
+        });
+    });
+}
+
+// Initialize all image upload boxes on page load
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize lazy loading
+    observeLazyImages();
+    
+
+    // VFX reference images
+    document.querySelectorAll('[id^="vfx-ref-box-"]').forEach(box => {
+        const vfxId = box.id.replace('vfx-ref-box-', '');
+        const inputId = 'vfx-ref-' + vfxId;
+        setupImageUpload(box.id, inputId, vfxId, true);
+    });
+    
+    // Plate reference images
+    document.querySelectorAll('[id^="plate-ref-box-"]').forEach(box => {
+        const shotId = box.id.replace('plate-ref-box-', '');
+        const inputId = 'plate-ref-' + shotId;
+        setupImageUpload(box.id, inputId, shotId, false);
+    });
+});
+
+
+function updateVersion(shotId, newVersion) {
+    fetchWithTimeout("/shot/" + shotId + "/update/field", {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            version: parseInt(newVersion)
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Auto-regenerate clip_name after version change
+            autoRegenerateClipName(shotId);
+        }
+    });
+}
+
+// ========================================
+// FLEXIBLE CLIP NAMING - Editable plate_type, clip_name, auto-regen
+// ========================================
+
+function updateClipName(shotId, newClipName, inputEl) {
+    // Directly save the edited clip_name to the database
+    // Also re-parse to update plate_type, vfx_element, vfx_code
+    fetchWithTimeout("/shot/" + shotId + "/update_clip_name", {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ clip_name: newClipName.trim() })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Update the plate_type badge if it exists nearby
+            const card = inputEl.closest('.plate-card');
+            if (card && data.plate_type) {
+                const typeInput = card.querySelector('.plate-type-display');
+                if (typeInput) {
+                    typeInput.value = (data.plate_type || '') + (data.vfx_element || '');
+                    typeInput.dataset.plateType = data.plate_type || '';
+                    typeInput.dataset.vfxElement = data.vfx_element || '';
+                }
+            }
+            inputEl.style.borderColor = 'transparent';
+            inputEl.style.background = 'transparent';
+        }
+    });
+}
+
+function updatePlateType(shotId, newValue, inputEl) {
+    // Parse the combined value like "src01" into plate_type="src", vfx_element="01"
+    const match = newValue.match(/^([a-zA-Z]{2,4})(\d+)$/);
+    let plateType, vfxElement;
+    
+    if (match) {
+        plateType = match[1].toLowerCase();
+        vfxElement = match[2];
+    } else {
+        // If no number, treat entire value as plate_type with element "01"
+        plateType = newValue.replace(/[^a-zA-Z]/g, '').toLowerCase();
+        vfxElement = '01';
+        inputEl.value = plateType + vfxElement;
+    }
+    
+    // Save plate_type and vfx_element, then auto-regenerate clip_name
+    fetchWithTimeout("/shot/" + shotId + "/update/field", {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            plate_type: plateType,
+            vfx_element: vfxElement
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            inputEl.dataset.plateType = plateType;
+            inputEl.dataset.vfxElement = vfxElement;
+            inputEl.style.outline = 'none';
+            // Auto-regenerate clip_name
+            autoRegenerateClipName(shotId);
+        }
+    });
+}
+
+function autoRegenerateClipName(shotId) {
+    // Fetch current shot data, rebuild clip_name from parts, save it
+    fetchWithTimeout("/shot/" + shotId + "/data")
+    .then(response => response.json())
+    .then(data => {
+        const vfxCode = data.vfx_code || '';
+        const plateType = (data.plate_type || '').toLowerCase();
+        const vfxElement = data.vfx_element || '01';
+        const version = data.version || 1;
+        const currentClipName = data.clip_name || '';
+        
+        if (!vfxCode || !plateType) return; // Can't regenerate without parts
+        
+        // Detect version digit padding from current clip_name
+        // e.g. _v002 -> 3 digits, _v1 -> 1 digit
+        let versionPad = 1;
+        const vMatch = currentClipName.match(/_v(\d+)$/);
+        if (vMatch) {
+            versionPad = vMatch[1].length;
+        }
+        
+        // Detect vfxElement padding from current clip_name
+        // e.g. src001 -> 3 digits, bg01 -> 2 digits
+        let elementPad = vfxElement.length;
+        
+        // Build version string with correct padding
+        const versionStr = String(version).padStart(versionPad, '0');
+        
+        // Build new clip_name: WILD_038_0010_src01_v002
+        const newClipName = vfxCode + '_' + plateType + vfxElement + '_v' + versionStr;
+        
+        // Update in database
+        fetchWithTimeout("/shot/" + shotId + "/update/field", {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ clip_name: newClipName })
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                // Update the clip_name input in the UI
+                const card = document.querySelector('[data-shot-id="' + shotId + '"]');
+                if (card) {
+                    const clipInput = card.querySelector('.plate-element-name');
+                    if (clipInput) clipInput.value = newClipName;
+                }
+            }
+        });
+    });
+}
+
+function updatePlateDisplay(shotId, head, tail, crank, startFrame) {
+    // Fetch the shot data to get updated timecodes
+    fetchWithTimeout("/shot/" + shotId + "/data")
+        .then(response => response.json())
+        .then(data => {
+            const plateCard = document.querySelector('[data-shot-id="' + shotId + '"]');
+            if (!plateCard) return;
+            
+            // Calculate new values
+            const duration = data.duration_frames || 0;
+            // Use passed startFrame parameter, not database value
+            const crankMultiplier = crank / 100.0;
+            
+            // Calculate output handles (for display)
+            const outputHead = Math.round(head / crankMultiplier);
+            const outputTail = Math.round(tail / crankMultiplier);
+            const outputAction = Math.round(duration / crankMultiplier);
+            
+            // Calculate total scan (source frames)
+            const totalScan = duration + head + tail;
+            
+            // Calculate frame ranges
+            const headStart = startFrame;
+            const headEnd = headStart + outputHead - 1;
+            const shotStart = headEnd + 1;
+            const shotEnd = shotStart + outputAction - 1;
+            const tailStart = shotEnd + 1;
+            const tailEnd = tailStart + outputTail - 1;
+            
+            const rangeText = `${headStart}[${outputHead}]${headEnd} • ${shotStart}[${outputAction}]${shotEnd} • ${tailStart}[${outputTail}]${tailEnd}`;
+            
+            // Update the plate area fields
+            plateCard.querySelectorAll('.plate-info-item').forEach(item => {
+                const label = item.querySelector('.plate-info-label');
+                const value = item.querySelector('.plate-info-value');
+                
+                if (!label || !value) return;
+                
+                const labelText = label.textContent.trim();
+                
+                if (labelText === 'Total Scan') {
+                    value.textContent = totalScan;
+                } else if (labelText === 'Handles (Source)') {
+                    value.textContent = `${head}/${tail}`;
+                } else if (labelText === 'Range') {
+                    value.textContent = rangeText;
+                } else if (labelText === 'Retime Handles (Output)') {
+                    value.textContent = `${outputHead}/${outputTail}`;
+                }
+            });
+            
+            // Note: TC Scan In/Out require server-side calculation, those won't update in real-time
+        })
+        .catch(err => console.error('Failed to update plate display', err));
+}
+
+
+function markEditSectionDirty(vfxId) {
+    const editSection = document.getElementById('edit-section-' + vfxId);
+    const updateBtn = document.getElementById('update-tc-btn-' + vfxId);
+    
+    if (editSection) {
+        editSection.classList.add('edit-section-dirty');
+    }
+    if (updateBtn) {
+        updateBtn.style.display = 'block';
+    }
+}
+
+function updateTimecodes(vfxId) {
+    // Fetch updated timecode data via AJAX - no page reload needed
+    fetchWithTimeout("/vfx/" + vfxId + "/timecode_data")
+    .then(response => response.json())
+    .then(data => {
+        if (!data.success) return;
+        
+        // Update each shot's timecode display
+        data.shots.forEach(shot => {
+            const sid = shot.id;
+            
+            // Update TC Scan In/Out
+            const scanIn = document.querySelector('.tc-scan-in[data-shot-id="' + sid + '"]');
+            if (scanIn) scanIn.textContent = shot.tc_scan_in;
+            
+            const scanOut = document.querySelector('.tc-scan-out[data-shot-id="' + sid + '"]');
+            if (scanOut) scanOut.textContent = shot.tc_scan_out;
+            
+            // Update Total Scan
+            const totalScan = document.querySelector('.tc-total-scan[data-shot-id="' + sid + '"]');
+            if (totalScan) totalScan.textContent = shot.total_scan;
+            
+            // Update Range
+            const range = document.querySelector('.tc-range[data-shot-id="' + sid + '"]');
+            if (range) {
+                const fr = shot.frame_range;
+                range.textContent = fr.head_start + '[' + fr.head_frames + ']' + fr.head_end + ' \u2022 ' + fr.shot_start + '[' + fr.shot_frames + ']' + fr.shot_end + ' \u2022 ' + fr.tail_start + '[' + fr.tail_frames + ']' + fr.tail_end;
+            }
+            
+            // Update Handles (Source)
+            const handles = document.querySelector('.tc-handles[data-shot-id="' + sid + '"]');
+            if (handles) handles.textContent = shot.head_handles + '/' + shot.tail_handles;
+            
+            // Update Retime Handles (Output) - show/hide based on crank
+            const retimeContainer = document.querySelector('.retime-handles-container[data-shot-id="' + sid + '"]');
+            if (retimeContainer) {
+                if (shot.crank_speed !== 100) {
+                    retimeContainer.style.display = '';
+                    const retimeVal = retimeContainer.querySelector('.tc-retime-handles');
+                    if (retimeVal) retimeVal.textContent = shot.output_head + '/' + shot.output_tail;
+                } else {
+                    retimeContainer.style.display = 'none';
+                }
+            }
+            
+            // Update respeed banner
+            const respeedBanner = document.querySelector('.respeed-banner[data-shot-id="' + sid + '"]');
+            if (respeedBanner) {
+                const detected = parseFloat(respeedBanner.dataset.detected);
+                const innerDiv = respeedBanner.querySelector('div');
+                if (innerDiv && detected) {
+                    if (shot.crank_speed === detected) {
+                        innerDiv.style.background = '#d4edda';
+                        innerDiv.style.borderLeftColor = '#28a745';
+                        innerDiv.innerHTML = '<strong> RESPEED APPLIED:</strong> Crank speed matches detected respeed (' + shot.crank_speed.toFixed(1) + '%)';
+                    } else {
+                        innerDiv.style.background = '#fff3cd';
+                        innerDiv.style.borderLeftColor = '#f39c12';
+                        innerDiv.innerHTML = '<strong>[!] RESPEED DETECTED:</strong> This clip may need retiming. Detected speed: ' + detected.toFixed(1) + '% (currently set to ' + shot.crank_speed.toFixed(1) + '%)';
+                    }
+                }
+            }
+        });
+        
+        // Update the VFX header frame range banner using first shot
+        if (data.shots.length > 0) {
+            const shot = data.shots[0];
+            const fr = shot.frame_range;
+            
+            // Update header frame boxes
+            const headBox = document.getElementById('head-box-' + vfxId);
+            const actionBox = document.getElementById('action-box-' + vfxId);
+            const tailBox = document.getElementById('tail-box-' + vfxId);
+            const totalScanHeader = document.getElementById('total-scan-' + vfxId);
+            
+            if (headBox) {
+                headBox.textContent = fr.head_frames;
+                headBox.parentElement.childNodes[0].textContent = fr.head_start + ' ';
+                headBox.parentElement.childNodes[2].textContent = ' ' + fr.head_end;
+            }
+            if (actionBox) {
+                actionBox.textContent = fr.shot_frames;
+                actionBox.parentElement.childNodes[0].textContent = fr.shot_start + ' ';
+                actionBox.parentElement.childNodes[2].textContent = ' ' + fr.shot_end;
+            }
+            if (tailBox) {
+                tailBox.textContent = fr.tail_frames;
+                tailBox.parentElement.childNodes[0].textContent = fr.tail_start + ' ';
+                tailBox.parentElement.childNodes[2].textContent = ' ' + fr.tail_end;
+            }
+            if (totalScanHeader) {
+                totalScanHeader.textContent = 'TOTAL SCAN: ' + shot.total_scan + ' frames';
+            }
+        }
+        
+        // Remove the yellow "dirty" indicator from edit section
+        const editSection = document.getElementById('edit-section-' + vfxId);
+        if (editSection) editSection.classList.remove('edit-section-dirty');
+        
+        // Flash the button green briefly to confirm
+        const btn = document.querySelector('[onclick="updateTimecodes(' + vfxId + ')"]');
+        if (btn) {
+            btn.style.background = '#28a745';
+            btn.textContent = 'Updated!';
+            setTimeout(() => {
+                btn.style.background = '#10b981';
+                btn.textContent = 'Update Timecodes';
+                btn.style.display = 'none';
+            }, 1500);
+        }
+    })
+    .catch(err => {
+        console.error('Failed to update timecodes:', err);
+        // Fallback to reload if AJAX fails
+        location.reload();
+    });
+}
+
+
+function switchProject(projectId) {
+    window.location.href = `/project/switch/${projectId}`;
+}
+
+function showNewProjectDialog() {
+    const name = prompt('Enter new project name:');
+    if (name && name.trim()) {
+        const fps = prompt('Enter frame rate (FPS):', '24');
+        if (fps && !isNaN(fps) && parseFloat(fps) > 0) {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '/project/create';
+            
+            const nameInput = document.createElement('input');
+            nameInput.type = 'hidden';
+            nameInput.name = 'name';
+            nameInput.value = name.trim();
+            
+            const fpsInput = document.createElement('input');
+            fpsInput.type = 'hidden';
+            fpsInput.name = 'fps';
+            fpsInput.value = parseFloat(fps);
+            
+            form.appendChild(nameInput);
+            form.appendChild(fpsInput);
+            document.body.appendChild(form);
+            form.submit();
+        } else {
+            alert('Please enter a valid frame rate');
+        }
+    }
+
+function editProjectFPS() {
+    const currentFPS = document.getElementById('project-fps-display').textContent;
+    const newFPS = prompt('Enter new frame rate (FPS):', currentFPS);
+    
+    if (newFPS && newFPS.trim() && !isNaN(newFPS)) {
+        const fps = parseFloat(newFPS);
+        
+        if (fps <= 0 || fps > 120) {
+            alert('FPS must be between 0 and 120');
+            return;
+        }
+        
+        fetchWithTimeout('/project/{{ project.id }}/update_fps', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ fps: fps })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('project-fps-display').textContent = data.fps;
+            } else {
+                alert('Error updating FPS: ' + (data.error || 'Unknown error'));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Failed to update FPS');
+        });
+    }
+}
+
+function showRenameProjectDialog() {
+    const currentName = '{{ project.name }}';
+    const newName = prompt('Rename project "' + currentName + '" to:', currentName);
+    if (newName && newName.trim() && newName.trim() !== currentName) {
+        fetchWithTimeout('/project/{{ project.id }}/update', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({name: newName.trim()})
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Failed to rename project');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error renaming project');
+        });
+    }
+}
+
+
+
+function clearFilter() {
+    const vfxContainers = document.querySelectorAll(".vfx-code-container");
+    vfxContainers.forEach(container => {
+        container.style.display = "block";
+    });
+    
+    const filterMessage = document.getElementById("filter-message");
+    if (filterMessage) filterMessage.remove();
+}
+}
+
+function showRenameProjectDialog() {
+    const currentName = "{{ project.name }}";
+    const newName = prompt("Rename project \"" + currentName + "\" to:", currentName);
+    if (newName && newName.trim() && newName.trim() !== currentName) {
+        fetchWithTimeout("/project/{{ project.id }}/update", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({name: newName.trim()})
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert("Failed to rename project");
+            }
+        })
+        .catch(error => {
+            console.error("Error:", error);
+            alert("Error renaming project");
+        });
+    }
+}
+
+
+// Restore plate selection after reload (no scrolling)
+window.addEventListener('load', function() {
+});
+
+
+// Add change event to all checkboxes to update count
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.shot-select').forEach(cb => {
+        cb.addEventListener('change', updateSelectionCount);
+    });
+    updateSelectionCount(); // Initial update
+});
+
+
+// Restore plate after Update Timecodes
+window.addEventListener('load', function() {
+    const restorePlateNumber = sessionStorage.getItem('restorePlateNumber');
+    const restoreVfxId = sessionStorage.getItem('restoreVfxId');
+    
+    
+    if (restorePlateNumber && restoreVfxId) {
+        setTimeout(() => {
+            loadPlateToEdit(parseInt(restoreVfxId), parseInt(restorePlateNumber));
+            
+            // Also restore the middle column scroll position
+            const savedScroll = localStorage.getItem('middleColumnScroll');
+            if (savedScroll) {
+                const middleColumn = document.querySelector('.middle-column');
+                if (middleColumn) {
+                    middleColumn.scrollTop = parseFloat(savedScroll);
+                }
+                localStorage.removeItem('middleColumnScroll');
+            }
+            
+            sessionStorage.removeItem('restorePlateNumber');
+            sessionStorage.removeItem('restoreVfxId');
+        }, 100);
+    } else {
+        // Even without plate editing, restore scroll from plate image uploads
+        const savedScroll = localStorage.getItem('middleColumnScroll');
+        const savedShotId = localStorage.getItem('middleColumnShotId');
+        if (savedScroll && savedShotId) {
+            setTimeout(() => {
+                // Find the specific middle-column containing the shot that was uploaded
+                const plateCard = document.querySelector(`[data-shot-id="${savedShotId}"]`);
+                if (plateCard) {
+                    const middleColumn = plateCard.closest('.middle-column');
+                    if (middleColumn) {
+                        middleColumn.scrollTop = parseFloat(savedScroll);
+                    }
+                }
+                localStorage.removeItem('middleColumnScroll');
+                localStorage.removeItem('middleColumnShotId');
+            }, 100);
+        }
+    }
+});
+
+
+
+// Toggle logo visibility
+function toggleLogoVisibility() {
+    const logo = document.getElementById('project-logo-display');
+    const btn = document.getElementById('toggle-logo-btn');
+    
+    if (logo.style.display === 'none') {
+        logo.style.display = 'block';
+        btn.textContent = 'Hide Logo';
+    } else {
+        logo.style.display = 'none';
+        btn.textContent = 'Show Logo';
+    }
+    
+    // Save preference to localStorage
+    localStorage.setItem('logoVisible', logo.style.display !== 'none');
+}
+
+// Remove project logo
+function removeProjectLogo() {
+    if (!confirm('Are you sure you want to remove the project logo?')) {
+        return;
+    }
+    
+    fetchWithTimeout('/project/{{ project.id }}/remove_logo', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'}
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Failed to remove logo');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error removing logo');
+    });
+}
+
+
+// Restore title visibility preference on load
+window.addEventListener('load', function() {
+    const titleVisible = localStorage.getItem('titleVisible');
+    if (titleVisible === 'false') {
+        const titleContainer = document.getElementById('project-title-container');
+        if (titleContainer) {
+            titleContainer.style.display = 'none';
+        }
+    }
+});
+// Restore logo visibility preference on load
+window.addEventListener('load', function() {
+    const logoVisible = localStorage.getItem('logoVisible');
+    if (logoVisible === 'false') {
+        const logo = document.getElementById('project-logo-display');
+        if (logo) {
+            logo.style.display = 'none';
+        }
+    }
+});
+
+// ========================================
+// INTERNAL NOTES FUNCTIONALITY
+
+// Toggle logo visibility
+function toggleLogoVisibility() {
+    const logo = document.getElementById('project-logo-display');
+    const btn = document.getElementById('toggle-logo-btn');
+    
+    if (logo.style.display === 'none') {
+        logo.style.display = 'block';
+        btn.textContent = 'Hide Logo';
+    } else {
+        logo.style.display = 'none';
+        btn.textContent = 'Show Logo';
+    }
+    
+    // Save preference to localStorage
+    localStorage.setItem('logoVisible', logo.style.display !== 'none');
+}
+
+// Remove project logo
+function removeProjectLogo() {
+    if (!confirm('Are you sure you want to remove the project logo?')) {
+        return;
+    }
+    
+    fetchWithTimeout('/project/{{ project.id }}/remove_logo', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'}
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Failed to remove logo');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error removing logo');
+    });
+}
+
+
+// Restore title visibility preference on load
+window.addEventListener('load', function() {
+    const titleVisible = localStorage.getItem('titleVisible');
+    if (titleVisible === 'false') {
+        const titleContainer = document.getElementById('project-title-container');
+        if (titleContainer) {
+            titleContainer.style.display = 'none';
+        }
+    }
+});
+// Restore logo visibility preference on load
+window.addEventListener('load', function() {
+    const logoVisible = localStorage.getItem('logoVisible');
+    if (logoVisible === 'false') {
+        const logo = document.getElementById('project-logo-display');
+        if (logo) {
+            logo.style.display = 'none';
+        }
+    }
+});
+
+// ========================================
+
+function toggleNotesPanel(vfxId) {
+    const panel = document.getElementById(`notes-panel-${vfxId}`);
+    const isCurrentlyOpen = panel.classList.contains('open');
+    
+    // Close all other open panels first
+    document.querySelectorAll('.notes-panel.open').forEach(openPanel => {
+        if (openPanel.id !== `notes-panel-${vfxId}`) {
+            openPanel.classList.remove('open');
+        }
+    });
+    
+    // Toggle the clicked panel
+    if (isCurrentlyOpen) {
+        panel.classList.remove('open');
+    } else {
+        panel.classList.add('open');
+    }
+}
+
+// Debounced auto-save for notes
+let notesDebounceTimers = {};
+
+function debouncedSaveNotes(vfxId) {
+    // Clear existing timer
+    if (notesDebounceTimers[vfxId]) {
+        clearTimeout(notesDebounceTimers[vfxId]);
+    }
+    
+    // Set new timer (save after 1 second of no typing)
+    notesDebounceTimers[vfxId] = setTimeout(() => {
+        saveInternalNotes(vfxId);
+    }, 1000);
+}
+
+function saveInternalNotes(vfxId) {
+    const textarea = document.getElementById(`internal-notes-${vfxId}`);
+    const notes = textarea.value;
+    
+    fetchWithTimeout('/vfx/' + vfxId + '/update/field', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({internal_notes: notes})
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+        }
+    })
+    .catch(err => console.error('Failed to save internal notes:', err));
+}
+
+
+// Toggle logo visibility
+function toggleLogoVisibility() {
+    const logo = document.getElementById('project-logo-display');
+    const btn = document.getElementById('toggle-logo-btn');
+    
+    if (logo.style.display === 'none') {
+        logo.style.display = 'block';
+        btn.textContent = 'Hide Logo';
+    } else {
+        logo.style.display = 'none';
+        btn.textContent = 'Show Logo';
+    }
+    
+    // Save preference to localStorage
+    localStorage.setItem('logoVisible', logo.style.display !== 'none');
+}
+
+// Remove project logo
+function removeProjectLogo() {
+    if (!confirm('Are you sure you want to remove the project logo?')) {
+        return;
+    }
+    
+    fetchWithTimeout('/project/{{ project.id }}/remove_logo', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'}
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Failed to remove logo');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error removing logo');
+    });
+}
+
+
+// Restore title visibility preference on load
+window.addEventListener('load', function() {
+    const titleVisible = localStorage.getItem('titleVisible');
+    if (titleVisible === 'false') {
+        const titleContainer = document.getElementById('project-title-container');
+        if (titleContainer) {
+            titleContainer.style.display = 'none';
+        }
+    }
+});
+// Restore logo visibility preference on load
+window.addEventListener('load', function() {
+    const logoVisible = localStorage.getItem('logoVisible');
+    if (logoVisible === 'false') {
+        const logo = document.getElementById('project-logo-display');
+        if (logo) {
+            logo.style.display = 'none';
+        }
+    }
+});
+
+// ========================================
+// BATCH CHANGES FUNCTIONALITY
+
+// Toggle logo visibility
+function toggleLogoVisibility() {
+    const logo = document.getElementById('project-logo-display');
+    const btn = document.getElementById('toggle-logo-btn');
+    
+    if (logo.style.display === 'none') {
+        logo.style.display = 'block';
+        btn.textContent = 'Hide Logo';
+    } else {
+        logo.style.display = 'none';
+        btn.textContent = 'Show Logo';
+    }
+    
+    // Save preference to localStorage
+    localStorage.setItem('logoVisible', logo.style.display !== 'none');
+}
+
+// Remove project logo
+function removeProjectLogo() {
+    if (!confirm('Are you sure you want to remove the project logo?')) {
+        return;
+    }
+    
+    fetchWithTimeout('/project/{{ project.id }}/remove_logo', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'}
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Failed to remove logo');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error removing logo');
+    });
+}
+
+
+// Restore title visibility preference on load
+window.addEventListener('load', function() {
+    const titleVisible = localStorage.getItem('titleVisible');
+    if (titleVisible === 'false') {
+        const titleContainer = document.getElementById('project-title-container');
+        if (titleContainer) {
+            titleContainer.style.display = 'none';
+        }
+    }
+});
+// Restore logo visibility preference on load
+window.addEventListener('load', function() {
+    const logoVisible = localStorage.getItem('logoVisible');
+    if (logoVisible === 'false') {
+        const logo = document.getElementById('project-logo-display');
+        if (logo) {
+            logo.style.display = 'none';
+        }
+    }
+});
+
+// ========================================
+
+let selectedVFXCodes = new Set();
+
+function handleBatchSelection(vfxId, isChecked) {
+    if (isChecked) {
+        selectedVFXCodes.add(vfxId);
+    } else {
+        selectedVFXCodes.delete(vfxId);
+    }
+    
+    
+    // Update visual indicators
+    updateBatchVisuals();
+    
+    // Also handle the shot checkboxes (existing functionality)
+    if (typeof toggleVFXCodeShots === 'function') {
+        toggleVFXCodeShots(vfxId, isChecked);
+    }
+}
+
+function updateBatchVisuals() {
+    // Remove batch-linked class from all fields first
+    document.querySelectorAll('.batch-linkable').forEach(field => {
+        field.classList.remove('batch-linked');
+    });
+    
+    // If 2+ VFX codes selected, highlight batch-linkable fields
+    if (selectedVFXCodes.size >= 2) {
+        selectedVFXCodes.forEach(vfxId => {
+            document.querySelectorAll(`[data-vfx-id="${vfxId}"].batch-linkable`).forEach(field => {
+                field.classList.add('batch-linked');
+            });
+        });
+    }
+}
+
+function handleBatchInput(fieldName, value) {
+    
+    // Only apply batch changes if 2+ codes are selected
+    if (selectedVFXCodes.size < 2) {
+        return;
+    }
+    
+    // Get the element that triggered this (from event)
+    const sourceElement = event ? event.target : null;
+    const sourceVfxId = sourceElement ? sourceElement.dataset.vfxId : null;
+    
+    
+    // Update all selected VFX codes with this value
+    selectedVFXCodes.forEach(vfxId => {
+        // Skip the source element (already has the value)
+        if (vfxId == sourceVfxId) {
+            return;
+        }
+        
+        // Find the correct field class name
+        const fieldClass = `batch-${fieldName.replace(/_/g, '-')}`;
+        
+        // Update the field in the UI
+        const targetField = document.querySelector(`[data-vfx-id="${vfxId}"].${fieldClass}`);
+        
+        if (targetField) {
+            targetField.value = value;
+            // Trigger the update
+            updateVFXField(vfxId, fieldName, value);
+        } else {
+        }
+    });
+}
+
+
+
+function scrollToTop() {
+    window.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+    });
+}
+
+</script>
+
+<script>
+// ============================================================================
+// VFX CODE VIRTUAL SCROLLING - Renders 350+ VFX codes efficiently
+// ============================================================================
+(function() {
+    'use strict';
+    
+    const BUFFER_SIZE = 5; // Number of VFX codes to render above/below viewport
+    const INITIAL_RENDER = 10; // Number of VFX codes to show initially
+    
+    let vfxCodeElements = [];
+    let placeholders = [];
+    let visibleIndices = new Set();
+    let observer = null;
+    const MAX_VISIBLE_VFX_CODES = 20; // Hard limit on DOM elements
+    let visibleQueue = []; // Track order of visible VFX codes
+
+    
+    function initVFXVirtualScrolling() {
+        
+        const pool = document.getElementById('vfx-pool');
+        const viewport = document.getElementById('vfx-viewport');
+        
+        if (!pool || !viewport) {
+            console.error('[VFX Virtual Scroll] Pool or viewport not found');
+            return;
+        }
+        
+        // Get all VFX code containers from the pool
+        vfxCodeElements = Array.from(pool.querySelectorAll('.vfx-code-container'));
+        window.vfxCodeElements = vfxCodeElements; // Keep window reference updated
+        
+        
+        if (vfxCodeElements.length === 0) {
+            console.warn('[VFX Virtual Scroll] No VFX codes found');
+            return;
+        }
+        
+        // Create placeholders for each VFX code
+        vfxCodeElements.forEach((vfxCode, index) => {
+            const placeholder = document.createElement('div');
+            placeholder.className = 'vfx-code-placeholder';
+            placeholder.dataset.vfxIndex = index;
+            placeholder.style.minHeight = '800px'; // Approximate VFX code height
+            placeholder.style.margin = '0 0 3rem 0';
+            
+            viewport.appendChild(placeholder);
+            placeholders.push(placeholder);
+        });
+        
+        // Set up Intersection Observer
+        setupObserver();
+        
+    }
+    
+    function setupObserver() {
+        const options = {
+            root: null,
+            rootMargin: '300px', // Load VFX codes 1000px before entering viewport
+            threshold: 0
+        };
+        
+        observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const element = entry.target;
+                    const vfxIndex = parseInt(element.dataset.vfxIndex);
+                    
+                    // Skip if vfxIndex is invalid
+                    if (isNaN(vfxIndex) || vfxIndex < 0) {
+                        return;
+                    }
+                    
+                    showVFXCode(vfxIndex, element);
+                } else {
+                    const element = entry.target;
+                    
+                    // Get vfxIndex from either placeholder or VFX code element
+                    let vfxIndex;
+                    if (element.classList.contains('vfx-code-placeholder')) {
+                        vfxIndex = parseInt(element.dataset.vfxIndex);
+                    } else if (element.classList.contains('vfx-code-container')) {
+                        // Find the index by matching the element
+                        vfxIndex = vfxCodeElements.indexOf(element);
+                    }
+                    
+                    // Hiding is now handled ONLY by the hard limit (MAX_VISIBLE_VFX_CODES)
+                    // This prevents thrashing from intersection observer
+                }
+            });
+        }, options);
+        
+        // Observe all placeholders
+        placeholders.forEach(placeholder => {
+            observer.observe(placeholder);
+        });
+    }
+    
+    function showVFXCode(vfxIndex, placeholder) {
+        if (visibleIndices.has(vfxIndex)) {
+            return; // Already visible
+        }
+        
+        
+
+        
+        // HARD LIMIT: If we have too many visible, hide the one farthest from current
+        if (visibleQueue.length >= MAX_VISIBLE_VFX_CODES) {
+            // Find the item in the queue that's farthest from the new vfxIndex
+            let maxDistance = -1;
+            let indexToRemove = -1;
+            let queuePosition = -1;
+            
+            visibleQueue.forEach((idx, pos) => {
+                const distance = Math.abs(vfxIndex - idx);
+                if (distance > maxDistance) {
+                    maxDistance = distance;
+                    indexToRemove = idx;
+                    queuePosition = pos;
+                }
+            });
+            
+            if (indexToRemove >= 0 && indexToRemove !== vfxIndex) {
+                // Remove from queue
+                visibleQueue.splice(queuePosition, 1);
+                
+                
+                const placeholderToHide = placeholders[indexToRemove];
+                hideVFXCode(indexToRemove, placeholderToHide);
+            }
+        }
+        
+        const vfxCode = vfxCodeElements[vfxIndex];
+        if (!vfxCode) return;
+        
+        // Stop observing the placeholder
+        if (observer) {
+            observer.unobserve(placeholder);
+        }
+        
+        // Replace placeholder with actual VFX code
+        placeholder.replaceWith(vfxCode);
+        visibleIndices.add(vfxIndex);
+        visibleQueue.push(vfxIndex); // Track this as newest visible
+        
+        // NOW OBSERVE THE VFX CODE ITSELF to trigger hiding when it leaves viewport
+        if (observer) {
+            observer.observe(vfxCode);
+        }
+        
+        // Load lazy images in this VFX code
+        const lazyImages = vfxCode.querySelectorAll('.lazy-image[data-src]');
+        lazyImages.forEach(img => {
+            if (!img.src || img.src === window.location.href) {
+                img.src = img.dataset.src;
+                img.classList.add('loaded');
+            }
+        });
+        
+    }
+    
+    function hideVFXCode(vfxIndex, currentElement) {
+        if (!visibleIndices.has(vfxIndex)) {
+            return; // Already hidden
+        }
+        
+        const vfxCode = vfxCodeElements[vfxIndex];
+        const placeholder = placeholders[vfxIndex];
+        
+        if (!vfxCode || !placeholder) return;
+        
+        // Stop observing the VFX code
+        if (observer) {
+            observer.unobserve(vfxCode);
+        }
+        
+        // Replace VFX code with placeholder
+        vfxCode.replaceWith(placeholder);
+        visibleIndices.delete(vfxIndex);
+        
+        // Remove from visible queue
+        const queueIndex = visibleQueue.indexOf(vfxIndex);
+        if (queueIndex > -1) {
+            visibleQueue.splice(queueIndex, 1);
+        }
+        
+        // Move VFX code back to pool
+        const pool = document.getElementById('vfx-pool');
+        if (pool) {
+            pool.appendChild(vfxCode);
+        }
+        
+        // RE-OBSERVE the placeholder so it can be shown again when scrolled back
+        if (observer) {
+            observer.observe(placeholder);
+        }
+        
+
+        console.warn(`[VFX Virtual Scroll] [!] HIDING VFX code ${vfxIndex}`);
+    }
+    
+    // Initialize when DOM is ready
+    if (document.readyState ===
+    
+    // Reinitialize virtual scrolling after filter/sort
+    
+ 'loading') {
+        document.addEventListener('DOMContentLoaded', initVFXVirtualScrolling);
+    } else {
+        initVFXVirtualScrolling();
+    }
+    
+})();
+</script>
+
+
+{% endblock %}
