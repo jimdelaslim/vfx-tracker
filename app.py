@@ -194,6 +194,27 @@ def update_shot_from_edl(shot, edl_data):
     return shot
 
 
+def auto_number_plates(project_id):
+    """Auto-assign plate numbers within each VFX code based on alphabetical order of plate_type + element"""
+    from models import VFXCode, Shot
+    
+    vfx_codes = VFXCode.query.filter_by(project_id=project_id).all()
+    
+    for vfx_code in vfx_codes:
+        # Sort shots by plate_type then vfx_element alphabetically
+        sorted_shots = sorted(vfx_code.shots, key=lambda s: (
+            (s.plate_type or '').lower(),
+            (s.vfx_element or '00')
+        ))
+        
+        # Assign sequential numbers
+        for idx, shot in enumerate(sorted_shots, 1):
+            if shot.plate_number != idx:
+                shot.plate_number = idx
+    
+    db.session.commit()
+
+
 @app.route('/index_old')
 def index_old():
     """Main dashboard"""
@@ -2481,6 +2502,8 @@ def import_confirmation():
                     shot.camera_clipname = metadata.camera_clipname
         
         db.session.commit()
+        # Auto-number plates within each VFX code
+        auto_number_plates(project.id)
         # Clean up pending import temp file
         pending_file = session.pop('pending_import_file', None)
         if pending_file and os.path.exists(pending_file):
@@ -2719,6 +2742,8 @@ def import_confirmation():
                     shot.camera_clipname = metadata.camera_clipname
         
         db.session.commit()
+        # Auto-number plates within each VFX code
+        auto_number_plates(project.id)
         # Clean up pending import temp file
         pending_file = session.pop('pending_import_file', None)
         if pending_file and os.path.exists(pending_file):
