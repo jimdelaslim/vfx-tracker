@@ -1,6 +1,50 @@
 {% extends "base.html" %}
 
+
+
 {% block content %}
+
+<script>
+// ========================================
+// PERSISTENT SEARCH/SORT/FILTER
+// ========================================
+(function() {
+    const STORAGE_KEY = 'vfx_tracker_filters';
+    
+    const params = new URLSearchParams(window.location.search);
+    const hasParams = params.has('search') || params.has('sort') || params.has('status');
+    
+    if (hasParams) {
+        // User navigated with params - save them
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({
+            search: params.get('search') || '',
+            sort: params.get('sort') || 'vfx_code',
+            status: params.get('status') || ''
+        }));
+    } else {
+        // No params - check if we have saved filters to restore
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+            try {
+                const filters = JSON.parse(saved);
+                if (filters.search || filters.status || (filters.sort && filters.sort !== 'vfx_code')) {
+                    const restoreParams = new URLSearchParams();
+                    if (filters.search) restoreParams.set('search', filters.search);
+                    if (filters.sort && filters.sort !== 'vfx_code') restoreParams.set('sort', filters.sort);
+                    if (filters.status) restoreParams.set('status', filters.status);
+                    window.location.replace('/?' + restoreParams.toString());
+                }
+            } catch(e) {}
+        }
+    }
+})();
+
+function clearAllFilters() {
+    localStorage.removeItem('vfx_tracker_filters');
+    window.location.href = '/';
+}
+</script>
+
 <style>
 /* VFX Code Container Styles */
 
@@ -863,7 +907,7 @@
         {% if search_term %} | {% endif %}
         Status: <strong>{{ status_filter }}</strong>
     {% endif %}
-    <button onclick="window.location.href='/'" style="margin-left: 10px; padding: 4px 8px; background: #2196f3; color: white; border: none; border-radius: 4px; cursor: pointer;">Clear Filters</button>
+    <button onclick="clearAllFilters()" style="margin-left: 10px; padding: 4px 8px; background: #2196f3; color: white; border: none; border-radius: 4px; cursor: pointer;">Clear Filters</button>
 </div>
 {% endif %}
 
@@ -1385,6 +1429,7 @@ function filterByStatus(status) {
 }
 
 function clearFilter() {
+    localStorage.removeItem('vfx_tracker_filters');
     // Get current URL parameters
     const params = new URLSearchParams(window.location.search);
     
@@ -1833,7 +1878,6 @@ function exportSelectedPDFs() {
 // Search functionality
 function filterShots() {
     const searchTerm = document.getElementById('search-input').value.trim();
-    
     // Get current URL parameters
     const params = new URLSearchParams(window.location.search);
     
@@ -3385,6 +3429,7 @@ function showRenameProjectDialog() {
 
 
 function clearFilter() {
+    localStorage.removeItem('vfx_tracker_filters');
     const vfxContainers = document.querySelectorAll(".vfx-code-container");
     vfxContainers.forEach(container => {
         container.style.display = "block";
