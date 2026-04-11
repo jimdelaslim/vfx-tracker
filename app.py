@@ -10,7 +10,7 @@ import json
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'your-secret-key-change-this'
+app.config['SECRET_KEY'] = '7a592f1f94e4567e3b29b1d18eabafae05fa21186d4a6197c6d7c351c3406b15'
 # Database configuration - can be changed via set_database_path()
 # Get database path from environment variable or use writable location
 if os.environ.get('VFX_DB_PATH'):
