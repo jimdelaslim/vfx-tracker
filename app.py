@@ -17,13 +17,22 @@ if os.environ.get('VFX_DB_PATH'):
     DATABASE_PATH = os.environ.get('VFX_DB_PATH')
 else:
     basedir = os.path.abspath(os.path.dirname(__file__))
-    # Check if running inside .app bundle
-    if '/Contents/Resources' in basedir:
-        # Running as packaged app - use Application Support
-        app_support = os.path.expanduser('~/Library/Application Support/VFX Shot Tracker')
-        os.makedirs(app_support, exist_ok=True)
-        DATABASE_PATH = os.path.join(app_support, 'vfx_tracker.db')
-        print(f"Using Application Support: {DATABASE_PATH}")
+    
+    # Detect if running as packaged app (PyInstaller frozen or Mac .app bundle)
+    is_packaged = getattr(sys, 'frozen', False) or '/Contents/Resources' in basedir
+    
+    if is_packaged:
+        # Running as packaged app - use platform-appropriate app data folder
+        if sys.platform == 'win32':
+            app_data = os.path.join(os.environ.get('LOCALAPPDATA', os.path.expanduser('~')), 'VFX Shot Tracker')
+        elif sys.platform == 'darwin':
+            app_data = os.path.expanduser('~/Library/Application Support/VFX Shot Tracker')
+        else:
+            app_data = os.path.expanduser('~/.local/share/VFX Shot Tracker')
+        
+        os.makedirs(app_data, exist_ok=True)
+        DATABASE_PATH = os.path.join(app_data, 'vfx_tracker.db')
+        print(f"Using app data folder: {DATABASE_PATH}")
     else:
         # Running in development
         DATABASE_PATH = 'instance/vfx_tracker.db'
