@@ -3894,5 +3894,89 @@ import threading
 threading.Thread(target=_warmup_playwright, daemon=True).start()
 
 
+
+
+@app.route('/metadata/library')
+def metadata_library():
+    """View all camera metadata in the library (including orphaned)"""
+    from models import CameraMetadata, Shot
+    
+    project = get_active_project()
+    all_metadata = CameraMetadata.query.order_by(CameraMetadata.cam_roll).all()
+    
+    # Check which are linked to shots
+    metadata_info = []
+    for m in all_metadata:
+        # Check if any shot references this cam_roll
+        linked_shots = Shot.query.filter(
+            Shot.project_id == project.id,
+            Shot.cam_roll.like(f'%{m.cam_roll}%')
+        ).all()
+        
+        # Also check reverse - metadata cam_roll matches shot cam_roll prefix
+        if not linked_shots:
+            all_shots = Shot.query.filter_by(project_id=project.id).all()
+            for s in all_shots:
+                if s.cam_roll and (s.cam_roll.startswith(m.cam_roll) or m.cam_roll.startswith(s.cam_roll)):
+                    linked_shots.append(s)
+        
+        metadata_info.append({
+            'metadata': m,
+            'linked_count': len(linked_shots),
+            'linked_clips': [s.clip_name for s in linked_shots[:3]]
+        })
+    
+    return render_template('metadata_library.html', 
+                         metadata_info=metadata_info,
+                         project=project)
+
+
+@app.route('/metadata/library/delete', methods=['POST'])
+def delete_metadata_library_items():
+    """Delete selected metadata entries from the library"""
+    from models import CameraMetadata
+    
+    metadata_ids = request.form.get('metadata_ids', '')
+    if not metadata_ids:
+        flash('No metadata selected', 'error')
+        return redirect(url_for('metadata_library'))
+    
+    id_list = [int(id.strip()) for id in metadata_ids.split(',') if id.strip()]
+    
+    count = CameraMetadata.query.filter(CameraMetadata.id.in_(id_list)).delete(synchronize_session=False)
+    db.session.commit()
+    
+    flash(f'Deleted {count} metadata entries', 'success')
+    return redirect(url_for('metadata_library'))
+
+
+@app.route('/metadata/library/clear_orphaned', methods=['POST'])
+def clear_orphaned_metadata():
+    """Delete all metadata entries that aren't linked to any shots"""
+    from models import CameraMetadata, Shot
+    
+    project = get_active_project()
+    all_metadata = CameraMetadata.query.all()
+    all_shots = Shot.query.filter_by(project_id=project.id).all()
+    shot_cam_rolls = [s.cam_roll for s in all_shots if s.cam_roll]
+    
+    deleted = 0
+    for m in all_metadata:
+        # Check if linked (either direction)
+        is_linked = False
+        for shot_roll in shot_cam_rolls:
+            if shot_roll == m.cam_roll or shot_roll.startswith(m.cam_roll) or m.cam_roll.startswith(shot_roll):
+                is_linked = True
+                break
+        
+        if not is_linked:
+            db.session.delete(m)
+            deleted += 1
+    
+    db.session.commit()
+    flash(f'Cleared {deleted} orphaned metadata entries', 'success')
+    return redirect(url_for('metadata_library'))
+
+
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5001, use_reloader=False)

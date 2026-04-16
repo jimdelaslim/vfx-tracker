@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div style="max-width: 1400px; margin: 2rem auto; padding: 0 2rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+        <h1>Metadata Library</h1>
+        <div style="display: flex; gap: 0.5rem;">
+            <button type="button" onclick="deleteSelected()" class="btn btn-secondary" style="background: #dc3545;">Delete Selected</button>
+            <form method="POST" action="/metadata/library/clear_orphaned" style="display: inline;" 
+                  onsubmit="return confirm('Delete all metadata not linked to any shot?');">
+                <button type="submit" class="btn" style="background: #f39c12;">Clear All Orphaned</button>
+            </form>
+        </div>
+    </div>
+    
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}
+            <div style="padding: 1rem; margin-bottom: 1rem; border-radius: 6px; 
+                        background: {% if category == 'success' %}#d4edda{% else %}#f8d7da{% endif %};">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endwith %}
+    
+    <div style="background: #e3f2fd; padding: 1rem; border-radius: 6px; margin-bottom: 1rem; font-size: 0.9rem;">
+        <strong>Total:</strong> {{ metadata_info|length }} metadata entries
+        • <strong>Linked:</strong> {{ metadata_info|selectattr('linked_count', '>', 0)|list|length }}
+        • <strong>Orphaned:</strong> {{ metadata_info|selectattr('linked_count', 'equalto', 0)|list|length }}
+    </div>
+    
+    <div style="background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); overflow: hidden;">
+        <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="background: #343a40; color: white;">
+                    <th style="padding: 0.75rem; text-align: left; width: 40px;">
+                        <input type="checkbox" id="select-all" onchange="toggleAll(this)">
+                    </th>
+                    <th style="padding: 0.75rem; text-align: left;">Cam Roll</th>
+                    <th style="padding: 0.75rem; text-align: left;">Camera</th>
+                    <th style="padding: 0.75rem; text-align: left;">Lens</th>
+                    <th style="padding: 0.75rem; text-align: left;">Status</th>
+                    <th style="padding: 0.75rem; text-align: left;">Linked Clips</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for info in metadata_info %}
+                <tr style="border-bottom: 1px solid #dee2e6; background: {% if info.linked_count == 0 %}#fff3cd{% endif %};">
+                    <td style="padding: 0.75rem;">
+                        <input type="checkbox" class="metadata-check" value="{{ info.metadata.id }}">
+                    </td>
+                    <td style="padding: 0.75rem; font-family: monospace; font-weight: 600;">{{ info.metadata.cam_roll }}</td>
+                    <td style="padding: 0.75rem;">{{ info.metadata.camera or '-' }}</td>
+                    <td style="padding: 0.75rem;">{{ info.metadata.lens or '-' }}</td>
+                    <td style="padding: 0.75rem;">
+                        {% if info.linked_count > 0 %}
+                            <span style="background: #28a745; color: white; padding: 3px 8px; border-radius: 12px; font-size: 0.85rem;">
+                                Linked ({{ info.linked_count }})
+                            </span>
+                        {% else %}
+                            <span style="background: #ffc107; color: #333; padding: 3px 8px; border-radius: 12px; font-size: 0.85rem;">
+                                Orphaned
+                            </span>
+                        {% endif %}
+                    </td>
+                    <td style="padding: 0.75rem; font-size: 0.85rem; color: #6c757d;">
+                        {{ info.linked_clips|join(', ') }}{% if info.linked_count > 3 %}...{% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<form id="delete-form" method="POST" action="/metadata/library/delete" style="display:none;">
+    <input type="hidden" name="metadata_ids" id="metadata-ids-input">
+</form>
+
+<script>
+function toggleAll(checkbox) {
+    document.querySelectorAll('.metadata-check').forEach(cb => cb.checked = checkbox.checked);
+}
+
+function deleteSelected() {
+    const checked = document.querySelectorAll('.metadata-check:checked');
+    if (checked.length === 0) {
+        alert('No metadata selected');
+        return;
+    }
+    if (!confirm(`Delete ${checked.length} metadata entries?`)) return;
+    
+    const ids = Array.from(checked).map(cb => cb.value).join(',');
+    document.getElementById('metadata-ids-input').value = ids;
+    document.getElementById('delete-form').submit();
+}
+</script>
+{% endblock %}
