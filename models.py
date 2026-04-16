@@ -181,6 +181,8 @@ class Shot(db.Model):
     nd_filter = db.Column(db.String(50))
     camera_tilt = db.Column(db.String(50))
     camera_roll = db.Column(db.String(50))
+    cdl_sat = db.Column(db.String(50))
+    cdl_sop = db.Column(db.String(200))
     
     # Tracking
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -410,6 +412,8 @@ class CameraMetadata(db.Model):
     nd_filter = db.Column(db.String(50))
     camera_tilt = db.Column(db.String(50))
     camera_roll = db.Column(db.String(50))
+    cdl_sat = db.Column(db.String(50))
+    cdl_sop = db.Column(db.String(200))
     
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

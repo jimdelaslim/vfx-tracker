@@ -117,6 +117,20 @@ def migrate_database_schema():
                 connection.commit()
                 print("AUTO-MIGRATION: camera_clipname (camera_metadata) complete!")
             
+            if 'cdl_sat' not in shot_columns:
+                print("AUTO-MIGRATION: Adding cdl_sat/cdl_sop to shots...")
+                cursor.execute("ALTER TABLE shots ADD COLUMN cdl_sat VARCHAR(50) DEFAULT ''")
+                cursor.execute("ALTER TABLE shots ADD COLUMN cdl_sop VARCHAR(200) DEFAULT ''")
+                connection.commit()
+                print("AUTO-MIGRATION: cdl_sat/cdl_sop (shots) complete!")
+            
+            if 'cdl_sat' not in meta_columns:
+                print("AUTO-MIGRATION: Adding cdl_sat/cdl_sop to camera_metadata...")
+                cursor.execute("ALTER TABLE camera_metadata ADD COLUMN cdl_sat VARCHAR(50) DEFAULT ''")
+                cursor.execute("ALTER TABLE camera_metadata ADD COLUMN cdl_sop VARCHAR(200) DEFAULT ''")
+                connection.commit()
+                print("AUTO-MIGRATION: cdl_sat/cdl_sop (camera_metadata) complete!")
+            
             cursor.close()
             connection.close()
     except Exception as e:
@@ -604,6 +618,10 @@ def import_metadata():
                         shot.camera_tilt = metadata.camera_tilt
                         shot.camera_roll = metadata.camera_roll
                         shot.camera_clipname = metadata.camera_clipname
+
+                        shot.cdl_sat = metadata.cdl_sat
+
+                        shot.cdl_sop = metadata.cdl_sop
                         shots_linked += 1
             
             db.session.commit()
@@ -998,6 +1016,10 @@ def confirm_metadata_import():
                 shot.camera_tilt = metadata.camera_tilt
                 shot.camera_roll = metadata.camera_roll
                 shot.camera_clipname = metadata.camera_clipname
+
+                shot.cdl_sat = metadata.cdl_sat
+
+                shot.cdl_sop = metadata.cdl_sop
                 
                 shots_linked += 1
     
@@ -2000,6 +2022,8 @@ def update_metadata(shot_id):
     shot.end_frame = request.form.get('end_frame')
     shot.total_frames = request.form.get('total_frames')
     shot.camera_clipname = request.form.get('camera_clipname')
+    shot.cdl_sat = request.form.get('cdl_sat')
+    shot.cdl_sop = request.form.get('cdl_sop')
     
     # Combine shutter for display
     if shot.shutter_angle and shot.shutter_speed:
@@ -2546,6 +2570,10 @@ def import_confirmation():
                     shot.camera_tilt = metadata.camera_tilt
                     shot.camera_roll = metadata.camera_roll
                     shot.camera_clipname = metadata.camera_clipname
+
+                    shot.cdl_sat = metadata.cdl_sat
+
+                    shot.cdl_sop = metadata.cdl_sop
         
         db.session.commit()
         # Auto-number plates within each VFX code
@@ -2786,6 +2814,10 @@ def import_confirmation():
                     shot.camera_tilt = metadata.camera_tilt
                     shot.camera_roll = metadata.camera_roll
                     shot.camera_clipname = metadata.camera_clipname
+
+                    shot.cdl_sat = metadata.cdl_sat
+
+                    shot.cdl_sop = metadata.cdl_sop
         
         db.session.commit()
         # Auto-number plates within each VFX code

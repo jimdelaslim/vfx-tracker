@@ -32,6 +32,8 @@
             {% if shot.codec %}<div><strong style="color: #7f8c8d;">Video Codec:</strong> {{ shot.codec }}</div>{% endif %}
             {% if shot.color_space %}<div><strong style="color: #7f8c8d;">Color Space Notes:</strong> {{ shot.color_space }}</div>{% endif %}
             {% if shot.gamma %}<div><strong style="color: #7f8c8d;">Gamma Notes:</strong> {{ shot.gamma }}</div>{% endif %}
+            {% if shot.cdl_sat %}<div><strong style="color: #7f8c8d;">CDL SAT:</strong> {{ shot.cdl_sat }}</div>{% endif %}
+            {% if shot.cdl_sop %}<div><strong style="color: #7f8c8d;">CDL SOP:</strong> {{ shot.cdl_sop }}</div>{% endif %}
             {% if shot.shot_frame_rate %}<div><strong style="color: #7f8c8d;">Shot Frame Rate:</strong> {{ shot.shot_frame_rate }}</div>{% endif %}
             {% if shot.start_tc %}<div><strong style="color: #7f8c8d;">Start TC:</strong> {{ shot.start_tc }}</div>{% endif %}
             {% if shot.end_tc %}<div><strong style="color: #7f8c8d;">End TC:</strong> {{ shot.end_tc }}</div>{% endif %}
@@ -126,6 +128,14 @@
                 <div>
                     <label>Gamma Notes</label>
                     <input type="text" name="gamma" value="{{ shot.gamma or '' }}">
+                </div>
+                <div class="form-group">
+                    <label>CDL SAT</label>
+                    <input type="text" name="cdl_sat" value="{{ shot.cdl_sat or '' }}">
+                </div>
+                <div class="form-group">
+                    <label>CDL SOP</label>
+                    <input type="text" name="cdl_sop" value="{{ shot.cdl_sop or '' }}">
                 </div>
                 <div>
                     <label>Shot Frame Rate</label>

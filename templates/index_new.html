@@ -1294,7 +1294,7 @@ function clearAllFilters() {
                                 {% endif %}
 
                                 <!-- Color Metadata -->
-                                {% if shot.lut or shot.color_space %}
+                                {% if shot.lut or shot.color_space or shot.gamma or shot.codec or shot.cdl_sat or shot.cdl_sop %}
                                 <div class="metadata-box">
                                     <h5>Color & LUT</h5>
                                     <div class="metadata-grid">
@@ -1320,6 +1320,18 @@ function clearAllFilters() {
                                         <div class="metadata-item">
                                             <span class="metadata-label">Codec</span>
                                             <span class="metadata-value">{{ shot.codec }}</span>
+                                        </div>
+                                        {% endif %}
+                                        {% if shot.cdl_sat %}
+                                        <div class="metadata-item">
+                                            <span class="metadata-label">CDL SAT</span>
+                                            <span class="metadata-value">{{ shot.cdl_sat }}</span>
+                                        </div>
+                                        {% endif %}
+                                        {% if shot.cdl_sop %}
+                                        <div class="metadata-item" style="grid-column: 1 / -1;">
+                                            <span class="metadata-label">CDL SOP</span>
+                                            <span class="metadata-value" style="font-size: 0.7rem; word-break: break-all;">{{ shot.cdl_sop }}</span>
                                         </div>
                                         {% endif %}
                                     </div>
