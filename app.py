@@ -658,7 +658,10 @@ def metadata_mapping():
         app.logger.info(f"ALE Column line: {repr(header_line)}")
         split_result = header_line.split('\t')
         app.logger.info(f"Split by tab: {split_result}")
-        csv_headers = [h.strip() for h in split_result if h.strip()]
+        csv_headers = [h.strip() for h in split_result]
+        # Remove only trailing empty headers (from trailing tabs)
+        while csv_headers and not csv_headers[-1]:
+            csv_headers.pop()
         app.logger.info(f"Found {len(csv_headers)} headers: {csv_headers[:5]}")
         
         if not csv_headers:

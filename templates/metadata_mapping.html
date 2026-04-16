@@ -20,7 +20,7 @@
                     {% for row in preview_rows %}
                     <tr>
                         {% for value in row %}
-                        <td style="padding: 0.75rem; border: 1px solid #dee2e6;">{{ value }}</td>
+                        <td style="padding: 0.75rem; border: 1px solid #dee2e6; white-space: nowrap;">{% if value and value.strip() %}{{ value }}{% else %}&nbsp;{% endif %}</td>
                         {% endfor %}
                     </tr>
                     {% endfor %}
