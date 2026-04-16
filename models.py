@@ -234,7 +234,11 @@ class Shot(db.Model):
         source_frames = int(timeline_frames / (crank / 100.0))
         
         # Starting frame (default 1001, but can be customized)
-        start = int(self.start_frame) if self.start_frame else 1001
+        # Handle start_frame - might be int, string int, or timecode
+        try:
+            start = int(self.start_frame) if self.start_frame else 1001
+        except (ValueError, TypeError):
+            start = 1001
         
         # Head handle range
         head_start = start

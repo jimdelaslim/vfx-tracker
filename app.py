@@ -215,6 +215,37 @@ def auto_number_plates(project_id):
     db.session.commit()
 
 
+def find_metadata_by_cam_roll(cam_roll):
+    """Find camera metadata by cam_roll with fuzzy matching.
+    Tries exact match first, then tries prefix/partial matching.
+    E.g. shot cam_roll 'A030C002' matches metadata cam_roll 'A030C002_260520US'
+    """
+    if not cam_roll:
+        return None
+    
+    # Try exact match first
+    metadata = CameraMetadata.query.filter_by(cam_roll=cam_roll).first()
+    if metadata:
+        return metadata
+    
+    # Try: shot cam_roll is a prefix of metadata cam_roll
+    # E.g. shot='A030C002', metadata='A030C002_260520US'
+    metadata = CameraMetadata.query.filter(
+        CameraMetadata.cam_roll.like(f'{cam_roll}%')
+    ).first()
+    if metadata:
+        return metadata
+    
+    # Try: metadata cam_roll is a prefix of shot cam_roll
+    # E.g. metadata='A030C002', shot='A030C002_260520US'
+    all_metadata = CameraMetadata.query.all()
+    for m in all_metadata:
+        if m.cam_roll and (cam_roll.startswith(m.cam_roll) or m.cam_roll.startswith(cam_roll)):
+            return m
+    
+    return None
+
+
 @app.route('/index_old')
 def index_old():
     """Main dashboard"""
@@ -532,7 +563,7 @@ def import_metadata():
             
             for shot in all_shots:
                 if shot.cam_roll:
-                    metadata = CameraMetadata.query.filter_by(cam_roll=shot.cam_roll).first()
+                    metadata = find_metadata_by_cam_roll(shot.cam_roll)
                     if metadata:
                         shot.camera = metadata.camera
                         shot.lens = metadata.lens
@@ -921,7 +952,7 @@ def confirm_metadata_import():
     for shot in all_shots:
         if shot.cam_roll:
             app.logger.info(f"DEBUG: Shot {shot.clip_name} has cam_roll: {shot.cam_roll}")
-            metadata = CameraMetadata.query.filter_by(cam_roll=shot.cam_roll).first()
+            metadata = find_metadata_by_cam_roll(shot.cam_roll)
             if metadata:
                 app.logger.info(f"  -> Found metadata! Camera: {metadata.camera}, Lens: {metadata.lens}")
                 # Copy all metadata fields to shot (hardcoded to ensure all fields are copied)
@@ -2471,7 +2502,7 @@ def import_confirmation():
             db.session.add(shot)
             
             if shot.cam_roll:
-                metadata = CameraMetadata.query.filter_by(cam_roll=shot.cam_roll).first()
+                metadata = find_metadata_by_cam_roll(shot.cam_roll)
                 if metadata:
                     shot.camera = metadata.camera
                     shot.lens = metadata.lens
@@ -2665,7 +2696,7 @@ def import_confirmation():
                     
                     if shot_data.get('cam_roll'):
                         existing.cam_roll = shot_data['cam_roll']
-                        metadata = CameraMetadata.query.filter_by(cam_roll=existing.cam_roll).first()
+                        metadata = find_metadata_by_cam_roll(existing.cam_roll)
                         if metadata:
                             existing.camera = metadata.camera
                             existing.lens = metadata.lens
@@ -2711,7 +2742,7 @@ def import_confirmation():
             db.session.add(shot)
             
             if shot.cam_roll:
-                metadata = CameraMetadata.query.filter_by(cam_roll=shot.cam_roll).first()
+                metadata = find_metadata_by_cam_roll(shot.cam_roll)
                 if metadata:
                     shot.camera = metadata.camera
                     shot.lens = metadata.lens
