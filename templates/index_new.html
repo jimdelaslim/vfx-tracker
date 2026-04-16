@@ -371,14 +371,45 @@ function clearAllFilters() {
     font-size: 1.8rem;
     font-family: monospace;
     margin-bottom: 0.5rem;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr auto 1fr;
+    align-items: center;
+    justify-items: center;
+    gap: 0.5rem;
+    max-width: 900px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* Reserve width for 4-digit numbers so layout stays consistent */
+.frame-range-display > span {
+    text-align: center;
+}
+
+/* Each number inside a section reserves 4-digit width */
+.frame-range-display .fr-num {
+    display: inline-block;
+    min-width: 4ch;
+    text-align: center;
+}
+
+/* Don't force width on the bullet separators */
+.frame-range-display > span:nth-child(2),
+.frame-range-display > span:nth-child(4) {
+    min-width: 0;
 }
 
 .frame-range-labels {
-    display: flex;
-    justify-content: space-around;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr auto 1fr;
+    gap: 0.5rem;
+    justify-items: center;
     font-size: 0.85rem;
     text-transform: uppercase;
     opacity: 0.9;
+    max-width: 900px;
+    margin-left: auto;
+    margin-right: auto;
 }
 
 .frame-range-total {
@@ -1047,15 +1078,17 @@ function clearAllFilters() {
             <div class="frame-range-banner" id="frame-banner-{{ vfx_code.id }}">
                 <div class="frame-range-title">Frame Range</div>
                 <div class="frame-range-display" id="frame-display-{{ vfx_code.id }}">
-                    <span>1001 <span class="frame-box" id="head-box-{{ vfx_code.id }}">0</span> 1000</span>
-                    <span style="margin: 0 1rem;">•</span>
-                    <span>1001 <span class="frame-box" id="action-box-{{ vfx_code.id }}">0</span> 1001</span>
-                    <span style="margin: 0 1rem;">•</span>
-                    <span>1001 <span class="frame-box" id="tail-box-{{ vfx_code.id }}">0</span> 1001</span>
+                    <span><span class="fr-num">1001</span> <span class="frame-box" id="head-box-{{ vfx_code.id }}">0</span> <span class="fr-num">1000</span></span>
+                    <span>•</span>
+                    <span><span class="fr-num">1001</span> <span class="frame-box" id="action-box-{{ vfx_code.id }}">0</span> <span class="fr-num">1001</span></span>
+                    <span>•</span>
+                    <span><span class="fr-num">1001</span> <span class="frame-box" id="tail-box-{{ vfx_code.id }}">0</span> <span class="fr-num">1001</span></span>
                 </div>
                 <div class="frame-range-labels">
                     <span>HEAD HANDLES</span>
+                    <span></span>
                     <span>ACTION</span>
+                    <span></span>
                     <span>TAIL HANDLES</span>
                 </div>
                 <div class="frame-range-total" id="total-scan-{{ vfx_code.id }}">
@@ -1767,11 +1800,11 @@ function updateFrameBanner(vfxId, shotData) {
     // Update the display
     const frameDisplay = document.getElementById(`frame-display-${vfxId}`);
     frameDisplay.innerHTML = `
-        <span>${headStart} <span class="frame-box" id="head-box-${vfxId}">${headHandles}</span> ${headEnd}</span>
-        <span style="margin: 0 1rem;">•</span>
-        <span>${actionStart} <span class="frame-box" id="action-box-${vfxId}">${actionFrames}</span> ${actionEnd}</span>
-        <span style="margin: 0 1rem;">•</span>
-        <span>${tailStart} <span class="frame-box" id="tail-box-${vfxId}">${tailHandles}</span> ${tailEnd}</span>
+        <span><span class="fr-num">${headStart}</span> <span class="frame-box" id="head-box-${vfxId}">${headHandles}</span> <span class="fr-num">${headEnd}</span></span>
+        <span>•</span>
+        <span><span class="fr-num">${actionStart}</span> <span class="frame-box" id="action-box-${vfxId}">${actionFrames}</span> <span class="fr-num">${actionEnd}</span></span>
+        <span>•</span>
+        <span><span class="fr-num">${tailStart}</span> <span class="frame-box" id="tail-box-${vfxId}">${tailHandles}</span> <span class="fr-num">${tailEnd}</span></span>
     `;
     
     // Update total scan (SOURCE frames for vendor)
