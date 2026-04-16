@@ -1643,7 +1643,7 @@ def generate_pull_ale(shots, fps=24):
     lines.append(f"FPS\t{int(fps)}")
     lines.append("")
     lines.append("Column")
-    lines.append("Name\tStart\tEnd\tDuration\tTape")
+    lines.append("Name\tStart\tEnd\tDuration\tTracks\tTape")
     lines.append("")
     lines.append("Data")
     
@@ -1678,7 +1678,7 @@ def generate_pull_ale(shots, fps=24):
         
         meta = find_metadata_by_cam_roll(shot.cam_roll) if shot.cam_roll else None
         tape = meta.cam_roll if meta else (shot.reel or shot.cam_roll or "")
-        lines.append(f"{name}\t{tc_in}\t{tc_out}\t{duration_tc}\t{tape}")
+        lines.append(f"{name}\t{tc_in}\t{tc_out}\t{duration_tc}\tV\t{tape}")
     
     return "\n".join(lines) + "\n"
 
