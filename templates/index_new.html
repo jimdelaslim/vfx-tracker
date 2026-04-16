@@ -659,6 +659,8 @@ function clearAllFilters() {
 
 .metadata-item {
     font-size: 0.8rem;
+    min-width: 0;
+    overflow: hidden;
 }
 
 .metadata-label {
@@ -670,6 +672,9 @@ function clearAllFilters() {
 .metadata-value {
     font-weight: 600;
     color: #212529;
+    word-break: break-word;
+    overflow-wrap: break-word;
+    display: block;
 }
 
 .plate-info-section {
