@@ -961,6 +961,7 @@ function clearAllFilters() {
                     <h5 style="margin: 0 0 0.5rem 0; font-size: 0.8rem; font-weight: 600; color: #6c757d;">VFX</h5>
                     <div style="display: flex; flex-direction: column; gap: 0.4rem;">
                         <button onclick="exportSelectedEDL()" class="btn btn-secondary" style="width: 100%; padding: 0.4rem; font-size: 0.8rem;">EDL</button>
+                        <button onclick="exportSelectedALE()" class="btn btn-secondary" style="width: 100%; padding: 0.4rem; font-size: 0.8rem;">ALE</button>
                         <button onclick="exportSelectedPDF()" class="btn btn-secondary" style="width: 100%; padding: 0.4rem; font-size: 0.8rem;">PDF</button>
                         <button onclick="exportSelectedVFXCSV()" class="btn btn-secondary" style="width: 100%; padding: 0.4rem; font-size: 0.8rem;">CSV</button>
                     </div>
@@ -2204,6 +2205,67 @@ async function exportSelectedEDL() {
     
     if (!writeResult.success) {
         alert('Failed to write EDL file: ' + writeResult.error);
+    }
+}
+
+async function exportSelectedALE() {
+    const shotIds = await getSelectedShotIds();
+    if (shotIds.length === 0) {
+        alert('Please select at least one shot to export');
+        return;
+    }
+    
+    // Generate smart filename
+    let defaultFilename = 'selected_shots.ale';
+    const allVfxHeaderChecks = document.querySelectorAll('.vfx-code-checkbox:checked');
+    const individualShotChecks = document.querySelectorAll('.shot-checkbox:checked');
+    
+    if (allVfxHeaderChecks.length === 1) {
+        const vfxContainer = allVfxHeaderChecks[0].closest('.vfx-code-container');
+        const vfxCode = vfxContainer?.querySelector('.vfx-code-title')?.textContent.trim();
+        if (vfxCode) defaultFilename = `${vfxCode}.ale`;
+    } else if (allVfxHeaderChecks.length > 1) {
+        defaultFilename = 'multiple_vfx_codes.ale';
+    } else if (individualShotChecks.length === 1) {
+        const plateCard = individualShotChecks[0].closest('.plate-card');
+        const clipName = plateCard?.querySelector('.plate-element-name')?.value?.trim();
+        if (clipName) defaultFilename = `${clipName}.ale`;
+    }
+    
+    const result = await window.electron.saveExportDialog({
+        type: 'ale',
+        defaultFilename: defaultFilename
+    });
+    
+    if (!result.success) return;
+    
+    const vfxCodeIds = Array.from(document.querySelectorAll('.vfx-code-checkbox:checked'))
+        .map(cb => cb.value);
+    
+    const response = await fetch('/export/ale/selected', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+            shot_ids: shotIds.join(','),
+            vfx_code_ids: vfxCodeIds.join(',')
+        })
+    });
+    
+    if (!response.ok) {
+        alert('Failed to generate ALE');
+        return;
+    }
+    
+    const aleText = await response.text();
+    const aleBase64 = btoa(aleText);
+    
+    const writeResult = await window.electron.writeExportFile({
+        filePath: result.filePath,
+        data: aleBase64
+    });
+    
+    if (!writeResult.success) {
+        alert('Failed to write ALE file: ' + writeResult.error);
     }
 }
 

@@ -1616,6 +1616,159 @@ def export_edl_selected():
         )
 
 
+
+
+def generate_pull_ale(shots, fps=24):
+    """Generate an Avid ALE file for pulling VFX plates.
+    Format:
+        Heading
+        FIELD_DELIM\tTABS
+        VIDEO_FORMAT\t1080
+        AUDIO_FORMAT\t48khz
+        FPS\t{fps}
+        
+        Column
+        Name\tStart\tEnd\tDuration
+        
+        Data
+        {vfx_code}\t{tc_scan_in}\t{tc_scan_out}\t{duration}
+    """
+    from models import frames_to_timecode
+    
+    lines = []
+    lines.append("Heading")
+    lines.append("FIELD_DELIM\tTABS")
+    lines.append("VIDEO_FORMAT\t1080")
+    lines.append("AUDIO_FORMAT\t48khz")
+    lines.append(f"FPS\t{int(fps)}")
+    lines.append("")
+    lines.append("Column")
+    lines.append("Name\tStart\tEnd\tDuration\tTape")
+    lines.append("")
+    lines.append("Data")
+    
+    for shot in shots:
+        # Get VFX code name (INV_TST_020_SRC01_V001 style)
+        if hasattr(shot, 'vfx_code_obj') and shot.vfx_code_obj:
+            base_code = shot.vfx_code_obj.vfx_code
+        else:
+            base_code = shot.vfx_code or shot.clip_name
+        
+        # Use clip_name directly if available - it already has proper format (INV_TST_010_SRC01_V001)
+        name = shot.clip_name or base_code
+        
+        # TC Scan In / Out (with handles applied) - these are methods
+        try:
+            tc_in = shot.tc_scan_in() if callable(shot.tc_scan_in) else shot.tc_scan_in
+        except:
+            tc_in = shot.tc_cut_in or ""
+        try:
+            tc_out = shot.tc_scan_out() if callable(shot.tc_scan_out) else shot.tc_scan_out
+        except:
+            tc_out = shot.tc_cut_out or ""
+        
+        # Duration = total scan frames as timecode
+        head = shot.head_handles or 0
+        tail = shot.tail_handles or 0
+        duration_frames = (shot.duration_frames or 0) + head + tail
+        try:
+            duration_tc = frames_to_timecode(duration_frames, fps)
+        except:
+            duration_tc = "00:00:00:00"
+        
+        meta = find_metadata_by_cam_roll(shot.cam_roll) if shot.cam_roll else None
+        tape = meta.cam_roll if meta else (shot.reel or shot.cam_roll or "")
+        lines.append(f"{name}\t{tc_in}\t{tc_out}\t{duration_tc}\t{tape}")
+    
+    return "\n".join(lines) + "\n"
+
+
+@app.route('/export/ale/selected', methods=['POST'])
+def export_ale_selected():
+    """Export selected shots as Avid ALE - for dragging onto masterclips in Avid"""
+    import sys
+    
+    # Handle both form and JSON
+    if request.is_json:
+        data = request.json
+        shot_ids = data.get('shot_ids', '')
+        vfx_code_ids = data.get('vfx_code_ids', '')
+    else:
+        shot_ids = request.form.get('shot_ids', '')
+        vfx_code_ids = request.form.get('vfx_code_ids', '')
+    
+    all_shots = []
+    
+    # Get shots from VFX code IDs
+    if vfx_code_ids:
+        vfx_id_list = [int(id.strip()) for id in vfx_code_ids.split(',') if id.strip()]
+        for vfx_id in vfx_id_list:
+            vfx_code = VFXCode.query.get(vfx_id)
+            if vfx_code:
+                all_shots.extend(vfx_code.shots)
+    
+    # Get individual shots
+    if shot_ids:
+        shot_id_list = [int(id.strip()) for id in shot_ids.split(',') if id.strip()]
+        individual_shots = Shot.query.filter(Shot.id.in_(shot_id_list)).all()
+        for shot in individual_shots:
+            if shot not in all_shots:
+                all_shots.append(shot)
+    
+    if not all_shots:
+        flash('No shots selected', 'error')
+        return redirect(url_for('index'))
+    
+    # Filter to latest version of each plate type within each VFX code
+    latest_shots = {}
+    for shot in all_shots:
+        key = (shot.vfx_code_id, shot.plate_type, shot.vfx_element)
+        if key not in latest_shots or shot.version > latest_shots[key].version:
+            latest_shots[key] = shot
+    
+    shots = sorted(latest_shots.values(), key=lambda s: s.event_number)
+    
+    if not shots:
+        flash('No valid shots selected', 'error')
+        return redirect(url_for('index'))
+    
+    # Get project FPS
+    project = get_active_project()
+    fps = project.fps if project else 24
+    
+    # Smart filename
+    if len(shots) == 1:
+        filename = f'{shots[0].clip_name}.ale'
+    else:
+        vfx_codes = set()
+        for s in shots:
+            if hasattr(s, 'vfx_code_obj') and s.vfx_code_obj:
+                vfx_codes.add(s.vfx_code_obj.vfx_code)
+            elif s.vfx_code:
+                vfx_codes.add(s.vfx_code)
+        
+        if len(vfx_codes) == 1:
+            filename = f'{list(vfx_codes)[0]}_pull_list.ale'
+        else:
+            filename = 'selected_shots_pull_list.ale'
+    
+    ale_content = generate_pull_ale(shots, fps=fps)
+    
+    ale_file = BytesIO()
+    ale_file.write(ale_content.encode('utf-8'))
+    ale_file.seek(0)
+    
+    if request.is_json:
+        return ale_content, 200, {'Content-Type': 'text/plain'}
+    else:
+        return send_file(
+            ale_file,
+            mimetype='text/plain',
+            as_attachment=True,
+            download_name=filename
+        )
+
+
 @app.route('/export/vfx_csv/selected', methods=['POST'])
 def export_vfx_csv_selected():
     """Export selected VFX codes and/or individual shots to CSV with shot details"""
