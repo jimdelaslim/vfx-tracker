@@ -74,13 +74,69 @@ def parse_m2_lines(edl_text):
     
     return m2_data
 
-def import_edl(filepath, fps=24.0):
-    """Import an EDL file and return a list of shot dictionaries"""
-    # First, read raw EDL text to parse M2 lines
+
+def parse_avid_markers(edl_text):
+    """Parse Avid marker/locator lines from raw EDL text.
+    Returns dict mapping event_number -> marker_name
+    
+    Supports two formats:
+    1. Pipe format:  * |C:ResolveColorBlue |M:VFX_CODE_SRC01 |D:0.0
+    2. LOC format:   * LOC: 01:00:00:00 RED     VFX_CODE_SRC01_V001
+    """
+    import re
+    markers = {}
+    lines = edl_text.split('\n')
+    current_event = None
+    
+    for line in lines:
+        # Track which event we're on
+        if line and line[0].isdigit() and len(line.split()) >= 8:
+            try:
+                event_num = int(line.split()[0])
+                current_event = event_num
+            except:
+                pass
+        
+        if not current_event:
+            continue
+        
+        # Format 1: Pipe format - * |C:color |M:MARKER_NAME |D:0.0
+        if '|M:' in line:
+            match = re.search(r'\|M:([^\s|]+)', line)
+            if match:
+                marker_name = match.group(1).strip()
+                if marker_name:
+                    markers[current_event] = marker_name
+                    continue
+        
+        # Format 2: LOC format - * LOC: TC COLOR     MARKER_NAME
+        if '* LOC:' in line:
+            # Pattern: * LOC: HH:MM:SS:FF COLORNAME     MARKER_NAME
+            match = re.search(r'\* LOC:\s+\S+\s+\S+\s+(\S+)', line)
+            if match:
+                marker_name = match.group(1).strip()
+                if marker_name:
+                    markers[current_event] = marker_name
+                    continue
+    
+    return markers
+
+
+def import_edl(filepath, fps=24.0, use_markers=False):
+    """Import an EDL file and return a list of shot dictionaries
+    
+    Args:
+        filepath: Path to EDL file
+        fps: Frames per second
+        use_markers: If True, use Avid marker names (|M:) as VFX codes instead of clip names
+    """
+    # First, read raw EDL text to parse M2 lines and markers
     with open(filepath, 'r') as f:
         edl_text = f.read()
     
     m2_data = parse_m2_lines(edl_text)
+    avid_markers = parse_avid_markers(edl_text) if use_markers else {}
+
     
     timeline = otio.adapters.read_from_file(filepath, adapter_name="cmx_3600")
     
@@ -90,11 +146,19 @@ def import_edl(filepath, fps=24.0):
     for track in timeline.tracks:
         for item in track:
             if isinstance(item, otio.schema.Clip):
-                # Parse VFX elements from clip name
-                parsed = parse_vfx_elements(item.name)
+                # Determine what to parse as the "clip name"
+                # If using markers and this event has a marker, use marker name instead
+                name_to_parse = item.name
+
+                if use_markers and event_num in avid_markers:
+                    name_to_parse = avid_markers[event_num]
+
+                
+                # Parse VFX elements from name
+                parsed = parse_vfx_elements(name_to_parse)
                 
                 shot_data = {
-                    'clip_name': item.name,
+                    'clip_name': name_to_parse,
                     'vfx_code': parsed['vfx_code'],
                     'plate_type': parsed['plate_type'],
                     'vfx_element': parsed['vfx_element'],

@@ -24,6 +24,19 @@
                 </small>
             </div>
             
+            <div style="margin-bottom: 1.5rem; padding: 1rem; background: #f8f9fa; border-radius: 6px; border: 2px solid #ddd;">
+                <label style="display: flex; align-items: center; gap: 0.75rem; cursor: pointer; font-weight: 600;">
+                    <input type="checkbox" name="use_markers" 
+                           style="width: 20px; height: 20px; cursor: pointer;">
+                    Use Avid Marker Names as VFX Codes
+                </label>
+                <small style="color: #7f8c8d; display: block; margin-top: 0.5rem; margin-left: 2rem;">
+                    Enable this for Avid EDLs that use markers to name VFX shots.<br>
+                    Reads VFX codes from <code style="background: #e9ecef; padding: 2px 4px; border-radius: 3px;">|M:MARKER_NAME|</code> instead of the clip name.<br>
+                    Leave unchecked for Resolve/standard EDLs.
+                </small>
+            </div>
+            
             <div style="display: flex; gap: 1rem;">
                 <button type="submit" class="btn">Import</button>
                 <a href="/" class="btn btn-secondary">Cancel</a>

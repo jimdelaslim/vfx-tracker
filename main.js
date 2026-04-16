@@ -49,6 +49,16 @@ function startFlask() {
         FLASK_ENV: 'production',
         PYTHONPATH: appDir
     };
+    
+    // Point Playwright to bundled browsers in packaged mode
+    if (isPackaged) {
+        const bundledBrowsers = path.join(appDir, 'playwright-browsers');
+        if (fs.existsSync(bundledBrowsers)) {
+            env.PLAYWRIGHT_BROWSERS_PATH = bundledBrowsers;
+            console.log('  playwright browsers:', bundledBrowsers);
+        }
+    }
+    
     if (process.env.VFX_DB_PATH) {
         env.VFX_DB_PATH = process.env.VFX_DB_PATH;
         console.log('  database:', env.VFX_DB_PATH);

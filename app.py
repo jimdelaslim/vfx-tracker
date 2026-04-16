@@ -365,7 +365,10 @@ def import_edl_route():
                 if fps is None:
                     fps = project.fps if project else 24.0
                 
-                shots_data = import_edl(filepath, fps=fps)
+                # Check if user wants to use Avid markers
+                use_markers = request.form.get('use_markers') == 'on'
+
+                shots_data = import_edl(filepath, fps=fps, use_markers=use_markers)
                 
                 # Check for conflicts
                 conflicts = []
