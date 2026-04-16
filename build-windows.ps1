@@ -3,7 +3,7 @@ Write-Host "=== VFX Shot Tracker Windows Build Script ===" -ForegroundColor Cyan
 
 # Step 1: Create venv
 Write-Host "`n[1/7] Creating Python virtual environment..." -ForegroundColor Yellow
-python -m venv venv
+py -3.13 -m venv venv
 
 # Step 2: Activate and install Python deps
 Write-Host "[2/7] Installing Python dependencies..." -ForegroundColor Yellow
