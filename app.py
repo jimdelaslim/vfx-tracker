@@ -484,7 +484,7 @@ def import_metadata():
             flash('No file selected', 'error')
             return redirect(request.url)
         
-        if file and (file.filename.endswith('.csv') or file.filename.endswith('.ale')):
+        if file and (file.filename.lower().endswith('.csv') or file.filename.lower().endswith('.ale')):
             import csv
             from io import StringIO
             import os
@@ -636,7 +636,7 @@ def metadata_mapping():
             decoded = raw_data.decode("cp1252", errors='ignore')
     
     # Check if this is an ALE file
-    is_ale = filepath.endswith('.ale')
+    is_ale = filepath.lower().endswith('.ale')
     
     if is_ale:
         # Parse ALE format
@@ -823,7 +823,7 @@ def confirm_metadata_import():
             decoded = raw_data.decode("cp1252", errors='ignore')
     
     # Check if this is an ALE file
-    is_ale = filepath.endswith('.ale')
+    is_ale = filepath.lower().endswith('.ale')
     
     # Build mapping dictionary from form data
     # Format: column_mapping[db_field] = csv_column
