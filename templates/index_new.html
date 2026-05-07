@@ -1510,33 +1510,42 @@ function clearAllFilters() {
                 <div class="edit-field">
                     <label>Plate #</label>
                     <input type="number" id="edit-plate-{{ vfx_code.id }}" min="0" placeholder="Select plate..."
-                           oninput="loadPlateToEdit({{ vfx_code.id }}, this.value)">
+                           class="batch-linkable batch-edit-plate" data-vfx-id="{{ vfx_code.id }}"
+                           oninput="loadPlateToEdit({{ vfx_code.id }}, this.value); handleEditSectionMirror('plate', this.value, this)">
                 </div>
 
                 <div class="edit-field">
                     <label>Start Frame</label>
-                    <input type="number" id="edit-start-{{ vfx_code.id }}" min="1000" value="1001" disabled oninput="updateEditedPlate({{ vfx_code.id }})">
+                    <input type="number" id="edit-start-{{ vfx_code.id }}" min="1000" value="1001" disabled
+                           class="batch-linkable batch-edit-start" data-vfx-id="{{ vfx_code.id }}"
+                           oninput="updateEditedPlate({{ vfx_code.id }}); handleEditSectionMirror('start', this.value, this)">
                 </div>
-                
+
                 <div class="edit-field">
                     <label>Handles</label>
                     <div class="handles-row">
                         <div>
                             <label style="font-size: 0.75rem; text-transform: none;">Head</label>
-                            <input type="number" id="edit-head-{{ vfx_code.id }}" min="0" disabled oninput="updateEditedPlate({{ vfx_code.id }})">
+                            <input type="number" id="edit-head-{{ vfx_code.id }}" min="0" disabled
+                                   class="batch-linkable batch-edit-head" data-vfx-id="{{ vfx_code.id }}"
+                                   oninput="updateEditedPlate({{ vfx_code.id }}); handleEditSectionMirror('head', this.value, this)">
                         </div>
                         <div>
                             <label style="font-size: 0.75rem; text-transform: none;">Tails</label>
-                            <input type="number" id="edit-tail-{{ vfx_code.id }}" min="0" disabled oninput="updateEditedPlate({{ vfx_code.id }})">
+                            <input type="number" id="edit-tail-{{ vfx_code.id }}" min="0" disabled
+                                   class="batch-linkable batch-edit-tail" data-vfx-id="{{ vfx_code.id }}"
+                                   oninput="updateEditedPlate({{ vfx_code.id }}); handleEditSectionMirror('tail', this.value, this)">
                         </div>
                     </div>
                 </div>
 
                 <div id="handle-warning-{{ vfx_code.id }}" style="display: none; background: #f8d7da; border: 2px solid #dc3545; border-radius: 6px; padding: 0.75rem; margin-bottom: 1rem; font-size: 0.85rem; color: #721c24;"></div>
-                
+
                 <div class="edit-field">
                     <label>Crank Speed (%)</label>
-                    <input type="number" step="0.1" id="edit-crank-{{ vfx_code.id }}" disabled oninput="updateEditedPlate({{ vfx_code.id }})">
+                    <input type="number" step="0.1" id="edit-crank-{{ vfx_code.id }}" disabled
+                           class="batch-linkable batch-edit-crank" data-vfx-id="{{ vfx_code.id }}"
+                           oninput="updateEditedPlate({{ vfx_code.id }}); handleEditSectionMirror('crank', this.value, this)">
 
                 </div>
                 
@@ -1828,6 +1837,7 @@ function updateFrameBanner(vfxId, shotData) {
     
     // Update the display
     const frameDisplay = document.getElementById(`frame-display-${vfxId}`);
+    if (!frameDisplay) return;
     frameDisplay.innerHTML = `
         <span><span class="fr-num">${headStart}</span> <span class="frame-box" id="head-box-${vfxId}">${headHandles}</span> <span class="fr-num">${headEnd}</span></span>
         <span>•</span>
@@ -1845,7 +1855,9 @@ function updateFrameBanner(vfxId, shotData) {
 function loadPlateToEdit(vfxId, plateNum) {
     // Remember this selection
     localStorage.setItem(`selectedPlate_${vfxId}`, plateNum);
-    const container = document.querySelector(`[data-vfx-id="${vfxId}"]`);
+    updateTimecodeButtonLabel(vfxId);
+    const container = getVFXContainer(vfxId);
+    if (!container) return;
     const plateCards = container.querySelectorAll('.plate-card');
     
     let selectedShot = null;
@@ -3471,11 +3483,96 @@ function updatePlateDisplay(shotId, head, tail, crank, startFrame) {
         .catch(err => console.error('Failed to update plate display', err));
 }
 
+// Direct plate display update used after batch save — works on detached elements
+// Ports of models.py timecode_to_frames / frames_to_timecode
+function timecodeToFrames(tc, fps) {
+    if (!tc || tc === 'N/A') return 0;
+    const parts = tc.split(':');
+    if (parts.length !== 4) return 0;
+    const [hh, mm, ss, ff] = parts.map(Number);
+    return Math.trunc((hh * 3600 + mm * 60 + ss) * fps + ff);
+}
+function framesToTimecode(frames, fps) {
+    frames = Math.trunc(frames);
+    const ff = frames % Math.trunc(fps);
+    const totalSecs = Math.trunc(frames / Math.trunc(fps));
+    const ss = totalSecs % 60;
+    const mm = Math.trunc(totalSecs / 60) % 60;
+    const hh = Math.trunc(totalSecs / 3600);
+    return String(hh).padStart(2,'0') + ':' + String(mm).padStart(2,'0') + ':' + String(ss).padStart(2,'0') + ':' + String(ff).padStart(2,'0');
+}
+
+// (avoids document.querySelector race with virtual scroller eviction)
+// Math mirrors Python's frame_range_display() exactly: int() = Math.trunc()
+function updatePlateDisplayDirect(card, vfxId, head, tail, crank, startFrame) {
+    if (!card) return;
+
+    const duration = parseInt(document.getElementById('edit-head-' + vfxId)?.dataset?.durationFrames) || 0;
+    const crankSafe = (crank > 0) ? crank : 100.0;
+    const crankMult = crankSafe / 100.0;
+
+    // Output frames: truncate like Python int()
+    const outputHead   = Math.trunc(head / crankMult);
+    const outputTail   = Math.trunc(tail / crankMult);
+    const outputAction = Math.trunc(duration / crankMult);
+
+    // start_frame: same fallback as Python (falsy → 1001)
+    const start = parseInt(startFrame) || 1001;
+
+    const headStart = start;
+    const headEnd   = headStart + outputHead - 1;
+    const shotStart = headEnd + 1;
+    const shotEnd   = shotStart + outputAction - 1;
+    const tailStart = shotEnd + 1;
+    const tailEnd   = tailStart + outputTail - 1;
+
+    const totalScan = duration + head + tail;
+    const rangeText = headStart + '[' + outputHead + ']' + headEnd + ' • ' +
+                      shotStart + '[' + outputAction + ']' + shotEnd + ' • ' +
+                      tailStart + '[' + outputTail  + ']' + tailEnd;
+
+    let sourceIn = null;
+    let sourceOut = null;
+
+    card.querySelectorAll('.plate-info-item').forEach(item => {
+        const label = item.querySelector('.plate-info-label');
+        const value = item.querySelector('.plate-info-value');
+        if (!label || !value) return;
+        const labelText = label.textContent.trim();
+        if      (labelText === 'Total Scan')              value.textContent = totalScan;
+        else if (labelText === 'Handles (Source)')        value.textContent = head + '/' + tail;
+        else if (labelText === 'Range')                   value.textContent = rangeText;
+        else if (labelText === 'Retime Handles (Output)') value.textContent = outputHead + '/' + outputTail;
+        else if (labelText === 'TC Cut In')               sourceIn = value.textContent.trim();
+        else if (labelText === 'TC Cut Out')              sourceOut = value.textContent.trim();
+    });
+
+    // Update TC Scan In / Scan Out directly from source timecodes + new handles
+    const fps = parseFloat(document.getElementById('project-fps-display')?.textContent) || 24.0;
+    if (sourceIn && sourceIn !== 'N/A') {
+        const scanInEl = card.querySelector('.tc-scan-in');
+        if (scanInEl) scanInEl.textContent = framesToTimecode(timecodeToFrames(sourceIn, fps) - head, fps);
+    }
+    if (sourceOut && sourceOut !== 'N/A') {
+        const scanOutEl = card.querySelector('.tc-scan-out');
+        if (scanOutEl) scanOutEl.textContent = framesToTimecode(timecodeToFrames(sourceOut, fps) + tail, fps);
+    }
+
+    const retimeContainer = card.querySelector('.retime-handles-container');
+    if (retimeContainer) retimeContainer.style.display = (crankSafe !== 100) ? '' : 'none';
+
+    // Update the frame banner (uses document.getElementById — safe when container is visible)
+    updateFrameBanner(vfxId, {
+        head_handles: head, tail_handles: tail,
+        crank_speed: crankSafe, duration_frames: duration, start_frame: startFrame
+    });
+}
+
 
 function markEditSectionDirty(vfxId) {
     const editSection = document.getElementById('edit-section-' + vfxId);
     const updateBtn = document.getElementById('update-tc-btn-' + vfxId);
-    
+
     if (editSection) {
         editSection.classList.add('edit-section-dirty');
     }
@@ -3484,40 +3581,36 @@ function markEditSectionDirty(vfxId) {
     }
 }
 
-function updateTimecodes(vfxId) {
-    // Fetch updated timecode data via AJAX - no page reload needed
+// Fetches fresh timecode data from the server and updates all display elements
+// for a given VFX code. No button side-effects \u2014 call this for both single
+// and batch paths so the DOM-update logic lives in one place.
+function refreshTimecodeDisplay(vfxId) {
     fetchWithTimeout("/vfx/" + vfxId + "/timecode_data")
     .then(response => response.json())
     .then(data => {
         if (!data.success) return;
-        
-        // Update each shot's timecode display
+
         data.shots.forEach(shot => {
             const sid = shot.id;
-            
-            // Update TC Scan In/Out
+
             const scanIn = document.querySelector('.tc-scan-in[data-shot-id="' + sid + '"]');
             if (scanIn) scanIn.textContent = shot.tc_scan_in;
-            
+
             const scanOut = document.querySelector('.tc-scan-out[data-shot-id="' + sid + '"]');
             if (scanOut) scanOut.textContent = shot.tc_scan_out;
-            
-            // Update Total Scan
+
             const totalScan = document.querySelector('.tc-total-scan[data-shot-id="' + sid + '"]');
             if (totalScan) totalScan.textContent = shot.total_scan;
-            
-            // Update Range
+
             const range = document.querySelector('.tc-range[data-shot-id="' + sid + '"]');
             if (range) {
                 const fr = shot.frame_range;
                 range.textContent = fr.head_start + '[' + fr.head_frames + ']' + fr.head_end + ' \u2022 ' + fr.shot_start + '[' + fr.shot_frames + ']' + fr.shot_end + ' \u2022 ' + fr.tail_start + '[' + fr.tail_frames + ']' + fr.tail_end;
             }
-            
-            // Update Handles (Source)
+
             const handles = document.querySelector('.tc-handles[data-shot-id="' + sid + '"]');
             if (handles) handles.textContent = shot.head_handles + '/' + shot.tail_handles;
-            
-            // Update Retime Handles (Output) - show/hide based on crank
+
             const retimeContainer = document.querySelector('.retime-handles-container[data-shot-id="' + sid + '"]');
             if (retimeContainer) {
                 if (shot.crank_speed !== 100) {
@@ -3528,8 +3621,7 @@ function updateTimecodes(vfxId) {
                     retimeContainer.style.display = 'none';
                 }
             }
-            
-            // Update respeed banner
+
             const respeedBanner = document.querySelector('.respeed-banner[data-shot-id="' + sid + '"]');
             if (respeedBanner) {
                 const detected = parseFloat(respeedBanner.dataset.detected);
@@ -3547,24 +3639,21 @@ function updateTimecodes(vfxId) {
                 }
             }
         });
-        
-        // Update the VFX header frame range banner using currently selected plate
+
         if (data.shots.length > 0) {
-            // Find which shot is currently selected in the edit section
             const currentEditShotId = document.getElementById(`edit-head-${vfxId}`)?.dataset?.shotId;
-            let shot = data.shots[0]; // fallback to first
+            let shot = data.shots[0];
             if (currentEditShotId) {
                 const selected = data.shots.find(s => String(s.id) === String(currentEditShotId));
                 if (selected) shot = selected;
             }
             const fr = shot.frame_range;
-            
-            // Update header frame boxes
+
             const headBox = document.getElementById('head-box-' + vfxId);
             const actionBox = document.getElementById('action-box-' + vfxId);
             const tailBox = document.getElementById('tail-box-' + vfxId);
             const totalScanHeader = document.getElementById('total-scan-' + vfxId);
-            
+
             if (headBox) {
                 headBox.textContent = fr.head_frames;
                 headBox.parentElement.childNodes[0].textContent = fr.head_start + ' ';
@@ -3584,28 +3673,215 @@ function updateTimecodes(vfxId) {
                 totalScanHeader.textContent = 'TOTAL SCAN: ' + shot.total_scan + ' frames';
             }
         }
-        
-        // Remove the yellow "dirty" indicator from edit section
+
         const editSection = document.getElementById('edit-section-' + vfxId);
         if (editSection) editSection.classList.remove('edit-section-dirty');
-        
-        // Flash the button green briefly to confirm
-        const btn = document.querySelector('[onclick="updateTimecodes(' + vfxId + ')"]');
+    });
+}
+
+function updateTimecodes(vfxId) {
+    // In batch mode (2+ VFX headers selected), the clicked button's Edit Section
+    // drives the values; all other selected VFX codes are targets. The vfxId
+    // argument is unambiguous \u2014 it comes from onclick="updateTimecodes(N)" which
+    // is rendered per-VFX-code.
+    if (selectedVFXCodes.size >= 2) {
+        batchUpdateTimecodes(vfxId);
+        return;
+    }
+
+    // Single-plate mode: refresh display then flash button.
+    refreshTimecodeDisplay(vfxId);
+
+    const btn = document.getElementById('update-tc-btn-' + vfxId);
+    if (btn) {
+        btn.style.background = '#28a745';
+        btn.textContent = 'Updated!';
+        setTimeout(() => {
+            btn.style.background = '#10b981';
+            btn.textContent = 'Update Timecodes';
+            btn.style.display = 'none';
+        }, 1500);
+    }
+}
+
+// Returns a VFX code container element by vfxId, searching the document first,
+// then the virtual scroller's off-screen pool (window.vfxCodeElements) so the
+// batch loop works even when a container has been evicted from the DOM.
+function getVFXContainer(vfxId) {
+    const inDoc = document.querySelector(`.vfx-code-container[data-vfx-id="${vfxId}"]`);
+    if (inDoc) return inDoc;
+    if (window.vfxCodeElements) {
+        return window.vfxCodeElements.find(el => el.dataset.vfxId === String(vfxId)) || null;
+    }
+    return null;
+}
+
+async function batchUpdateTimecodes(sourceVfxId) {
+    const plateNum = parseInt(document.getElementById(`edit-plate-${sourceVfxId}`)?.value);
+
+    if (!plateNum) {
+        // No plate filter set \u2014 treat as single-plate
+        refreshTimecodeDisplay(sourceVfxId);
+        const btn = document.getElementById('update-tc-btn-' + sourceVfxId);
         if (btn) {
             btn.style.background = '#28a745';
             btn.textContent = 'Updated!';
-            setTimeout(() => {
-                btn.style.background = '#10b981';
-                btn.textContent = 'Update Timecodes';
-                btn.style.display = 'none';
-            }, 1500);
+            setTimeout(() => { btn.style.background = '#10b981'; btn.textContent = 'Update Timecodes'; btn.style.display = 'none'; }, 1500);
         }
-    })
-    .catch(err => {
-        console.error('Failed to update timecodes:', err);
-        // Fallback to reload if AJAX fails
-        location.reload();
+        return;
+    }
+
+    const head       = parseInt(document.getElementById(`edit-head-${sourceVfxId}`).value)  || 0;
+    const tail       = parseInt(document.getElementById(`edit-tail-${sourceVfxId}`).value)  || 0;
+    const crank      = parseFloat(document.getElementById(`edit-crank-${sourceVfxId}`).value) || 100;
+    const startFrame = parseInt(document.getElementById(`edit-start-${sourceVfxId}`).value) || 1001;
+
+    let updatedCount = 0;
+    const skipped = [];
+
+    for (const vfxId of selectedVFXCodes) {
+        const container = getVFXContainer(vfxId);
+        const vfxName = container?.querySelector('.vfx-code-title')?.textContent?.trim() || String(vfxId);
+
+        // Find the plate matching the Plate # filter (works on detached containers too)
+        let matchedShotId = null;
+        let matchedCard = null;
+        container?.querySelectorAll('.plate-card').forEach(card => {
+            const numInput = card.querySelector('.plate-number-box input');
+            if (numInput && parseInt(numInput.value) === plateNum) {
+                matchedShotId = card.dataset.shotId;
+                matchedCard = card;
+            }
+        });
+
+        if (!matchedShotId) {
+            skipped.push({ name: vfxName, reason: 'no plate #' + plateNum + ' exists' });
+            continue;
+        }
+
+        if (vfxId !== sourceVfxId) {
+            // Source already saved via oninput; only POST for targets.
+            try {
+                const resp = await fetch('/shot/' + matchedShotId + '/update/field', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        head_handles: head,
+                        tail_handles: tail,
+                        crank_speed: crank,
+                        start_frame: startFrame
+                    })
+                });
+                if (!resp.ok) {
+                    skipped.push({ name: vfxName, reason: 'save failed (' + resp.status + ')' });
+                    continue;
+                }
+            } catch (err) {
+                console.error('Batch TC save failed for shot', matchedShotId, err);
+                skipped.push({ name: vfxName, reason: 'save failed' });
+                continue;
+            }
+        }
+
+        // Update plate card display directly \u2014 avoids querySelector race with virtual scroller
+        updatePlateDisplayDirect(matchedCard, vfxId, head, tail, crank, startFrame);
+
+        if (vfxId !== sourceVfxId) {
+            const targetBtn = document.getElementById('update-tc-btn-' + vfxId);
+            if (targetBtn) targetBtn.style.display = 'none';
+        }
+
+        updatedCount++;
+    }
+
+    // Cleanup pass 1 — immediately after loop, override anything markEditSectionDirty did during mirroring
+    selectedVFXCodes.forEach(vfxId => {
+        if (vfxId === sourceVfxId) return;
+        const targetBtn = document.getElementById('update-tc-btn-' + vfxId);
+        if (targetBtn) targetBtn.style.display = 'none';
+        const editSection = document.getElementById('edit-section-' + vfxId);
+        if (editSection) editSection.classList.remove('edit-section-dirty');
     });
+
+    // Flash source button with summary
+    const btn = document.getElementById('update-tc-btn-' + sourceVfxId);
+    if (btn) {
+        btn.style.background = '#28a745';
+        btn.textContent = 'Updated ' + updatedCount + ' plate' + (updatedCount !== 1 ? 's' : '') + '!';
+        setTimeout(() => {
+            btn.style.background = '#10b981';
+            updateTimecodeButtonLabel(sourceVfxId);
+            btn.style.display = 'none';
+
+            // Cleanup pass 2 — safety net in case markEditSectionDirty fired async after pass 1
+            selectedVFXCodes.forEach(vfxId => {
+                if (vfxId === sourceVfxId) return;
+                const targetBtn = document.getElementById('update-tc-btn-' + vfxId);
+                if (targetBtn) targetBtn.style.display = 'none';
+                const editSection = document.getElementById('edit-section-' + vfxId);
+                if (editSection) editSection.classList.remove('edit-section-dirty');
+            });
+        }, 2000);
+    }
+
+    if (skipped.length > 0) {
+        const detail = skipped.map(s => s.name + ' \u2014 ' + s.reason).join('; ');
+        const pl = updatedCount !== 1 ? 's' : '';
+        showTimecodeToast('Updated ' + updatedCount + ' plate' + pl + '. Skipped: ' + detail + '.');
+    }
+}
+
+// ============================================================================
+// EDIT SECTION BATCH \u2014 live button label + skip toast helpers
+// ============================================================================
+
+function updateTimecodeButtonLabel(vfxId) {
+    const btn = document.getElementById('update-tc-btn-' + vfxId);
+    if (!btn) return;
+
+    if (selectedVFXCodes.size < 2) {
+        btn.textContent = 'Update Timecodes';
+        return;
+    }
+
+    const plateNum = parseInt(document.getElementById(`edit-plate-${vfxId}`)?.value);
+    if (!plateNum) {
+        btn.textContent = 'Update Timecodes';
+        return;
+    }
+
+    let count = 0;
+    selectedVFXCodes.forEach(id => {
+        const container = document.querySelector(`[data-vfx-id="${id}"]`);
+        if (!container) return;
+        container.querySelectorAll('.plate-card').forEach(card => {
+            const numInput = card.querySelector('.plate-number-box input');
+            if (numInput && parseInt(numInput.value) === plateNum) count++;
+        });
+    });
+
+    btn.textContent = count > 0
+        ? 'Update Timecodes \u2014 ' + count + ' plate' + (count !== 1 ? 's' : '')
+        : 'Update Timecodes';
+}
+
+function updateAllTimecodeButtonLabels() {
+    document.querySelectorAll('[id^="update-tc-btn-"]').forEach(btn => {
+        const vfxId = parseInt(btn.id.replace('update-tc-btn-', ''));
+        updateTimecodeButtonLabel(vfxId);
+    });
+}
+
+function showTimecodeToast(message) {
+    const toast = document.createElement('div');
+    toast.textContent = message;
+    toast.style.cssText = 'position:fixed;top:20px;right:20px;background:#333;color:#fff;padding:12px 16px;border-radius:8px;z-index:9999;max-width:420px;font-size:0.85rem;line-height:1.4;box-shadow:0 4px 12px rgba(0,0,0,0.3);';
+    document.body.appendChild(toast);
+    setTimeout(() => {
+        toast.style.transition = 'opacity 0.5s';
+        toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 500);
+    }, 5000);
 }
 
 
@@ -4124,7 +4400,8 @@ function handleBatchSelection(vfxId, isChecked) {
     
     // Update visual indicators
     updateBatchVisuals();
-    
+    updateAllTimecodeButtonLabels();
+
     // Also handle the shot checkboxes (existing functionality)
     if (typeof toggleVFXCodeShots === 'function') {
         toggleVFXCodeShots(vfxId, isChecked);
@@ -4133,10 +4410,26 @@ function handleBatchSelection(vfxId, isChecked) {
 
 function updateBatchVisuals() {
     // Remove batch-linked class from all fields first
-    document.querySelectorAll('.batch-linkable').forEach(field => {
-        field.classList.remove('batch-linked');
-    });
-    
+    const allLinkable = document.querySelectorAll('.batch-linkable');
+    allLinkable.forEach(field => field.classList.remove('batch-linked'));
+
+    // Also clean up evicted (detached) containers — virtual scroller removes them from DOM
+    if (window.vfxCodeElements) {
+        window.vfxCodeElements.forEach(container => {
+            if (container.isConnected) return; // already handled above
+            container.querySelectorAll('.batch-linkable').forEach(field => {
+                field.classList.remove('batch-linked');
+            });
+        });
+    }
+
+    // Clear dirty state on all edit sections when dropping below batch threshold
+    if (selectedVFXCodes.size < 2) {
+        document.querySelectorAll('.edit-section-dirty').forEach(el => {
+            el.classList.remove('edit-section-dirty');
+        });
+    }
+
     // If 2+ VFX codes selected, highlight batch-linkable fields
     if (selectedVFXCodes.size >= 2) {
         selectedVFXCodes.forEach(vfxId => {
@@ -4260,6 +4553,38 @@ function handlePlateBatchInput(fieldName, value, sourceElement) {
         }
     }
     sendUpdates();
+}
+
+
+// ============================================================================
+// EDIT SECTION BATCH (Category 3 — Yellow, mirrors across selected VFX codes)
+// ============================================================================
+
+function handleEditSectionMirror(fieldName, value, sourceElement) {
+    if (selectedVFXCodes.size < 2) return;
+
+    const sourceVfxId = sourceElement ? String(sourceElement.dataset.vfxId) : null;
+
+    selectedVFXCodes.forEach(vfxId => {
+        if (String(vfxId) === sourceVfxId) return;  // skip source
+
+        // Use container-based querySelector so it works on evicted elements
+        const container = getVFXContainer(vfxId);
+        const targetEl = container?.querySelector('.batch-edit-' + fieldName);
+        if (!targetEl) return;
+
+        targetEl.value = value;
+
+        if (fieldName === 'plate') {
+            loadPlateToEdit(vfxId, value);
+        } else {
+            updateEditedPlate(vfxId);
+        }
+    });
+
+    if (fieldName === 'plate') {
+        updateAllTimecodeButtonLabels();
+    }
 }
 
 
