@@ -999,8 +999,9 @@ ipcMain.on('picker-action', (event, action) => {
     }
     
     if (action === 'new-project') {
-        // Show dialog immediately
-        dialog.showSaveDialog(null, {
+        // Show dialog - use picker window as parent so it appears on top (Windows fix)
+        const parentWin = pickerWindows.length > 0 ? pickerWindows[0] : null;
+        dialog.showSaveDialog(parentWin, {
             title: 'Create New Project',
             defaultPath: 'untitled_project.db',
             filters: [{ name: 'VFX Tracker Project', extensions: ['db'] }]
