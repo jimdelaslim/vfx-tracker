@@ -1006,10 +1006,11 @@ ipcMain.on('picker-action', (event, action) => {
             defaultPath: 'untitled_project.db',
             filters: [{ name: 'VFX Tracker Project', extensions: ['db'] }]
         }).then(result => {
-            closePickerWindows();
             if (!result.canceled) {
                 currentProjectPath = result.filePath;
                 console.log('Creating new project at:', currentProjectPath);
+                isSwitchingDatabase = true;  // Set BEFORE closing windows to prevent quit
+                closePickerWindows();
                 
                 // Store path for Flask to use
                 process.env.VFX_DB_PATH = currentProjectPath;
@@ -1029,7 +1030,6 @@ ipcMain.on('picker-action', (event, action) => {
                     addToRecentProjects(currentProjectPath);
                     
                     // Restart Flask to pick up new database
-                    isSwitchingDatabase = true;
                     stopFlask();
                     
                     setTimeout(() => {
@@ -1054,8 +1054,6 @@ ipcMain.on('picker-action', (event, action) => {
                 });
             } else {
                 console.log('New project cancelled');
-                closePickerWindows();
-                showProjectPicker();
             }
         });
     } else if (action === 'open-project') {
