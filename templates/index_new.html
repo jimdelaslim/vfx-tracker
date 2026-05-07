@@ -205,6 +205,12 @@ function clearAllFilters() {
     background-color: #fff3cd;
 }
 
+/* Plate Batch - Orange highlight */
+.plate-batch-linked {
+    background-color: #fff0e6 !important;
+    border-color: #FF8C42 !important;
+}
+
 /* VFX Code Container Styles */
 .vfx-code-container {
     position: relative; /* For absolute positioning of notes tab */
@@ -1196,7 +1202,7 @@ function clearAllFilters() {
                 <div class="plate-card" data-shot-id="{{ shot.id }}">
                     <!-- Plate Header -->
                     <div class="plate-header">
-                        <input type="checkbox" class="shot-checkbox" value="{{ shot.id }}" onchange="updateSelectionCount()" style="width: 20px; height: 20px; cursor: pointer;">
+                        <input type="checkbox" class="shot-checkbox" value="{{ shot.id }}" onchange="updateSelectionCount(); handlePlateBatchSelection({{ shot.id }}, this.checked)" style="width: 20px; height: 20px; cursor: pointer;">
                         <div class="plate-number-box">
                             <input type="number" value="{{ shot.plate_number }}" min="0" 
                                    onblur="updatePlateNumber({{ shot.id }}, this.value)"
@@ -1205,8 +1211,9 @@ function clearAllFilters() {
                         <input type="text" class="plate-element-name" value="{{ shot.clip_name }}" data-shot-id="{{ shot.id }}" data-vfx-code="{{ vfx_code.vfx_code }}" style="font-family: monospace; font-size: 0.95rem; font-weight: 600; color: #000; border: 1px solid transparent; background: transparent; padding: 2px 4px; border-radius: 4px; width: 100%; min-width: 180px;" onfocus="this.style.borderColor='#20b2aa'; this.style.background='#fff'" onblur="this.style.borderColor='transparent'; this.style.background='transparent'; updateClipName({{ shot.id }}, this.value, this)">
                         <input type="text" class="plate-type-display" value="{{ shot.plate_type or '' }}{{ shot.vfx_element or '' }}" data-shot-id="{{ shot.id }}" data-vfx-code="{{ vfx_code.vfx_code }}" data-plate-type="{{ shot.plate_type or '' }}" data-vfx-element="{{ shot.vfx_element or '' }}" style="text-align: center; border: none; font-size: 0.85rem; font-weight: 600; color: white; background: #20b2aa; padding: 0.25rem 0.5rem; border-radius: 4px; width: 70px; cursor: text; text-transform: uppercase;" onfocus="this.style.outline='2px solid #fff'" onblur="this.style.outline='none'; updatePlateType({{ shot.id }}, this.value, this)">
                         <div class="plate-version" style="display: flex; align-items: center; justify-content: center; gap: 2px;"><span>v</span><input type="number" value="{{ shot.version }}" min="1" onblur="updateVersion({{ shot.id }}, this.value)" style="width: 30px; padding: 2px 4px; border: none; background: transparent; text-align: center; font-size: 0.8rem; color: white; font-weight: 500;"></div>
-                        <select class="plate-status-badge {{ shot.plate_status|lower }}" 
-                                onchange="updatePlateStatus({{ shot.id }}, this.value)">
+                        <select class="plate-status-badge plate-batch-linkable {{ shot.plate_status|lower }}"
+                                data-shot-id="{{ shot.id }}"
+                                onchange="updatePlateStatus({{ shot.id }}, this.value); handlePlateBatchInput('plate_status', this.value, this)">
                             <option value="Prep" {% if shot.plate_status == 'Prep' %}selected{% endif %}>Prep</option>
                             <option value="Ready" {% if shot.plate_status == 'Ready' %}selected{% endif %}>Ready</option>
                             <option value="UPDATE" {% if shot.plate_status == 'UPDATE' %}selected{% endif %}>UPDATE</option>
@@ -1446,14 +1453,20 @@ function clearAllFilters() {
                                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
                                         <div class="plate-info-item">
                                             <span class="plate-info-label">Pull Date</span>
-                                            <input type="date" value="{{ shot.pull_date.strftime('%Y-%m-%d') if shot.pull_date else '' }}" 
-                                                   onchange="updatePlateField({{ shot.id }}, 'pull_date', this.value)"
+                                            <input type="date" class="plate-batch-linkable"
+                                                   data-shot-id="{{ shot.id }}"
+                                                   data-plate-field="pull_date"
+                                                   value="{{ shot.pull_date.strftime('%Y-%m-%d') if shot.pull_date else '' }}"
+                                                   onchange="updatePlateField({{ shot.id }}, 'pull_date', this.value); handlePlateBatchInput('pull_date', this.value, this)"
                                                    style="border: 1px solid #ddd; padding: 0.4rem; font-size: 0.8rem; border-radius: 4px; width: 100%;">
                                         </div>
                                         <div class="plate-info-item">
                                             <span class="plate-info-label">Plate Rev</span>
-                                            <input type="text" value="{{ shot.plate_rev or '' }}"
-                                                   onblur="updatePlateField({{ shot.id }}, 'plate_rev', this.value)"
+                                            <input type="text" class="plate-batch-linkable"
+                                                   data-shot-id="{{ shot.id }}"
+                                                   data-plate-field="plate_rev"
+                                                   value="{{ shot.plate_rev or '' }}"
+                                                   onblur="updatePlateField({{ shot.id }}, 'plate_rev', this.value); handlePlateBatchInput('plate_rev', this.value, this)"
                                                    style="border: 1px solid #ddd; padding: 0.4rem; font-size: 0.8rem; border-radius: 4px; width: 100%;">
                                         </div>
                                     </div>
@@ -1463,15 +1476,24 @@ function clearAllFilters() {
                                 <div class="plate-notes-grid">
                                     <div class="plate-note-field half">
                                         <label>Retime</label>
-                                        <textarea onblur="updatePlateField({{ shot.id }}, 'retime_notes', this.value)">{{ shot.retime_notes or '' }}</textarea>
+                                        <textarea class="plate-batch-linkable"
+                                                  data-shot-id="{{ shot.id }}"
+                                                  data-plate-field="retime_notes"
+                                                  onblur="updatePlateField({{ shot.id }}, 'retime_notes', this.value); handlePlateBatchInput('retime_notes', this.value, this)">{{ shot.retime_notes or '' }}</textarea>
                                     </div>
                                     <div class="plate-note-field half">
                                         <label>Resize/Reposition</label>
-                                        <textarea onblur="updatePlateField({{ shot.id }}, 'resize_reposition', this.value)">{{ shot.resize_reposition or '' }}</textarea>
+                                        <textarea class="plate-batch-linkable"
+                                                  data-shot-id="{{ shot.id }}"
+                                                  data-plate-field="resize_reposition"
+                                                  onblur="updatePlateField({{ shot.id }}, 'resize_reposition', this.value); handlePlateBatchInput('resize_reposition', this.value, this)">{{ shot.resize_reposition or '' }}</textarea>
                                     </div>
                                     <div class="plate-note-field">
                                         <label>Element Notes</label>
-                                        <textarea onblur="updatePlateField({{ shot.id }}, 'element_notes', this.value)">{{ shot.element_notes or '' }}</textarea>
+                                        <textarea class="plate-batch-linkable"
+                                                  data-shot-id="{{ shot.id }}"
+                                                  data-plate-field="element_notes"
+                                                  onblur="updatePlateField({{ shot.id }}, 'element_notes', this.value); handlePlateBatchInput('element_notes', this.value, this)">{{ shot.element_notes or '' }}</textarea>
                                     </div>
                                 </div>
                             </div>
@@ -1948,6 +1970,7 @@ function toggleVFXCodeShots(vfxId, checked) {
             console.log(`[Toggle Shots] Found matching container with ${shotCheckboxes.length} shots`);
             shotCheckboxes.forEach(cb => {
                 cb.checked = checked;
+                handlePlateBatchSelection(parseInt(cb.value), checked);
             });
         }
     });
@@ -2008,9 +2031,11 @@ function deselectAll() {
         }
     });
     
-    // Deselect all shot checkboxes
+    // Deselect all shot checkboxes and clear plate batch selection
     allShotCheckboxes.forEach(cb => cb.checked = false);
-    
+    selectedPlates.clear();
+    updateBatchVisualsForPlates();
+
     updateSelectionCount();
 }
 
@@ -4163,6 +4188,79 @@ function handleBatchInput(fieldName, value, sourceElement) {
     sendUpdates();
 }
 
+
+// ============================================================================
+// PLATE BATCH (Category 2 — Orange)
+// ============================================================================
+
+let selectedPlates = new Set();
+
+function handlePlateBatchSelection(shotId, isChecked) {
+    if (isChecked) {
+        selectedPlates.add(shotId);
+    } else {
+        selectedPlates.delete(shotId);
+    }
+    updateBatchVisualsForPlates();
+}
+
+function updateBatchVisualsForPlates() {
+    document.querySelectorAll('.plate-batch-linkable').forEach(el => {
+        el.classList.remove('plate-batch-linked');
+    });
+    if (selectedPlates.size >= 2) {
+        selectedPlates.forEach(shotId => {
+            document.querySelectorAll(`[data-shot-id="${shotId}"].plate-batch-linkable`).forEach(el => {
+                el.classList.add('plate-batch-linked');
+            });
+        });
+    }
+}
+
+function handlePlateBatchInput(fieldName, value, sourceElement) {
+    if (selectedPlates.size < 2) {
+        return;
+    }
+    const sourceShotId = sourceElement ? String(sourceElement.dataset.shotId) : null;
+
+    const targets = [];
+    selectedPlates.forEach(shotId => {
+        if (String(shotId) !== sourceShotId) targets.push(shotId);
+    });
+
+    // Mirror value to UI immediately for all targets
+    targets.forEach(shotId => {
+        let targetEl;
+        if (fieldName === 'plate_status') {
+            targetEl = document.querySelector(`[data-shot-id="${shotId}"].plate-batch-linkable.plate-status-badge`);
+            if (!targetEl) return;
+            targetEl.value = value;
+            // Keep the dropdown colour class in sync
+            targetEl.className = targetEl.className.replace(/\b(prep|ready|update)\b/g, '').trim();
+            targetEl.classList.add(value.toLowerCase());
+        } else {
+            targetEl = document.querySelector(`[data-shot-id="${shotId}"].plate-batch-linkable[data-plate-field="${fieldName}"]`);
+            if (!targetEl) return;
+            targetEl.value = value;
+        }
+    });
+
+    // Send updates sequentially
+    async function sendUpdates() {
+        for (const shotId of targets) {
+            try {
+                await fetch('/shot/' + shotId + '/update/field', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({[fieldName]: value})
+                });
+            } catch (err) {
+                console.error('Plate batch update failed for shot', shotId, err);
+            }
+        }
+    }
+    sendUpdates();
+}
 
 
 function scrollToTop() {
