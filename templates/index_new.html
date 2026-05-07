@@ -1168,12 +1168,18 @@ function clearAllFilters() {
                 <div style="display: flex; flex-direction: column; gap: 1rem;">
                     <div class="vfx-info-field">
                         <label>Scope of Work</label>
-                        <textarea onblur="updateVFXField({{ vfx_code.id }}, 'scope_of_work', this.value)" style="height: 120px;">{{ vfx_code.scope_of_work or '' }}</textarea>
+                        <textarea class="batch-linkable batch-scope-of-work"
+                                  data-vfx-id="{{ vfx_code.id }}"
+                                  onblur="updateVFXField({{ vfx_code.id }}, 'scope_of_work', this.value); handleBatchInput('scope_of_work', this.value, this)"
+                                  style="height: 120px;">{{ vfx_code.scope_of_work or '' }}</textarea>
                     </div>
 
                     <div class="vfx-info-field">
                         <label>VFX Editorial Note</label>
-                        <textarea onblur="updateVFXField({{ vfx_code.id }}, 'vfx_editorial_note', this.value)" style="height: 120px;">{{ vfx_code.vfx_editorial_note or '' }}</textarea>
+                        <textarea class="batch-linkable batch-vfx-editorial-note"
+                                  data-vfx-id="{{ vfx_code.id }}"
+                                  onblur="updateVFXField({{ vfx_code.id }}, 'vfx_editorial_note', this.value); handleBatchInput('vfx_editorial_note', this.value, this)"
+                                  style="height: 120px;">{{ vfx_code.vfx_editorial_note or '' }}</textarea>
                     </div>
                 </div>
             </div>
