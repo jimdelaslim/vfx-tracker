@@ -653,7 +653,7 @@ function clearAllFilters() {
 
 .plate-right-section {
     display: grid;
-    grid-template-columns: 280px 1fr;
+    grid-template-columns: 340px 1fr;
     gap: 1rem;
 }
 
@@ -1304,7 +1304,7 @@ function clearAllFilters() {
                                         {% if shot.cam_roll or shot.reel %}
                                         <div class="metadata-item">
                                             <span class="metadata-label">Tape Name</span>
-                                            <span class="metadata-value">{{ shot.cam_roll or shot.reel }}</span>
+                                            {% set tape = shot.cam_roll or shot.reel %}<span class="metadata-value" title="{{ tape }}">{% if tape and '_' in tape %}{{ tape.split('_')[0] }}{% elif tape %}{{ tape[:9] }}{% else %}{% endif %}</span>
                                         </div>
                                         {% endif %}
                                         {% if shot.camera_clipname %}
