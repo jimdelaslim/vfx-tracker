@@ -130,7 +130,19 @@ def migrate_database_schema():
                 cursor.execute("ALTER TABLE camera_metadata ADD COLUMN cdl_sop VARCHAR(200) DEFAULT ''")
                 connection.commit()
                 print("AUTO-MIGRATION: cdl_sat/cdl_sop (camera_metadata) complete!")
-            
+
+            if 'clip_name' not in meta_columns:
+                print("AUTO-MIGRATION: Adding clip_name to camera_metadata...")
+                cursor.execute("ALTER TABLE camera_metadata ADD COLUMN clip_name VARCHAR(200) DEFAULT ''")
+                connection.commit()
+                print("AUTO-MIGRATION: clip_name (camera_metadata) complete!")
+
+            if 'from_clip_name' not in shot_columns:
+                print("AUTO-MIGRATION: Adding from_clip_name to shots...")
+                cursor.execute("ALTER TABLE shots ADD COLUMN from_clip_name VARCHAR(200) DEFAULT ''")
+                connection.commit()
+                print("AUTO-MIGRATION: from_clip_name (shots) complete!")
+
             cursor.close()
             connection.close()
     except Exception as e:

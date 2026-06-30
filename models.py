@@ -149,6 +149,7 @@ class Shot(db.Model):
     reference_image = db.Column(db.String(500))  # Path to reference image
     cam_roll = db.Column(db.String(100))
     reel = db.Column(db.String(100))
+    from_clip_name = db.Column(db.String(200))  # FROM CLIP NAME field from EDL
     
     # Camera & Lens Metadata
     camera = db.Column(db.String(100))
@@ -380,7 +381,7 @@ class CameraMetadata(db.Model):
     """Camera metadata library - stores metadata by cam roll/tape name"""
     id = db.Column(db.Integer, primary_key=True)
     cam_roll = db.Column(db.String(100), unique=True, nullable=False, index=True)
-    
+
     # Camera & Lens Metadata
     camera = db.Column(db.String(100))
     lens = db.Column(db.String(100))
@@ -396,6 +397,7 @@ class CameraMetadata(db.Model):
     gamma = db.Column(db.String(100))
     file_path = db.Column(db.Text)
     camera_clipname = db.Column(db.String(200))
+    clip_name = db.Column(db.String(200))  # Avid clip name (e.g. "92B-1D"), maps to CSV "Name" column
     
     # Extended Metadata
     shot_frame_rate = db.Column(db.String(50))
