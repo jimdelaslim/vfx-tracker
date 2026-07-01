@@ -109,15 +109,13 @@ def parse_avid_markers(edl_text):
                     markers[current_event] = marker_name
                     continue
         
-        # Format 2: LOC format - * LOC: TC COLOR     MARKER_NAME
-        if '* LOC:' in line:
-            # Pattern: * LOC: HH:MM:SS:FF COLORNAME     MARKER_NAME
-            match = re.search(r'\* LOC:\s+\S+\s+\S+\s+(\S+)', line)
-            if match:
-                marker_name = match.group(1).strip()
-                if marker_name:
-                    markers[current_event] = marker_name
-                    continue
+        # Format 2: LOC format — CMX3600 uses "* LOC:", File32 uses "*LOC:" (no space)
+        loc_match = re.search(r'\*\s*LOC:\s+\S+\s+\S+\s+(\S+)', line)
+        if loc_match:
+            marker_name = loc_match.group(1).strip()
+            if marker_name:
+                markers[current_event] = marker_name
+                continue
     
     return markers
 
@@ -177,6 +175,10 @@ def import_edl(filepath, fps=24.0, use_markers=False):
                     reel = item.metadata.get('cmx_3600', {}).get('reel', '')
                     shot_data['reel'] = reel
                     shot_data['cam_roll'] = reel  # Auto-populate cam_roll with tape name
+
+                # Store FROM CLIP NAME (item.name before any marker override)
+                shot_data['from_clip_name'] = item.name
+                print(f"[EDL PARSE] event {event_num}: cam_roll={shot_data.get('cam_roll')!r}  from_clip_name={item.name!r}")
                 
                 # Detect M2 but don't auto-set crank - store for warning
                 if event_num in m2_data:
