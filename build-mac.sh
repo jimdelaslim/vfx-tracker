@@ -3,6 +3,9 @@ set -e
 
 echo "=== VFX Shot Tracker Mac Build Script ==="
 
+# Clean previous build output
+rm -rf dist
+
 echo "[1/5] Setting up Python virtual environment..."
 if [ ! -d "venv" ]; then
     python3 -m venv venv
@@ -22,7 +25,6 @@ cp -R ~/Library/Caches/ms-playwright/* playwright-browsers/
 echo "Copied browsers from ~/Library/Caches/ms-playwright"
 
 echo "[5/5] Building Electron app..."
-rm -rf dist
 npm run build
 
 echo ""

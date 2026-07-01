@@ -1,6 +1,9 @@
 ﻿# Windows Build Script for VFX Shot Tracker
 Write-Host "=== VFX Shot Tracker Windows Build Script ===" -ForegroundColor Cyan
 
+# Clean previous build output before anything writes to dist/
+Remove-Item -Recurse -Force dist -ErrorAction SilentlyContinue
+
 # Step 1: Create venv
 Write-Host "`n[1/7] Creating Python virtual environment..." -ForegroundColor Yellow
 py -3.13 -m venv venv
@@ -62,7 +65,6 @@ Write-Host "[6/7] Building Flask server executable..." -ForegroundColor Yellow
 
 # Step 7: Build Electron app
 Write-Host "[7/7] Building Electron application..." -ForegroundColor Yellow
-Remove-Item -Recurse -Force dist -ErrorAction SilentlyContinue
 npx electron-builder --win
 
 Write-Host "`n=== Build Complete! ===" -ForegroundColor Green
