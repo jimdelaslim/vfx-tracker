@@ -295,6 +295,19 @@ def find_metadata_by_cam_roll(cam_roll):
     return None
 
 
+def resolve_tape(shot):
+    """Return the most accurate tape/cam_roll for a shot.
+    Prefers linked CameraMetadata.cam_roll via clip_name match; falls back to
+    fuzzy cam_roll matching; then shot.cam_roll or shot.reel.
+    """
+    meta = None
+    if shot.from_clip_name:
+        meta = find_metadata_by_clip_name(shot.from_clip_name)
+    if not meta:
+        meta = find_metadata_by_cam_roll(shot.cam_roll) if shot.cam_roll else None
+    return (meta.cam_roll if meta else None) or shot.cam_roll or shot.reel or ''
+
+
 @app.route('/index_old')
 def index_old():
     """Main dashboard"""
@@ -1279,7 +1292,8 @@ def export_vfx_group_pdf(vfx_code):
         return redirect(url_for('index'))
     
     # Generate PDF with all plates
-    pdf_bytes = generate_selected_shots_pdf_playwright(shots, project, vfx_code)
+    tape_map = {s.id: resolve_tape(s) for s in shots}
+    pdf_bytes = generate_selected_shots_pdf_playwright(shots, project, vfx_code, tape_map=tape_map)
     pdf_buffer = BytesIO(pdf_bytes)
     
     filename = f"{vfx_code}_all_plates.pdf"
@@ -1846,7 +1860,7 @@ def export_vfx_csv_selected():
     
     # Write header
     writer.writerow([
-        'VFX Code', 'Clip Name', 'Plate Type', 'Plate #', 'Version', 
+        'VFX Code', 'Clip Name', 'Tape Name', 'Plate Type', 'Plate #', 'Version',
         'Status', 'Turnover #', 'Turnover Date',
         'Vendor 1', 'Vendor 2', 'Vendor 3', 'Vendor 4',
         'Frame Range', 'Starting Frame', 'Head Handles', 'Tail Handles',
@@ -1864,6 +1878,7 @@ def export_vfx_csv_selected():
         writer.writerow([
             vfx_code.vfx_code if vfx_code else shot.vfx_code,
             shot.clip_name,
+            resolve_tape(shot),
             shot.plate_type or '',
             shot.plate_number or '',
             f"v{shot.version}" if shot.version else '',
@@ -1912,11 +1927,11 @@ def export_vfx_csv_selected():
             
             # Write header
             vfx_writer.writerow([
-                'VFX Code', 'Clip Name', 'Plate Type', 'Plate #', 'Version', 
+                'VFX Code', 'Clip Name', 'Tape Name', 'Plate Type', 'Plate #', 'Version',
                 'Status', 'Turnover #', 'Turnover Date',
                 'Vendor 1', 'Vendor 2', 'Vendor 3', 'Vendor 4',
                 'Frame Range', 'Starting Frame', 'Head Handles', 'Tail Handles',
-                'Crank Speed', 'TC Cut In', 'TC Cut Out', 'TC Scan In', 'TC Scan Out',
+                'Crank Speed', 'FPS', 'TC Cut In', 'TC Cut Out', 'TC Scan In', 'TC Scan Out',
                 'Length (frames)', 'Total Scan (frames)',
                 'Scope of Work', 'VFX Editorial Note'
             ])
@@ -1930,6 +1945,7 @@ def export_vfx_csv_selected():
                 vfx_writer.writerow([
                     vfx_code_obj.vfx_code if vfx_code_obj else shot.vfx_code,
                     shot.clip_name,
+                    resolve_tape(shot),
                     shot.plate_type or '',
                     shot.plate_number or '',
                     f"v{shot.version}" if shot.version else '',
@@ -1945,6 +1961,7 @@ def export_vfx_csv_selected():
                     shot.head_handles or 0,
                     shot.tail_handles or 0,
                     f"{shot.crank_speed}%" if shot.crank_speed else '100%',
+                    shot.shot_frame_rate or shot.fps or '',
                     shot.source_in or '',
                     shot.source_out or '',
                     shot.tc_scan_in() or '',
@@ -2082,7 +2099,8 @@ def export_pdf_selected():
         # Generate PDF for each VFX code and encode as base64
         pdfs = {}
         for vfx_code, vfx_shots in shots_by_vfx.items():
-            pdf_bytes = generate_selected_shots_pdf_playwright(vfx_shots, project, vfx_code)
+            tape_map = {s.id: resolve_tape(s) for s in vfx_shots}
+            pdf_bytes = generate_selected_shots_pdf_playwright(vfx_shots, project, vfx_code, tape_map=tape_map)
             pdf_base64 = base64.b64encode(pdf_bytes).decode('utf-8')
             pdfs[f'{vfx_code}_plates.pdf'] = pdf_base64
         
@@ -2090,7 +2108,8 @@ def export_pdf_selected():
         return jsonify({'pdfs': pdfs})
     else:
         # SINGLE/COMBINED MODE: One PDF with all shots
-        pdf_bytes = generate_selected_shots_pdf_playwright(shots, project, title)
+        tape_map = {s.id: resolve_tape(s) for s in shots}
+        pdf_bytes = generate_selected_shots_pdf_playwright(shots, project, title, tape_map=tape_map)
         pdf_buffer = BytesIO(pdf_bytes)
         
         # Return PDF directly for JSON requests, file download for form requests
@@ -2350,7 +2369,7 @@ def export_metadata_csv_selected():
         writer.writerow([
             shot.clip_name,
             shot.vfx_code or '',
-            shot.cam_roll or '',
+            resolve_tape(shot),
             shot.camera or '',
             shot.camera_manufacturer or '',
             shot.camera_serial or '',
@@ -2437,7 +2456,7 @@ def export_metadata_csv_selected():
                 vfx_writer.writerow([
                     shot.clip_name,
                     shot.vfx_code or '',
-                    shot.cam_roll or '',
+                    resolve_tape(shot),
                     shot.camera or '',
                     shot.camera_manufacturer or '',
                     shot.camera_serial or '',

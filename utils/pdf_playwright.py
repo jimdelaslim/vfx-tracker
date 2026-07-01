@@ -36,7 +36,7 @@ def generate_shot_pdf_playwright(shot):
     vfx_code = shot.vfx_code_obj.vfx_code if hasattr(shot, 'vfx_code_obj') and shot.vfx_code_obj else shot.vfx_code
     return generate_selected_shots_pdf_playwright(shots, shot.project, vfx_code)
 
-def generate_selected_shots_pdf_playwright(shots, project, title=None):
+def generate_selected_shots_pdf_playwright(shots, project, title=None, tape_map=None):
     print(f"[TOOL] PDF Export started: {len(shots)} shots")
     """Generate PDF for selected shots - one page per plate"""
 
@@ -84,7 +84,7 @@ def generate_selected_shots_pdf_playwright(shots, project, title=None):
         status_color = get_status_color(shot_status)
 
         # Prepare all plates for this VFX code
-        plates_data = [prepare_plate_data(shot, project) for shot in group_shots]
+        plates_data = [prepare_plate_data(shot, project, tape_map=tape_map) for shot in group_shots]
 
         # Render HTML for this VFX code with all its plates
         html = render_template('pdf/plate_export.html',
@@ -115,7 +115,7 @@ def format_date_only(date_str):
     # Remove everything after the space (the time portion)
     return str(date_str).split(' ')[0]
 
-def prepare_plate_data(shot, project):
+def prepare_plate_data(shot, project, tape_map=None):
     """Prepare plate data for template"""
 
     # Get plate reference image
@@ -170,7 +170,7 @@ def prepare_plate_data(shot, project):
         'iso': shot.iso,
         'resolution': shot.resolution,
         'fps': shot.shot_frame_rate or str(shot.fps or ''),
-        'cam_roll': shot.cam_roll or shot.reel,
+        'cam_roll': (tape_map.get(shot.id) if tape_map else None) or shot.cam_roll or shot.reel,
         'camera_clipname': shot.camera_clipname or '',
         'shutter_angle': shot.shutter_angle or shot.shutter_speed,
         'camera_roll': shot.camera_roll,
