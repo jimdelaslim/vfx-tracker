@@ -4121,30 +4121,34 @@ threading.Thread(target=_warmup_playwright, daemon=True).start()
 
 
 
+def is_metadata_orphaned(m, shots):
+    """Return True if metadata row m is not linked to any shot via cam_roll or clip_name."""
+    for shot in shots:
+        if shot.cam_roll and m.cam_roll and (
+            shot.cam_roll == m.cam_roll or
+            shot.cam_roll.startswith(m.cam_roll) or
+            m.cam_roll.startswith(shot.cam_roll)
+        ):
+            return False
+        if m.clip_name and shot.from_clip_name and \
+           m.clip_name.lower() == shot.from_clip_name.lower():
+            return False
+    return True
+
+
 @app.route('/metadata/library')
 def metadata_library():
     """View all camera metadata in the library (including orphaned)"""
     from models import CameraMetadata, Shot
-    
+
     project = get_active_project()
     all_metadata = CameraMetadata.query.order_by(CameraMetadata.cam_roll).all()
-    
+    project_shots = Shot.query.filter_by(project_id=project.id).all()
+
     # Check which are linked to shots
     metadata_info = []
     for m in all_metadata:
-        # Check if any shot references this cam_roll
-        linked_shots = Shot.query.filter(
-            Shot.project_id == project.id,
-            Shot.cam_roll.like(f'%{m.cam_roll}%')
-        ).all()
-        
-        # Also check reverse - metadata cam_roll matches shot cam_roll prefix
-        if not linked_shots:
-            all_shots = Shot.query.filter_by(project_id=project.id).all()
-            for s in all_shots:
-                if s.cam_roll and (s.cam_roll.startswith(m.cam_roll) or m.cam_roll.startswith(s.cam_roll)):
-                    linked_shots.append(s)
-        
+        linked_shots = [s for s in project_shots if not is_metadata_orphaned(m, [s])]
         metadata_info.append({
             'metadata': m,
             'linked_count': len(linked_shots),
@@ -4179,25 +4183,17 @@ def delete_metadata_library_items():
 def clear_orphaned_metadata():
     """Delete all metadata entries that aren't linked to any shots"""
     from models import CameraMetadata, Shot
-    
+
     project = get_active_project()
     all_metadata = CameraMetadata.query.all()
-    all_shots = Shot.query.filter_by(project_id=project.id).all()
-    shot_cam_rolls = [s.cam_roll for s in all_shots if s.cam_roll]
-    
+    project_shots = Shot.query.filter_by(project_id=project.id).all()
+
     deleted = 0
     for m in all_metadata:
-        # Check if linked (either direction)
-        is_linked = False
-        for shot_roll in shot_cam_rolls:
-            if shot_roll == m.cam_roll or shot_roll.startswith(m.cam_roll) or m.cam_roll.startswith(shot_roll):
-                is_linked = True
-                break
-        
-        if not is_linked:
+        if is_metadata_orphaned(m, project_shots):
             db.session.delete(m)
             deleted += 1
-    
+
     db.session.commit()
     flash(f'Cleared {deleted} orphaned metadata entries', 'success')
     return redirect(url_for('metadata_library'))
