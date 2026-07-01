@@ -250,6 +250,20 @@ def auto_number_plates(project_id):
     db.session.commit()
 
 
+def find_metadata_by_clip_name(clip_name):
+    """Find camera metadata by clip_name (case-insensitive exact match).
+    Matches Shot.from_clip_name against CameraMetadata.clip_name.
+    Prefer this over find_metadata_by_cam_roll when from_clip_name is available.
+    """
+    if not clip_name:
+        return None
+    return CameraMetadata.query.filter(
+        db.func.lower(CameraMetadata.clip_name) == clip_name.lower()
+    ).first()
+
+
+# Prefer find_metadata_by_clip_name() when possible — this function has known ambiguity
+# for CMX3600 EDLs where multiple clips truncate to the same cam_roll.
 def find_metadata_by_cam_roll(cam_roll):
     """Find camera metadata by cam_roll with fuzzy matching.
     Tries exact match first, then tries prefix/partial matching.
@@ -992,48 +1006,50 @@ def confirm_metadata_import():
     app.logger.info(f"DEBUG: Attempting to link metadata to {len(all_shots)} shots")
     
     for shot in all_shots:
-        if shot.cam_roll:
-            app.logger.info(f"DEBUG: Shot {shot.clip_name} has cam_roll: {shot.cam_roll}")
-            metadata = find_metadata_by_cam_roll(shot.cam_roll)
-            if metadata:
-                app.logger.info(f"  -> Found metadata! Camera: {metadata.camera}, Lens: {metadata.lens}")
-                # Copy all metadata fields to shot (hardcoded to ensure all fields are copied)
-                shot.camera = metadata.camera
-                shot.lens = metadata.lens
-                shot.focal_length = metadata.focal_length
-                shot.t_stop = metadata.t_stop
-                shot.iso = metadata.iso
-                shot.white_balance = metadata.white_balance
-                shot.lut = metadata.lut
-                shot.resolution = metadata.resolution
-                shot.codec = metadata.codec
-                shot.color_space = metadata.color_space
-                shot.gamma = metadata.gamma
-                shot.file_path = metadata.file_path
-                shot.shot_frame_rate = metadata.shot_frame_rate
-                shot.start_tc = metadata.start_tc
-                shot.end_tc = metadata.end_tc
-                # Don't overwrite start_frame if already set by user
-                if not shot.start_frame or str(shot.start_frame) in ('0', ''):
-                    shot.start_frame = metadata.start_frame
-                shot.end_frame = metadata.end_frame
-                shot.total_frames = metadata.total_frames
-                shot.camera_manufacturer = metadata.camera_manufacturer
-                shot.camera_serial = metadata.camera_serial
-                shot.shutter_angle = metadata.shutter_angle
-                shot.shutter_speed = metadata.shutter_speed
-                shot.shutter = metadata.shutter
-                shot.distance = metadata.distance
-                shot.nd_filter = metadata.nd_filter
-                shot.camera_tilt = metadata.camera_tilt
-                shot.camera_roll = metadata.camera_roll
-                shot.camera_clipname = metadata.camera_clipname
+        metadata = None
+        if shot.from_clip_name:
+            metadata = find_metadata_by_clip_name(shot.from_clip_name)
+        if not metadata:
+            metadata = find_metadata_by_cam_roll(shot.cam_roll) if shot.cam_roll else None
+        if metadata:
+            app.logger.info(f"  -> Found metadata for {shot.clip_name}! Camera: {metadata.camera}, Lens: {metadata.lens}")
+            # Copy all metadata fields to shot (hardcoded to ensure all fields are copied)
+            shot.camera = metadata.camera
+            shot.lens = metadata.lens
+            shot.focal_length = metadata.focal_length
+            shot.t_stop = metadata.t_stop
+            shot.iso = metadata.iso
+            shot.white_balance = metadata.white_balance
+            shot.lut = metadata.lut
+            shot.resolution = metadata.resolution
+            shot.codec = metadata.codec
+            shot.color_space = metadata.color_space
+            shot.gamma = metadata.gamma
+            shot.file_path = metadata.file_path
+            shot.shot_frame_rate = metadata.shot_frame_rate
+            shot.start_tc = metadata.start_tc
+            shot.end_tc = metadata.end_tc
+            # Don't overwrite start_frame if already set by user
+            if not shot.start_frame or str(shot.start_frame) in ('0', ''):
+                shot.start_frame = metadata.start_frame
+            shot.end_frame = metadata.end_frame
+            shot.total_frames = metadata.total_frames
+            shot.camera_manufacturer = metadata.camera_manufacturer
+            shot.camera_serial = metadata.camera_serial
+            shot.shutter_angle = metadata.shutter_angle
+            shot.shutter_speed = metadata.shutter_speed
+            shot.shutter = metadata.shutter
+            shot.distance = metadata.distance
+            shot.nd_filter = metadata.nd_filter
+            shot.camera_tilt = metadata.camera_tilt
+            shot.camera_roll = metadata.camera_roll
+            shot.camera_clipname = metadata.camera_clipname
 
-                shot.cdl_sat = metadata.cdl_sat
+            shot.cdl_sat = metadata.cdl_sat
 
-                shot.cdl_sop = metadata.cdl_sop
-                
-                shots_linked += 1
+            shot.cdl_sop = metadata.cdl_sop
+
+            shots_linked += 1
     
     db.session.commit()
     
@@ -1688,7 +1704,11 @@ def generate_pull_ale(shots, fps=24):
         except:
             duration_tc = "00:00:00:00"
         
-        meta = find_metadata_by_cam_roll(shot.cam_roll) if shot.cam_roll else None
+        meta = None
+        if shot.from_clip_name:
+            meta = find_metadata_by_clip_name(shot.from_clip_name)
+        if not meta:
+            meta = find_metadata_by_cam_roll(shot.cam_roll) if shot.cam_roll else None
         tape = meta.cam_roll if meta else (shot.reel or shot.cam_roll or "")
         lines.append(f"{name}\t{tc_in}\t{tc_out}\t{duration_tc}\tV\t{tape}")
     
@@ -2698,47 +2718,50 @@ def import_confirmation():
             # Set default start frame from project settings
             if 'start_frame' not in shot_data or not shot_data.get('start_frame'):
                 shot_data['start_frame'] = project.default_start_frame or 1001
-            
+
             shot = Shot(**shot_data)
             db.session.add(shot)
-            
-            if shot.cam_roll:
-                metadata = find_metadata_by_cam_roll(shot.cam_roll)
-                if metadata:
-                    shot.camera = metadata.camera
-                    shot.lens = metadata.lens
-                    shot.focal_length = metadata.focal_length
-                    shot.t_stop = metadata.t_stop
-                    shot.iso = metadata.iso
-                    shot.white_balance = metadata.white_balance
-                    shot.lut = metadata.lut
-                    shot.resolution = metadata.resolution
-                    shot.codec = metadata.codec
-                    shot.color_space = metadata.color_space
-                    shot.gamma = metadata.gamma
-                    shot.file_path = metadata.file_path
-                    shot.shot_frame_rate = metadata.shot_frame_rate
-                    shot.start_tc = metadata.start_tc
-                    shot.end_tc = metadata.end_tc
-                    # Don't overwrite start_frame if already set by user
-                    if not shot.start_frame or str(shot.start_frame) in ('0', ''):
-                        shot.start_frame = metadata.start_frame
-                    shot.end_frame = metadata.end_frame
-                    shot.total_frames = metadata.total_frames
-                    shot.camera_manufacturer = metadata.camera_manufacturer
-                    shot.camera_serial = metadata.camera_serial
-                    shot.shutter_angle = metadata.shutter_angle
-                    shot.shutter_speed = metadata.shutter_speed
-                    shot.shutter = metadata.shutter
-                    shot.distance = metadata.distance
-                    shot.nd_filter = metadata.nd_filter
-                    shot.camera_tilt = metadata.camera_tilt
-                    shot.camera_roll = metadata.camera_roll
-                    shot.camera_clipname = metadata.camera_clipname
 
-                    shot.cdl_sat = metadata.cdl_sat
+            metadata = None
+            if shot.from_clip_name:
+                metadata = find_metadata_by_clip_name(shot.from_clip_name)
+            if not metadata:
+                metadata = find_metadata_by_cam_roll(shot.cam_roll) if shot.cam_roll else None
+            if metadata:
+                shot.camera = metadata.camera
+                shot.lens = metadata.lens
+                shot.focal_length = metadata.focal_length
+                shot.t_stop = metadata.t_stop
+                shot.iso = metadata.iso
+                shot.white_balance = metadata.white_balance
+                shot.lut = metadata.lut
+                shot.resolution = metadata.resolution
+                shot.codec = metadata.codec
+                shot.color_space = metadata.color_space
+                shot.gamma = metadata.gamma
+                shot.file_path = metadata.file_path
+                shot.shot_frame_rate = metadata.shot_frame_rate
+                shot.start_tc = metadata.start_tc
+                shot.end_tc = metadata.end_tc
+                # Don't overwrite start_frame if already set by user
+                if not shot.start_frame or str(shot.start_frame) in ('0', ''):
+                    shot.start_frame = metadata.start_frame
+                shot.end_frame = metadata.end_frame
+                shot.total_frames = metadata.total_frames
+                shot.camera_manufacturer = metadata.camera_manufacturer
+                shot.camera_serial = metadata.camera_serial
+                shot.shutter_angle = metadata.shutter_angle
+                shot.shutter_speed = metadata.shutter_speed
+                shot.shutter = metadata.shutter
+                shot.distance = metadata.distance
+                shot.nd_filter = metadata.nd_filter
+                shot.camera_tilt = metadata.camera_tilt
+                shot.camera_roll = metadata.camera_roll
+                shot.camera_clipname = metadata.camera_clipname
 
-                    shot.cdl_sop = metadata.cdl_sop
+                shot.cdl_sat = metadata.cdl_sat
+
+                shot.cdl_sop = metadata.cdl_sop
         
         db.session.commit()
         # Auto-number plates within each VFX code
@@ -2902,11 +2925,15 @@ def import_confirmation():
                     
                     if shot_data.get('cam_roll'):
                         existing.cam_roll = shot_data['cam_roll']
-                        metadata = find_metadata_by_cam_roll(existing.cam_roll)
-                        if metadata:
-                            existing.camera = metadata.camera
-                            existing.lens = metadata.lens
-                            existing.focal_length = metadata.focal_length
+                    metadata = None
+                    if existing.from_clip_name:
+                        metadata = find_metadata_by_clip_name(existing.from_clip_name)
+                    if not metadata:
+                        metadata = find_metadata_by_cam_roll(existing.cam_roll) if existing.cam_roll else None
+                    if metadata:
+                        existing.camera = metadata.camera
+                        existing.lens = metadata.lens
+                        existing.focal_length = metadata.focal_length
         
         for shot_data in all_shots:
             vfx_code = shot_data.get('vfx_code')
@@ -2935,7 +2962,7 @@ def import_confirmation():
                 )
                 db.session.add(vfx_code_obj)
                 db.session.flush()
-            
+
             shot_data['vfx_code_id'] = vfx_code_obj.id
             shot_data['project_id'] = project.id
             shot_data['plate_status'] = 'Prep'
@@ -2943,47 +2970,50 @@ def import_confirmation():
             # Set default start frame from project settings
             if 'start_frame' not in shot_data or not shot_data.get('start_frame'):
                 shot_data['start_frame'] = project.default_start_frame or 1001
-            
+
             shot = Shot(**shot_data)
             db.session.add(shot)
-            
-            if shot.cam_roll:
-                metadata = find_metadata_by_cam_roll(shot.cam_roll)
-                if metadata:
-                    shot.camera = metadata.camera
-                    shot.lens = metadata.lens
-                    shot.focal_length = metadata.focal_length
-                    shot.t_stop = metadata.t_stop
-                    shot.iso = metadata.iso
-                    shot.white_balance = metadata.white_balance
-                    shot.lut = metadata.lut
-                    shot.resolution = metadata.resolution
-                    shot.codec = metadata.codec
-                    shot.color_space = metadata.color_space
-                    shot.gamma = metadata.gamma
-                    shot.file_path = metadata.file_path
-                    shot.shot_frame_rate = metadata.shot_frame_rate
-                    shot.start_tc = metadata.start_tc
-                    shot.end_tc = metadata.end_tc
-                    # Don't overwrite start_frame if already set by user
-                    if not shot.start_frame or str(shot.start_frame) in ('0', ''):
-                        shot.start_frame = metadata.start_frame
-                    shot.end_frame = metadata.end_frame
-                    shot.total_frames = metadata.total_frames
-                    shot.camera_manufacturer = metadata.camera_manufacturer
-                    shot.camera_serial = metadata.camera_serial
-                    shot.shutter_angle = metadata.shutter_angle
-                    shot.shutter_speed = metadata.shutter_speed
-                    shot.shutter = metadata.shutter
-                    shot.distance = metadata.distance
-                    shot.nd_filter = metadata.nd_filter
-                    shot.camera_tilt = metadata.camera_tilt
-                    shot.camera_roll = metadata.camera_roll
-                    shot.camera_clipname = metadata.camera_clipname
 
-                    shot.cdl_sat = metadata.cdl_sat
+            metadata = None
+            if shot.from_clip_name:
+                metadata = find_metadata_by_clip_name(shot.from_clip_name)
+            if not metadata:
+                metadata = find_metadata_by_cam_roll(shot.cam_roll) if shot.cam_roll else None
+            if metadata:
+                shot.camera = metadata.camera
+                shot.lens = metadata.lens
+                shot.focal_length = metadata.focal_length
+                shot.t_stop = metadata.t_stop
+                shot.iso = metadata.iso
+                shot.white_balance = metadata.white_balance
+                shot.lut = metadata.lut
+                shot.resolution = metadata.resolution
+                shot.codec = metadata.codec
+                shot.color_space = metadata.color_space
+                shot.gamma = metadata.gamma
+                shot.file_path = metadata.file_path
+                shot.shot_frame_rate = metadata.shot_frame_rate
+                shot.start_tc = metadata.start_tc
+                shot.end_tc = metadata.end_tc
+                # Don't overwrite start_frame if already set by user
+                if not shot.start_frame or str(shot.start_frame) in ('0', ''):
+                    shot.start_frame = metadata.start_frame
+                shot.end_frame = metadata.end_frame
+                shot.total_frames = metadata.total_frames
+                shot.camera_manufacturer = metadata.camera_manufacturer
+                shot.camera_serial = metadata.camera_serial
+                shot.shutter_angle = metadata.shutter_angle
+                shot.shutter_speed = metadata.shutter_speed
+                shot.shutter = metadata.shutter
+                shot.distance = metadata.distance
+                shot.nd_filter = metadata.nd_filter
+                shot.camera_tilt = metadata.camera_tilt
+                shot.camera_roll = metadata.camera_roll
+                shot.camera_clipname = metadata.camera_clipname
 
-                    shot.cdl_sop = metadata.cdl_sop
+                shot.cdl_sat = metadata.cdl_sat
+
+                shot.cdl_sop = metadata.cdl_sop
         
         db.session.commit()
         # Auto-number plates within each VFX code
