@@ -81,6 +81,18 @@
                     </select>
                 </div>
 
+<!-- Clip Name for metadata linking -->
+                <div style="display: flex; align-items: center; gap: 1rem; padding: 0.75rem; background: white; border: 1px solid #dee2e6; border-radius: 4px;">
+                    <div style="flex: 1; font-weight: 500;">Clip Name <span style="font-weight: 400; color: #6c757d; font-size: 0.85em;">(links EDL shots to metadata)</span></div>
+                    <div style="flex: 0 0 auto; color: #6c757d;"><-</div>
+                    <select name="mapping_clip_name" class="mapping-select" style="flex: 1; padding: 0.5rem; border: 1px solid #dee2e6; border-radius: 4px;">
+                        <option value="">Skip this field</option>
+                        {% for header in csv_headers|sort %}
+                        <option value="{{ header }}">{{ header }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
 <!-- Camera Info -->
                 <div style="grid-column: 1 / -1; margin-top: 1rem; padding: 0.5rem; background: #f8f9fa; font-weight: 600; border-radius: 4px;">
                      Camera Info
