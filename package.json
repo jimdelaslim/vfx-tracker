@@ -1,6 +1,6 @@
 {
   "name": "vfx-shot-tracker",
-  "version": "2.5.0",
+  "version": "2.6.0",
   "description": "VFX Shot Tracking and Turnover Management",
   "main": "main.js",
   "scripts": {
