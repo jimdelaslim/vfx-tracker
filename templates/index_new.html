@@ -1301,10 +1301,10 @@ function clearAllFilters() {
                                             <span class="metadata-value">{{ shot.shot_frame_rate or shot.fps }}</span>
                                         </div>
                                         {% endif %}
-                                        {% if shot.cam_roll or shot.reel %}
+                                        {% if linked_tape_map.get(shot.id) or shot.cam_roll or shot.reel %}
                                         <div class="metadata-item">
                                             <span class="metadata-label">Tape Name</span>
-                                            {% set tape = shot.cam_roll or shot.reel %}<span class="metadata-value" title="{{ tape }}">{% if tape and '_' in tape %}{{ tape.split('_')[0] }}{% elif tape %}{{ tape[:9] }}{% else %}{% endif %}</span>
+                                            {% set tape = linked_tape_map.get(shot.id) or shot.cam_roll or shot.reel %}<span class="metadata-value" title="{{ tape or '' }}">{% if tape and '_' in tape %}{{ tape.split('_')[0] }}{% elif tape %}{{ tape[:9] }}{% endif %}</span>
                                         </div>
                                         {% endif %}
                                         {% if shot.camera_clipname %}

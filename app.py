@@ -3592,7 +3592,16 @@ def index():
                 return (prefix.lower(), number)
             return (code.lower(), 0)
         vfx_codes.sort(key=natural_sort_key)
-    
+
+    # Build linked_tape_map: {shot.id: metadata.cam_roll} using case-insensitive clip_name match
+    all_metadata = CameraMetadata.query.all()
+    meta_by_clip = {m.clip_name.lower(): m for m in all_metadata if m.clip_name}
+    linked_tape_map = {}
+    for vfx in vfx_codes:
+        for shot in vfx.shots:
+            if shot.from_clip_name and shot.from_clip_name.lower() in meta_by_clip:
+                linked_tape_map[shot.id] = meta_by_clip[shot.from_clip_name.lower()].cam_roll
+
     # Get status counts (for all VFX codes, not filtered)
     status_counts = {
         'prep': VFXCode.query.filter_by(project_id=project.id, shot_status='Prep').count(),
@@ -3606,14 +3615,15 @@ def index():
     all_projects = Project.query.order_by(Project.created_at.desc()).all()
     
     
-    return render_template('index_new.html', 
+    return render_template('index_new.html',
                          vfx_codes=vfx_codes,
                          status_counts=status_counts,
                          project=project,
                          all_projects=all_projects,
                          search_term=search_term,
                          sort_by=sort_by,
-                         status_filter=status_filter)
+                         status_filter=status_filter,
+                         linked_tape_map=linked_tape_map)
 
 @app.route('/vfx/<int:vfx_id>/update/status', methods=['POST'])
 def update_vfx_status(vfx_id):
