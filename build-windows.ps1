@@ -62,6 +62,7 @@ Write-Host "[6/7] Building Flask server executable..." -ForegroundColor Yellow
 
 # Step 7: Build Electron app
 Write-Host "[7/7] Building Electron application..." -ForegroundColor Yellow
+Remove-Item -Recurse -Force dist -ErrorAction SilentlyContinue
 npx electron-builder --win
 
 Write-Host "`n=== Build Complete! ===" -ForegroundColor Green

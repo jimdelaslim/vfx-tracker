@@ -22,6 +22,7 @@ cp -R ~/Library/Caches/ms-playwright/* playwright-browsers/
 echo "Copied browsers from ~/Library/Caches/ms-playwright"
 
 echo "[5/5] Building Electron app..."
+rm -rf dist
 npm run build
 
 echo ""
