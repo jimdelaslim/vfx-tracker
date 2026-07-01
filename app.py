@@ -2798,7 +2798,8 @@ def import_confirmation():
                         existing.record_out = shot_data.get('record_out')
                         existing.cam_roll = shot_data.get('cam_roll')
                         existing.reel = shot_data.get('reel')
-                        
+                        existing.from_clip_name = shot_data.get('from_clip_name', existing.from_clip_name)
+
                         # Recalculate duration
                         if existing.source_in and existing.source_out:
                             fps = existing.fps or 24.0
@@ -2883,8 +2884,8 @@ def import_confirmation():
                             
                     
                     existing.clip_name = shot_data.get('clip_name', existing.clip_name)
-                    existing.clip_name = shot_data.get('clip_name', existing.clip_name)
                     existing.reel = shot_data.get('reel', existing.reel)
+                    existing.from_clip_name = shot_data.get('from_clip_name', existing.from_clip_name)
                     existing.record_in = shot_data.get('record_in', existing.record_in)
                     existing.record_out = shot_data.get('record_out', existing.record_out)
                     existing.source_in = shot_data.get('source_in', existing.source_in)
