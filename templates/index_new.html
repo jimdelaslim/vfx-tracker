@@ -3107,6 +3107,8 @@ window.addEventListener('load', function() {
 
 
 // Image upload handling
+let _refDragSrc = null; // {url, boxId} — set by dragstart on a ref image, cleared on dragend
+
 function setupImageUpload(boxId, inputId, shotId, isVFX) {
     const box = document.getElementById(boxId);
     const input = document.getElementById(inputId);
@@ -3133,13 +3135,16 @@ function setupImageUpload(boxId, inputId, shotId, isVFX) {
         box.addEventListener(eventName, () => box.classList.remove('drag-over'), false);
     });
     
-    // Handle dropped files
+    // Handle dropped files (or cross-box thumbnail drag)
     box.addEventListener('drop', function(e) {
+        // Cross-box thumbnail drag — source is another ref image box
+        if (_refDragSrc && _refDragSrc.boxId !== boxId && e.dataTransfer.getData('text/x-ref-drag') === '1') {
+            handleCrossBoxDrop(_refDragSrc.url, shotId, isVFX);
+            return;
+        }
         const dt = e.dataTransfer;
-        const files = dt.files;
-        
-        if (files.length > 0) {
-            handleImageUpload(files[0], shotId, isVFX);
+        if (dt.files.length > 0) {
+            handleImageUpload(dt.files[0], shotId, isVFX);
         }
     }, false);
     
@@ -3218,6 +3223,30 @@ async function clearReferenceImage(id, isVFX, event) {
         alert('Error: ' + err.message);
     }
 }
+
+async function handleCrossBoxDrop(srcUrl, id, isVFX) {
+    try {
+        const resp = await fetch(srcUrl);
+        const blob = await resp.blob();
+        const file = new File([blob], 'reference.jpg', {type: blob.type || 'image/jpeg'});
+        handleImageUpload(file, id, isVFX);
+    } catch (err) {
+        console.error('Cross-box drag failed:', err);
+    }
+}
+
+// Capture dragstart on any img inside a ref box so the drop handler can identify cross-box drags
+document.addEventListener('dragstart', function(e) {
+    if (e.target.tagName !== 'IMG') return;
+    const box = e.target.closest('[id^="vfx-ref-box-"],[id^="plate-ref-box-"]');
+    if (!box) return;
+    const imgUrl = e.target.dataset.originalSrc || e.target.dataset.src || e.target.src;
+    _refDragSrc = {url: imgUrl, boxId: box.id};
+    e.dataTransfer.setData('text/x-ref-drag', '1');
+    e.dataTransfer.effectAllowed = 'copy';
+}, false);
+
+document.addEventListener('dragend', function() { _refDragSrc = null; }, false);
 
 // Lazy Loading Implementation - Distance-based with max 30 images loaded
 let loadedCount = 0;
