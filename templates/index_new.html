@@ -637,6 +637,35 @@ function clearAllFilters() {
     font-weight: 600;
 }
 
+.plate-version-container {
+    display: flex;
+    align-items: stretch;
+    background: #6c757d;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.version-arrows {
+    display: flex;
+    flex-direction: column;
+}
+
+.version-arrows button {
+    background: transparent;
+    border: none;
+    color: rgba(255,255,255,0.8);
+    cursor: pointer;
+    font-size: 0.55rem;
+    line-height: 1;
+    padding: 1px 4px;
+    flex: 1;
+}
+
+.version-arrows button:hover {
+    background: rgba(255,255,255,0.15);
+    color: white;
+}
+
 .plate-status-badge {
     padding: 0.25rem 0.75rem;
     border-radius: 4px;
@@ -1240,7 +1269,7 @@ function clearAllFilters() {
                         </div>
                         <input type="text" class="plate-element-name" value="{{ shot.clip_name }}" data-shot-id="{{ shot.id }}" data-vfx-code="{{ vfx_code.vfx_code }}" style="font-family: monospace; font-size: 0.95rem; font-weight: 600; color: #000; border: 1px solid transparent; background: transparent; padding: 2px 4px; border-radius: 4px; width: 100%; min-width: 180px;" onfocus="this.style.borderColor='#20b2aa'; this.style.background='#fff'" onblur="this.style.borderColor='transparent'; this.style.background='transparent'; updateClipName({{ shot.id }}, this.value, this)">
                         <input type="text" class="plate-type-display" value="{{ shot.plate_type or '' }}{{ shot.vfx_element or '' }}" data-shot-id="{{ shot.id }}" data-vfx-code="{{ vfx_code.vfx_code }}" data-plate-type="{{ shot.plate_type or '' }}" data-vfx-element="{{ shot.vfx_element or '' }}" style="text-align: center; border: none; font-size: 0.85rem; font-weight: 600; color: white; background: #20b2aa; padding: 0.25rem 0.5rem; border-radius: 4px; width: 70px; cursor: text; text-transform: uppercase;" onfocus="this.style.outline='2px solid #fff'" onblur="this.style.outline='none'; updatePlateType({{ shot.id }}, this.value, this)">
-                        <div class="plate-version" style="display: flex; align-items: center; justify-content: center; gap: 2px;"><span>v</span><input type="number" value="{{ shot.version }}" min="1" onblur="updateVersion({{ shot.id }}, this.value)" style="width: 30px; padding: 2px 4px; border: none; background: transparent; text-align: center; font-size: 0.8rem; color: white; font-weight: 500;"></div>
+                        {% if shot.clip_name %}{% set _vp = shot.clip_name.split('_')[-1] %}{% set version_label = _vp if (_vp|length > 1 and _vp[0] in 'vV') else 'V' ~ shot.version %}{% else %}{% set version_label = 'V' ~ shot.version %}{% endif %}<div class="plate-version-container"><input type="text" class="plate-version" value="{{ version_label }}" onfocus="this.select(); this.style.outline='2px solid #fff'" onblur="this.style.outline='none'; updateVersion({{ shot.id }}, this.value, this)" style="width: 54px; text-align: center; border: none; font-family: monospace; cursor: text; outline: none; padding: 0.25rem; box-sizing: border-box; background: transparent; color: white;"><div class="version-arrows"><button class="version-arrow-up" onclick="bumpVersion({{ shot.id }}, 1, this)">▲</button><button class="version-arrow-down" onclick="bumpVersion({{ shot.id }}, -1, this)">▼</button></div></div>
                         <select class="plate-status-badge plate-batch-linkable {{ shot.plate_status|lower }}"
                                 data-shot-id="{{ shot.id }}"
                                 onchange="updatePlateStatus({{ shot.id }}, this.value); handlePlateBatchInput('plate_status', this.value, this)">
@@ -3373,21 +3402,39 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 
-function updateVersion(shotId, newVersion) {
+function updateVersion(shotId, newVersionStr, inputEl) {
+    const match = String(newVersionStr).match(/[vV]?(\d+)/);
+    if (!match) return;
+    const numericVersion = parseInt(match[1], 10);
+    if (numericVersion < 1) return;
     fetchWithTimeout("/shot/" + shotId + "/update/field", {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({
-            version: parseInt(newVersion)
-        })
+        body: JSON.stringify({ version: numericVersion })
     })
     .then(response => response.json())
     .then(data => {
-        if (data.success) {
-            // Auto-regenerate clip_name after version change
-            autoRegenerateClipName(shotId);
+        if (data.success && data.clip_name !== undefined) {
+            const card = inputEl.closest('.plate-card');
+            if (card) {
+                const clipInput = card.querySelector('.plate-element-name');
+                if (clipInput) clipInput.value = data.clip_name;
+                // Show exact suffix backend wrote (preserves case + padding)
+                const verMatch = data.clip_name.match(/_([vV]\d+)$/);
+                if (verMatch) inputEl.value = verMatch[1];
+            }
         }
     });
+}
+
+function bumpVersion(shotId, delta, buttonEl) {
+    const vInput = buttonEl.closest('.plate-version-container').querySelector('.plate-version');
+    if (!vInput) return;
+    const match = String(vInput.value).match(/[vV]?(\d+)/);
+    if (!match) return;
+    const newVersion = parseInt(match[1], 10) + delta;
+    if (newVersion < 1) return;
+    updateVersion(shotId, String(newVersion), vInput);
 }
 
 // ========================================
@@ -3405,14 +3452,23 @@ function updateClipName(shotId, newClipName, inputEl) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            // Update the plate_type badge if it exists nearby
             const card = inputEl.closest('.plate-card');
-            if (card && data.plate_type) {
-                const typeInput = card.querySelector('.plate-type-display');
-                if (typeInput) {
-                    typeInput.value = (data.plate_type || '') + (data.vfx_element || '');
-                    typeInput.dataset.plateType = data.plate_type || '';
-                    typeInput.dataset.vfxElement = data.vfx_element || '';
+            if (card) {
+                if (data.plate_type) {
+                    const typeInput = card.querySelector('.plate-type-display');
+                    if (typeInput) {
+                        typeInput.value = (data.plate_type || '') + (data.vfx_element || '');
+                        typeInput.dataset.plateType = data.plate_type || '';
+                        typeInput.dataset.vfxElement = data.vfx_element || '';
+                    }
+                }
+                // Sync version button with suffix parsed from the new clip_name
+                if (data.version !== undefined) {
+                    const vInput = card.querySelector('.plate-version');
+                    if (vInput) {
+                        const verMatch = (data.clip_name || '').match(/_([vV]\d+)$/);
+                        vInput.value = verMatch ? verMatch[1] : 'V' + data.version;
+                    }
                 }
             }
             inputEl.style.borderColor = 'transparent';

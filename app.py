@@ -1129,40 +1129,6 @@ def update_shot(shot_id):
 
 
 
-@app.route('/shot/<int:shot_id>/update/field', methods=['POST'])
-def update_shot_field(shot_id):
-    """Update a single field for a shot (for auto-save) - now handles JSON"""
-    from flask import jsonify
-    
-    shot = Shot.query.get_or_404(shot_id)
-    
-    # Handle both form data and JSON
-    if request.is_json:
-        data = request.get_json()
-    else:
-        data = request.form
-    
-    # Get the field name and value
-    for field_name, value in data.items():
-        if hasattr(shot, field_name):
-            # Convert types as needed
-            if field_name in ['head_handles', 'tail_handles', 'version', 'plate_number', 'start_frame']:
-                value = int(value) if value else (1001 if field_name == 'start_frame' else 0)
-            elif field_name == 'crank_speed':
-                value = float(value) if value else 100.0
-            elif field_name == 'pull_date':
-                from datetime import datetime
-                if value:
-                    value = datetime.strptime(value, '%Y-%m-%d').date()
-                else:
-                    value = None
-            
-            setattr(shot, field_name, value)
-    
-    db.session.commit()
-    
-    return jsonify({'success': True})
-
 @app.route('/vfx/<int:vfx_id>/timecode_data')
 def get_vfx_timecode_data(vfx_id):
     """Return computed timecode data for all shots in a VFX code group"""
@@ -3766,34 +3732,52 @@ def update_clip_name(shot_id):
 def update_shot_field_json(shot_id):
     """Update a single field for a shot (for auto-save) - now handles JSON"""
     from flask import jsonify
-    
+
     shot = Shot.query.get_or_404(shot_id)
-    
+
     # Handle both form data and JSON
     if request.is_json:
         data = request.get_json()
     else:
         data = request.form
-    
-    # Get the field name and value
+
+    version_updated = False
+
     for field_name, value in data.items():
         if hasattr(shot, field_name):
-            # Convert types as needed
-            if field_name in ['head_handles', 'tail_handles', 'version', 'plate_number', 'start_frame']:
+            if field_name == 'version':
+                import re
+                new_version = int(value) if value else 1
+                shot.version = new_version
+                # Atomically sync clip_name suffix — preserves case (_v/_V) and digit padding
+                clip = shot.clip_name or ''
+                m = re.search(r'_([vV])(\d+)$', clip)
+                if m:
+                    pad = len(m.group(2))
+                    shot.clip_name = clip[:m.start()] + f'_{m.group(1)}{str(new_version).zfill(pad)}'
+                else:
+                    shot.clip_name = clip + f'_V{new_version}'
+                version_updated = True
+            elif field_name in ['head_handles', 'tail_handles', 'plate_number', 'start_frame']:
                 value = int(value) if value else (1001 if field_name == 'start_frame' else 0)
+                setattr(shot, field_name, value)
             elif field_name == 'crank_speed':
                 value = float(value) if value else 100.0
+                setattr(shot, field_name, value)
             elif field_name == 'pull_date':
                 from datetime import datetime
                 if value:
                     value = datetime.strptime(value, '%Y-%m-%d').date()
                 else:
                     value = None
-            
-            setattr(shot, field_name, value)
-    
+                setattr(shot, field_name, value)
+            else:
+                setattr(shot, field_name, value)
+
     db.session.commit()
-    
+
+    if version_updated:
+        return jsonify({'success': True, 'version': shot.version, 'clip_name': shot.clip_name})
     return jsonify({'success': True})
 
 
