@@ -956,7 +956,7 @@ function clearAllFilters() {
                 <button onclick="document.getElementById('thumbnail-import-input').click()" style="display: block; width: 100%; padding: 8px 12px; background: #20b2aa; color: white; border: none; border-radius: 6px; text-align: center; font-weight: 500; font-size: 0.9rem; cursor: pointer; margin-top: 8px; -webkit-appearance: none; appearance: none;">
                     Import Thumbnails
                 </button>
-                <input type="file" id="thumbnail-import-input" multiple accept=".jpg,.jpeg,.png,.webp" style="display: none;" onchange="startThumbnailImport(this.files)">
+                <input type="file" id="thumbnail-import-input" multiple accept=".jpg,.jpeg,.png,.webp" style="display: none; position: absolute; left: -9999px;" onchange="startThumbnailImport(this.files)">
             </div>
             
             <!-- Export Buttons -->
@@ -5034,7 +5034,7 @@ async function processFileBatch(files) {
         // Phase A: filename ends with a VFX code key
         for (const [key, target] of Object.entries(vfxCodeTargets)) {
             if (baseName.endsWith(key)) {
-                assignments.push({file, target: {...target, type: 'vfxcode'}, phase: 'A', uploadSuccess: false});
+                assignments.push({file, target: vfxCodeTargets[key], type: 'vfxcode', phase: 'A', uploadSuccess: false});
                 matched = true;
                 break;
             }
@@ -5043,7 +5043,7 @@ async function processFileBatch(files) {
         if (!matched) {
             for (const [key, target] of Object.entries(shotTargets)) {
                 if (baseName.includes(key)) {
-                    assignments.push({file, target: {...target, type: 'shot'}, phase: 'B', uploadSuccess: false});
+                    assignments.push({file, target: shotTargets[key], type: 'shot', phase: 'B', uploadSuccess: false});
                     matched = true;
                     break;
                 }
@@ -5056,14 +5056,19 @@ async function processFileBatch(files) {
     for (let i = 0; i < assignments.length; i++) {
         if (uploadState.cancelled) break;
         const a = assignments[i];
-        const {file, target} = a;
+        const {file, target, type} = a;
 
         document.getElementById('thumbnail-progress-bar').style.width = Math.round((i / total) * 100) + '%';
         document.getElementById('thumbnail-progress-text').textContent =
             `Importing ${i + 1} of ${total}: ${file.name}`;
 
+        // DOM is authoritative — catches mid-session uploads that Jinja can't know about
+        const boxId = type === 'shot' ? `plate-ref-box-${target.id}` : `vfx-ref-box-${target.id}`;
+        const box = document.getElementById(boxId);
+        const hasImageNow = target.hasImage || !!(box && box.querySelector('img'));
+
         // Conflict handling
-        if (target.hasImage) {
+        if (hasImageNow) {
             if (uploadState.applyToAll === 'skip') {
                 uploadState.skippedByUser++;
                 addThumbnailLog(file.name, `skipped — ${target.displayName}`, '#fd7e14');
@@ -5084,7 +5089,7 @@ async function processFileBatch(files) {
 
         // Upload
         try {
-            const url = target.type === 'shot'
+            const url = type === 'shot'
                 ? `/shot/${target.id}/upload-reference`
                 : `/vfx/${target.id}/upload-reference`;
             const formData = new FormData();
@@ -5093,15 +5098,12 @@ async function processFileBatch(files) {
             const data = await resp.json();
             if (data.success) {
                 a.uploadSuccess = true;
-                target.hasImage ? uploadState.replaced++ : uploadState.imported++;
+                hasImageNow ? uploadState.replaced++ : uploadState.imported++;
                 addThumbnailLog(file.name,
-                    target.hasImage ? `replaced — ${target.displayName}` : `imported → ${target.displayName}`,
+                    hasImageNow ? `replaced — ${target.displayName}` : `imported → ${target.displayName}`,
                     '#198754');
                 target.hasImage = true;
                 // Refresh DOM box in-place (same pattern as handleImageUpload)
-                const boxId = target.type === 'shot'
-                    ? `plate-ref-box-${target.id}` : `vfx-ref-box-${target.id}`;
-                const box = document.getElementById(boxId);
                 if (box) {
                     const reader = new FileReader();
                     reader.onload = (ev) => { box.innerHTML = `<img src="${ev.target.result}" alt="Reference">`; };
@@ -5125,8 +5127,11 @@ async function processFileBatch(files) {
             if (!a.target.displayName.toLowerCase().includes('src01')) continue;
             const vfxId = a.target.vfxId;
             if (vfxId === undefined || phaseAVfxIds.has(vfxId)) continue;
+            // DOM check is always current (handles mid-session uploads that Jinja can't know about)
+            const box = document.getElementById(`vfx-ref-box-${vfxId}`);
+            if (box && box.querySelector('img')) continue;
             const vfxEntry = Object.values(vfxCodeTargets).find(t => t.id === vfxId);
-            if (!vfxEntry || vfxEntry.hasImage) continue;
+            if (!vfxEntry) continue;
 
             try {
                 const formData = new FormData();
@@ -5137,7 +5142,6 @@ async function processFileBatch(files) {
                     uploadState.autoHeaders++;
                     vfxEntry.hasImage = true;
                     addThumbnailLog(a.file.name, `auto-header → ${vfxEntry.displayName}`, '#0d6efd');
-                    const box = document.getElementById(`vfx-ref-box-${vfxId}`);
                     if (box) {
                         const reader = new FileReader();
                         reader.onload = (ev) => { box.innerHTML = `<img src="${ev.target.result}" alt="Reference">`; };
