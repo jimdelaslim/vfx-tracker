@@ -953,6 +953,10 @@ function clearAllFilters() {
                 <a href="{{ url_for('import_metadata') }}" style="display: block; padding: 8px 12px; background: #20b2aa; color: white; text-decoration: none; border-radius: 6px; text-align: center; font-weight: 500; font-size: 0.9rem;">
                     Import Metadata
                 </a>
+                <button onclick="document.getElementById('thumbnail-import-input').click()" style="display: block; width: 100%; padding: 8px 12px; background: #20b2aa; color: white; border: none; border-radius: 6px; text-align: center; font-weight: 500; font-size: 0.9rem; cursor: pointer; margin-top: 8px; -webkit-appearance: none; appearance: none;">
+                    Import Thumbnails
+                </button>
+                <input type="file" id="thumbnail-import-input" multiple accept=".jpg,.jpeg,.png,.webp" style="display: none;" onchange="startThumbnailImport(this.files)">
             </div>
             
             <!-- Export Buttons -->
@@ -4986,7 +4990,288 @@ document.addEventListener('keydown', function(e) {
     if (key === '4') { e.preventDefault(); window.location.href = '/help'; return; }
 });
 
+// ========================================
+// THUMBNAIL BATCH IMPORT
+// ========================================
+
+let uploadState = {};
+
+function startThumbnailImport(files) {
+    if (!files || files.length === 0) return;
+
+    uploadState = {
+        applyToAll: null,
+        imported: 0,
+        replaced: 0,
+        skippedByUser: 0,
+        autoHeaders: 0,
+        unmatched: [],
+        cancelled: false
+    };
+
+    const modal = document.getElementById('thumbnail-import-modal');
+    modal.style.display = 'flex';
+    document.getElementById('thumbnail-file-count').textContent = `Selected ${files.length} file${files.length !== 1 ? 's' : ''}`;
+    document.getElementById('thumbnail-log').innerHTML = '';
+    document.getElementById('thumbnail-summary').style.display = 'none';
+    document.getElementById('thumbnail-progress-bar').style.width = '0%';
+    document.getElementById('thumbnail-progress-text').textContent = '';
+    document.getElementById('thumbnail-cancel-btn').style.display = 'inline-block';
+
+    processFileBatch(Array.from(files));
+    document.getElementById('thumbnail-import-input').value = '';
+}
+
+async function processFileBatch(files) {
+    const total = files.length;
+
+    // --- Categorise files: Phase A (VFX header endsWith) then Phase B (plate includes) ---
+    const assignments = [];
+    for (const file of files) {
+        const baseName = file.name.replace(/\.[^.]+$/, '').toLowerCase();
+        let matched = false;
+
+        // Phase A: filename ends with a VFX code key
+        for (const [key, target] of Object.entries(vfxCodeTargets)) {
+            if (baseName.endsWith(key)) {
+                assignments.push({file, target: {...target, type: 'vfxcode'}, phase: 'A', uploadSuccess: false});
+                matched = true;
+                break;
+            }
+        }
+        // Phase B: filename contains a plate clip_name anywhere
+        if (!matched) {
+            for (const [key, target] of Object.entries(shotTargets)) {
+                if (baseName.includes(key)) {
+                    assignments.push({file, target: {...target, type: 'shot'}, phase: 'B', uploadSuccess: false});
+                    matched = true;
+                    break;
+                }
+            }
+        }
+        if (!matched) uploadState.unmatched.push(file.name);
+    }
+
+    // --- Upload Phase A + B assignments ---
+    for (let i = 0; i < assignments.length; i++) {
+        if (uploadState.cancelled) break;
+        const a = assignments[i];
+        const {file, target} = a;
+
+        document.getElementById('thumbnail-progress-bar').style.width = Math.round((i / total) * 100) + '%';
+        document.getElementById('thumbnail-progress-text').textContent =
+            `Importing ${i + 1} of ${total}: ${file.name}`;
+
+        // Conflict handling
+        if (target.hasImage) {
+            if (uploadState.applyToAll === 'skip') {
+                uploadState.skippedByUser++;
+                addThumbnailLog(file.name, `skipped — ${target.displayName}`, '#fd7e14');
+                continue;
+            }
+            if (!uploadState.applyToAll) {
+                const decision = await showConflictDialog(file.name, target.displayName);
+                if (decision === 'skip' || decision === 'skip-all') {
+                    if (decision === 'skip-all') uploadState.applyToAll = 'skip';
+                    uploadState.skippedByUser++;
+                    addThumbnailLog(file.name, `skipped — ${target.displayName}`, '#fd7e14');
+                    continue;
+                }
+                if (decision === 'replace-all') uploadState.applyToAll = 'replace';
+                // 'replace' falls through to upload
+            }
+        }
+
+        // Upload
+        try {
+            const url = target.type === 'shot'
+                ? `/shot/${target.id}/upload-reference`
+                : `/vfx/${target.id}/upload-reference`;
+            const formData = new FormData();
+            formData.append('image', file);
+            const resp = await fetch(url, {method: 'POST', body: formData});
+            const data = await resp.json();
+            if (data.success) {
+                a.uploadSuccess = true;
+                target.hasImage ? uploadState.replaced++ : uploadState.imported++;
+                addThumbnailLog(file.name,
+                    target.hasImage ? `replaced — ${target.displayName}` : `imported → ${target.displayName}`,
+                    '#198754');
+                target.hasImage = true;
+                // Refresh DOM box in-place (same pattern as handleImageUpload)
+                const boxId = target.type === 'shot'
+                    ? `plate-ref-box-${target.id}` : `vfx-ref-box-${target.id}`;
+                const box = document.getElementById(boxId);
+                if (box) {
+                    const reader = new FileReader();
+                    reader.onload = (ev) => { box.innerHTML = `<img src="${ev.target.result}" alt="Reference">`; };
+                    reader.readAsDataURL(file);
+                }
+            } else {
+                addThumbnailLog(file.name, `error: ${data.error || 'upload failed'}`, '#dc3545');
+            }
+        } catch (err) {
+            addThumbnailLog(file.name, `error: ${err.message}`, '#dc3545');
+        }
+    }
+
+    // --- Phase C: auto-populate empty VFX headers from src01 plate uploads ---
+    if (!uploadState.cancelled) {
+        const phaseAVfxIds = new Set(
+            assignments.filter(a => a.phase === 'A').map(a => a.target.id)
+        );
+        for (const a of assignments) {
+            if (a.phase !== 'B' || !a.uploadSuccess) continue;
+            if (!a.target.displayName.toLowerCase().includes('src01')) continue;
+            const vfxId = a.target.vfxId;
+            if (vfxId === undefined || phaseAVfxIds.has(vfxId)) continue;
+            const vfxEntry = Object.values(vfxCodeTargets).find(t => t.id === vfxId);
+            if (!vfxEntry || vfxEntry.hasImage) continue;
+
+            try {
+                const formData = new FormData();
+                formData.append('image', a.file);
+                const resp = await fetch(`/vfx/${vfxId}/upload-reference`, {method: 'POST', body: formData});
+                const data = await resp.json();
+                if (data.success) {
+                    uploadState.autoHeaders++;
+                    vfxEntry.hasImage = true;
+                    addThumbnailLog(a.file.name, `auto-header → ${vfxEntry.displayName}`, '#0d6efd');
+                    const box = document.getElementById(`vfx-ref-box-${vfxId}`);
+                    if (box) {
+                        const reader = new FileReader();
+                        reader.onload = (ev) => { box.innerHTML = `<img src="${ev.target.result}" alt="Reference">`; };
+                        reader.readAsDataURL(a.file);
+                    }
+                }
+            } catch (err) {
+                addThumbnailLog(a.file.name, `auto-header error: ${err.message}`, '#dc3545');
+            }
+        }
+    }
+
+    showThumbnailSummary(total);
+}
+
+function showConflictDialog(filename, displayName) {
+    return new Promise(resolve => {
+        document.getElementById('conflict-filename').textContent = filename;
+        document.getElementById('conflict-targetname').textContent = displayName;
+        const dialog = document.getElementById('thumbnail-conflict-dialog');
+        dialog.style.display = 'flex';
+        dialog.querySelectorAll('button[data-decision]').forEach(btn => {
+            btn.onclick = () => {
+                dialog.style.display = 'none';
+                resolve(btn.dataset.decision);
+            };
+        });
+    });
+}
+
+function addThumbnailLog(filename, outcome, color) {
+    const log = document.getElementById('thumbnail-log');
+    const entry = document.createElement('div');
+    entry.style.cssText = `padding: 0.2rem 0; color: ${color}; border-bottom: 1px solid #eee;`;
+    entry.textContent = `${filename} — ${outcome}`;
+    log.insertBefore(entry, log.firstChild);
+    while (log.children.length > 10) log.removeChild(log.lastChild);
+}
+
+function showThumbnailSummary(total) {
+    document.getElementById('thumbnail-progress-bar').style.width = '100%';
+    document.getElementById('thumbnail-progress-text').textContent = uploadState.cancelled ? 'Cancelled.' : 'Done.';
+    document.getElementById('thumbnail-cancel-btn').style.display = 'none';
+    const unmatched = uploadState.unmatched;
+    const summary = document.getElementById('thumbnail-summary');
+    summary.style.display = 'block';
+    summary.innerHTML = `
+        <div style="font-weight:600; margin-bottom:0.5rem;">Results</div>
+        <div>Imported: ${uploadState.imported}</div>
+        <div>Replaced: ${uploadState.replaced}</div>
+        <div>Skipped by you: ${uploadState.skippedByUser}</div>
+        <div>No match: ${unmatched.length}</div>
+        ${uploadState.autoHeaders > 0 ? `<div>Auto-populated headers: ${uploadState.autoHeaders}</div>` : ''}
+        ${unmatched.length > 0 ? `
+        <div style="margin-top:0.75rem; font-weight:600;">Unmatched files:</div>
+        <div style="max-height:100px; overflow-y:auto; font-size:0.8rem; color:#6c757d;">
+            ${unmatched.map(f => `<div>${f}</div>`).join('')}
+        </div>` : ''}
+    `;
+}
+
+function cancelThumbnailImport() { uploadState.cancelled = true; }
+
+function closeThumbnailModal() {
+    uploadState.cancelled = true;
+    document.getElementById('thumbnail-import-modal').style.display = 'none';
+}
+
+// Escape key: dismiss conflict dialog (as Skip) or cancel import modal
+document.addEventListener('keydown', function(e) {
+    if (e.key !== 'Escape') return;
+    const conflict = document.getElementById('thumbnail-conflict-dialog');
+    if (conflict && conflict.style.display === 'flex') {
+        conflict.style.display = 'none';
+        // Resolve any pending promise as 'skip'
+        conflict.querySelectorAll('button[data-decision]').forEach(btn => {
+            if (btn.dataset.decision === 'skip') btn.click();
+        });
+        return;
+    }
+    const modal = document.getElementById('thumbnail-import-modal');
+    if (modal && modal.style.display === 'flex') { closeThumbnailModal(); }
+});
+
 </script>
 
+<script>
+const shotTargets = {
+  {% for vfx_code in vfx_codes %}{% for shot in vfx_code.shots %}{% if shot.clip_name %}
+  "{{ shot.clip_name|lower }}": {id: {{ shot.id }}, hasImage: {{ 'true' if shot.reference_image else 'false' }}, displayName: "{{ shot.clip_name }}", vfxId: {{ vfx_code.id }}},
+  {% endif %}{% endfor %}{% endfor %}
+};
+const vfxCodeTargets = {
+  {% for vfx_code in vfx_codes %}
+  "{{ vfx_code.vfx_code|lower }}": {id: {{ vfx_code.id }}, hasImage: {{ 'true' if vfx_code.reference_image else 'false' }}, displayName: "{{ vfx_code.vfx_code }}"},
+  {% endfor %}
+};
+</script>
+
+<!-- Thumbnail Import Modal -->
+<div id="thumbnail-import-modal" role="dialog" aria-modal="true" aria-label="Import Thumbnails"
+     style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:9999; align-items:center; justify-content:center;">
+  <div style="background:white; border-radius:12px; padding:2rem; width:500px; max-width:90vw; max-height:80vh; overflow-y:auto; position:relative;">
+    <button onclick="closeThumbnailModal()" aria-label="Close" style="position:absolute; top:1rem; right:1rem; background:none; border:none; font-size:1.5rem; cursor:pointer; color:#6c757d; line-height:1;">&times;</button>
+    <h3 style="margin:0 0 1rem 0;">Import Thumbnails</h3>
+    <div id="thumbnail-file-count" style="color:#6c757d; margin-bottom:1rem; font-size:0.9rem;"></div>
+    <div style="background:#e9ecef; border-radius:4px; height:8px; margin-bottom:0.5rem;">
+      <div id="thumbnail-progress-bar" style="background:#20b2aa; height:8px; border-radius:4px; width:0%; transition:width 0.2s;"></div>
+    </div>
+    <div id="thumbnail-progress-text" style="font-size:0.85rem; color:#6c757d; margin-bottom:1rem; min-height:1.2em;"></div>
+    <div id="thumbnail-log" style="background:#f8f9fa; border-radius:4px; padding:0.75rem; min-height:80px; max-height:160px; overflow-y:auto; font-size:0.82rem; font-family:monospace; margin-bottom:1rem;"></div>
+    <button id="thumbnail-cancel-btn" onclick="cancelThumbnailImport()"
+            style="padding:0.5rem 1.5rem; background:#6c757d; color:white; border:none; border-radius:4px; cursor:pointer;">Cancel</button>
+    <div id="thumbnail-summary" style="display:none; margin-top:1rem; padding:1rem; background:#f8f9fa; border-radius:4px;"></div>
+  </div>
+</div>
+
+<!-- Thumbnail Conflict Dialog -->
+<div id="thumbnail-conflict-dialog" role="dialog" aria-modal="true" aria-label="Replace existing thumbnail?"
+     style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:10000; align-items:center; justify-content:center;">
+  <div style="background:white; border-radius:12px; padding:2rem; width:420px; max-width:90vw;">
+    <h4 style="margin:0 0 0.4rem 0; word-break:break-all;" id="conflict-filename"></h4>
+    <p style="color:#6c757d; margin:0 0 1.5rem 0;">Replace existing thumbnail on <strong id="conflict-targetname"></strong>?</p>
+    <div style="display:flex; flex-direction:column; gap:0.5rem;">
+      <div style="display:flex; gap:0.5rem;">
+        <button data-decision="replace" style="flex:1; padding:0.6rem; background:#20b2aa; color:white; border:none; border-radius:4px; cursor:pointer; font-weight:500;">Replace</button>
+        <button data-decision="skip"    style="flex:1; padding:0.6rem; background:#6c757d; color:white; border:none; border-radius:4px; cursor:pointer; font-weight:500;">Skip</button>
+      </div>
+      <div style="display:flex; gap:0.5rem;">
+        <button data-decision="replace-all" style="flex:1; padding:0.6rem; background:#495057; color:white; border:none; border-radius:4px; cursor:pointer; font-size:0.85rem;">Replace all remaining</button>
+        <button data-decision="skip-all"    style="flex:1; padding:0.6rem; background:#495057; color:white; border:none; border-radius:4px; cursor:pointer; font-size:0.85rem;">Skip all remaining</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 {% endblock %}
