@@ -473,6 +473,30 @@ function clearAllFilters() {
     border-radius: 6px;
 }
 
+.ref-clear-btn {
+    display: none;
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 24px;
+    height: 24px;
+    background: rgba(0,0,0,0.6);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+    z-index: 10;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+}
+.reference-image-box:hover .ref-clear-btn,
+.plate-reference-image:hover .ref-clear-btn {
+    display: flex;
+}
+
 .vfx-fields-grid {
     display: grid;
     grid-template-columns: 200px 1fr;
@@ -643,6 +667,7 @@ function clearAllFilters() {
     color: #999;
     cursor: pointer;
     margin-bottom: 1rem;
+    position: relative;
 }
 
 .plate-reference-image img {
@@ -1115,6 +1140,7 @@ function clearAllFilters() {
                 <div class="reference-image-box" id="vfx-ref-box-{{ vfx_code.id }}">
                     {% if vfx_code.reference_image %}
                     <img class="lazy-image" data-src="{{ url_for('serve_reference_image', filename=vfx_code.reference_image) }}" alt="Reference">
+                    <button class="ref-clear-btn" onclick="clearReferenceImage({{ vfx_code.id }}, true, event)" title="Remove thumbnail">×</button>
                     {% else %}
                     <div style="text-align: center; color: #999;">
                         <div style="font-size: 2rem;">[IMG]</div>
@@ -1247,6 +1273,7 @@ function clearAllFilters() {
                             <div class="plate-reference-image" id="plate-ref-box-{{ shot.id }}">
                                 {% if shot.reference_image %}
                                 <img class="lazy-image" data-src="{{ url_for('serve_reference_image', filename=shot.reference_image) }}" alt="Ref">
+                                <button class="ref-clear-btn" onclick="clearReferenceImage({{ shot.id }}, false, event)" title="Remove thumbnail">×</button>
                                 {% else %}
                                 <span>Reference</span>
                                 {% endif %}
@@ -3155,8 +3182,7 @@ function handleImageUpload(file, id, isVFX) {
                 // Create preview from the uploaded file
                 const reader = new FileReader();
                 reader.onload = function(e) {
-                    // Replace the box content with the new image
-                    box.innerHTML = `<img src="${e.target.result}" alt="Reference">`;
+                    box.innerHTML = `<img src="${e.target.result}" alt="Reference"><button class="ref-clear-btn" onclick="clearReferenceImage(${id}, ${isVFX}, event)" title="Remove thumbnail">×</button>`;
                 };
                 reader.readAsDataURL(file);
             }
@@ -3169,6 +3195,28 @@ function handleImageUpload(file, id, isVFX) {
         console.error('Upload error:', error);
         alert('Upload failed');
     });
+}
+
+async function clearReferenceImage(id, isVFX, event) {
+    event.stopPropagation();
+    const url = isVFX ? `/vfx/${id}/delete-reference` : `/shot/${id}/delete-reference`;
+    try {
+        const resp = await fetch(url, {method: 'POST'});
+        const data = await resp.json();
+        if (data.success) {
+            const boxId = isVFX ? `vfx-ref-box-${id}` : `plate-ref-box-${id}`;
+            const box = document.getElementById(boxId);
+            if (box) box.innerHTML = isVFX
+                ? `<div style="text-align: center; color: #999;"><div style="font-size: 2rem;">[IMG]</div><div style="font-weight: 700;">IMAGE REFERENCE</div><div style="font-size: 0.8rem; margin-top: 0.5rem;">Click to upload</div></div>`
+                : `<span>Reference</span>`;
+            if (isVFX) { const e = Object.values(vfxCodeTargets).find(t => t.id === id); if (e) e.hasImage = false; }
+            else { const e = Object.values(shotTargets).find(t => t.id === id); if (e) e.hasImage = false; }
+        } else {
+            alert('Failed to remove thumbnail');
+        }
+    } catch (err) {
+        alert('Error: ' + err.message);
+    }
 }
 
 // Lazy Loading Implementation - Distance-based with max 30 images loaded
@@ -5106,7 +5154,7 @@ async function processFileBatch(files) {
                 // Refresh DOM box in-place (same pattern as handleImageUpload)
                 if (box) {
                     const reader = new FileReader();
-                    reader.onload = (ev) => { box.innerHTML = `<img src="${ev.target.result}" alt="Reference">`; };
+                    reader.onload = (ev) => { box.innerHTML = `<img src="${ev.target.result}" alt="Reference"><button class="ref-clear-btn" onclick="clearReferenceImage(${target.id}, ${type !== 'shot'}, event)" title="Remove thumbnail">×</button>`; };
                     reader.readAsDataURL(file);
                 }
             } else {
@@ -5144,7 +5192,7 @@ async function processFileBatch(files) {
                     addThumbnailLog(a.file.name, `auto-header → ${vfxEntry.displayName}`, '#0d6efd');
                     if (box) {
                         const reader = new FileReader();
-                        reader.onload = (ev) => { box.innerHTML = `<img src="${ev.target.result}" alt="Reference">`; };
+                        reader.onload = (ev) => { box.innerHTML = `<img src="${ev.target.result}" alt="Reference"><button class="ref-clear-btn" onclick="clearReferenceImage(${vfxId}, true, event)" title="Remove thumbnail">×</button>`; };
                         reader.readAsDataURL(a.file);
                     }
                 }

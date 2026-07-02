@@ -1482,22 +1482,17 @@ def upload_reference_image(shot_id):
     return redirect(url_for('index'))
 
 @app.route('/shot/<int:shot_id>/delete_reference', methods=['POST'])
+@app.route('/shot/<int:shot_id>/delete-reference', methods=['POST'])
 def delete_reference_image(shot_id):
-    """Delete reference image for a shot"""
     shot = Shot.query.get_or_404(shot_id)
-    
     if shot.reference_image:
-        # Delete file
-        import os
-        filepath = os.path.join('static', shot.reference_image)
-        if os.path.exists(filepath):
+        filepath = resolve_reference_image_path(shot.reference_image)
+        if filepath and os.path.exists(filepath):
             os.remove(filepath)
-        
         shot.reference_image = None
         db.session.commit()
-        flash('Reference image deleted', 'success')
-    
-    return redirect(url_for('index'))
+    from flask import jsonify
+    return jsonify({'success': True})
 
 @app.route('/export/edl', methods=['GET', 'POST'])
 def export_edl():
@@ -3968,6 +3963,18 @@ def upload_vfx_reference(vfx_id):
         return jsonify({'success': True})
     
     return jsonify({'success': False})
+
+@app.route('/vfx/<int:vfx_id>/delete-reference', methods=['POST'])
+def delete_vfx_reference(vfx_id):
+    vfx_code = VFXCode.query.get_or_404(vfx_id)
+    if vfx_code.reference_image:
+        filepath = resolve_reference_image_path(vfx_code.reference_image)
+        if filepath and os.path.exists(filepath):
+            os.remove(filepath)
+        vfx_code.reference_image = None
+        db.session.commit()
+    from flask import jsonify
+    return jsonify({'success': True})
 
 @app.route('/shot/<int:shot_id>/upload-reference', methods=['POST'])
 def upload_shot_reference(shot_id):
