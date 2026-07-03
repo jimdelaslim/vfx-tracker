@@ -910,6 +910,25 @@ function clearAllFilters() {
     border: 3px solid #fbbf24 !important;
     background: #fef3c7 !important;
 }
+
+.sidebar-import-btn {
+    display: block;
+    width: 100%;
+    padding: 8px 12px;
+    background: #20b2aa;
+    color: white;
+    text-decoration: none;
+    border: none;
+    border-radius: 6px;
+    text-align: center;
+    font-weight: 500;
+    font-size: 0.9rem;
+    font-family: inherit;
+    cursor: pointer;
+    box-sizing: border-box;
+    -webkit-appearance: none;
+    appearance: none;
+}
 </style>
 
 <div style="width: 100%; padding: 2rem;">
@@ -1001,13 +1020,13 @@ function clearAllFilters() {
             
             <!-- Import Buttons -->
             <div style="margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 2px solid #e5e7eb;">
-                <a href="{{ url_for('import_edl_route') }}" style="display: block; padding: 8px 12px; background: #20b2aa; color: white; text-decoration: none; border-radius: 6px; text-align: center; font-weight: 500; margin-bottom: 8px; font-size: 0.9rem;">
+                <a href="{{ url_for('import_edl_route') }}" class="sidebar-import-btn" style="margin-bottom: 8px;">
                     Import EDL
                 </a>
-                <a href="{{ url_for('import_metadata') }}" style="display: block; padding: 8px 12px; background: #20b2aa; color: white; text-decoration: none; border-radius: 6px; text-align: center; font-weight: 500; font-size: 0.9rem;">
+                <a href="{{ url_for('import_metadata') }}" class="sidebar-import-btn" style="margin-bottom: 8px;">
                     Import Metadata
                 </a>
-                <button onclick="document.getElementById('thumbnail-import-input').click()" style="display: block; width: 100%; padding: 8px 12px; background: #20b2aa; color: white; border: none; border-radius: 6px; text-align: center; font-weight: 500; font-size: 0.9rem; cursor: pointer; margin-top: 8px; -webkit-appearance: none; appearance: none;">
+                <button onclick="document.getElementById('thumbnail-import-input').click()" class="sidebar-import-btn">
                     Import Thumbnails
                 </button>
                 <input type="file" id="thumbnail-import-input" multiple accept=".jpg,.jpeg,.png,.webp" style="display: none; position: absolute; left: -9999px;" onchange="startThumbnailImport(this.files)">

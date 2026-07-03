@@ -2,41 +2,273 @@
 
 {% block content %}
 <style>
-/* Tooltip Styles */
-.settings-tooltip {
-    /* Force hide the tooltip by default */
-    display: none !important;
-    position: absolute;
-    left: 0;
-    top: calc(100% + 0.5rem);
-    background: #2c3e50;
-    color: white;
-    padding: 0.75rem 1rem;
+body {
+    background: #1e1e1e !important;
+    margin: 0;
+}
+
+/* Settings — dark grey palette */
+.settings-panel {
+    background: #222222;
     border-radius: 8px;
+    padding: 1.5rem 2rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.settings-heading {
+    color: #d0d0d0;
+    font-weight: 500;
+    margin: 0 0 2rem 0;
+}
+
+.settings-row {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+    background: #262626;
+    border-radius: 4px;
+    padding: 0.9rem 1.1rem;
+    margin-bottom: 6px;
+    min-height: 110px;
+    box-sizing: border-box;
+    transition: background 0.15s;
+}
+
+.settings-row:hover {
+    background: #2a2a2a;
+}
+
+.settings-row-info {
+    flex: 0 0 240px;
+    min-width: 240px;
+    text-align: right;
+}
+
+.settings-row-title {
+    color: #b8b8b8;
+    font-weight: 500;
+    font-size: 1rem;
+}
+
+.settings-row-desc {
+    color: #9a9a9a;
+    font-size: 0.85rem;
+    margin-top: 2px;
+    line-height: 1.4;
+}
+
+.settings-row-control {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex: 0 0 auto;
+}
+
+.settings-row-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex: 0 0 auto;
+}
+
+.settings-row-message {
+    flex-basis: 100%;
+    font-weight: 600;
+    font-size: 0.85rem;
+    min-height: 1.2em;
+}
+
+/* Sub-block used for rows with extra content below the main line (logo preview, path list) */
+.settings-row-sub {
+    flex-basis: 100%;
+}
+
+.settings-input {
+    background: #1e1e1e;
+    border: 1px solid transparent !important;
+    color: #c8c8c8;
+    border-radius: 4px;
+    padding: 0.4rem 0.6rem;
+    font-size: 0.95rem;
+    width: 280px !important;
+    box-sizing: border-box !important;
+    -webkit-appearance: none;
+    appearance: none;
+    outline: none;
+    box-shadow: none;
+    font-family: inherit;
+}
+
+.settings-input:focus {
+    outline: none !important;
+    border-color: #5a5a5a !important;
+    background: #232323;
+    box-shadow: none;
+}
+
+.settings-unit {
+    color: #7a7a7a;
     font-size: 0.9rem;
-    font-weight: 400;
-    line-height: 1.5;
-    max-width: 400px;
-    z-index: 1000;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-    pointer-events: none;
-    white-space: normal;
 }
 
-.settings-title-with-tooltip {
+.settings-input-with-btn {
     position: relative;
-    cursor: help;
+    width: 280px;
 }
 
-.settings-title-with-tooltip:hover .settings-tooltip {
-    /* Show on hover after 1 second delay */
-    display: block !important;
-    animation: fadeInTooltip 0.3s ease-in 1s both;
+.settings-input-with-btn .settings-input {
+    padding-right: 80px;
+    width: 100% !important;
 }
 
-@keyframes fadeInTooltip {
-    from { opacity: 0; transform: translateY(-5px); }
-    to { opacity: 1; transform: translateY(0); }
+.settings-inline-btn {
+    position: absolute;
+    right: 3px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: #2a2a2a;
+    color: #c0c0c0;
+    border: 1px solid transparent;
+    border-radius: 3px;
+    padding: 0.25rem 0.6rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.settings-inline-btn:hover {
+    background: #363636;
+}
+
+.settings-btn {
+    background: #1e1e1e;
+    color: #c0c0c0;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    padding: 0.4rem 0.9rem;
+    font-weight: 500;
+    font-size: 0.9rem;
+    cursor: pointer;
+    white-space: nowrap;
+    font-family: inherit;
+}
+
+.settings-btn:hover {
+    background: #2a2a2a;
+}
+
+.settings-btn-danger {
+    background: #5a2a2a;
+    border-color: #6a3535;
+}
+
+.settings-btn-danger:hover {
+    background: #6a3535;
+}
+
+.settings-btn-primary {
+    background: #1e1e1e;
+    border-color: transparent;
+    color: #d0d0d0;
+}
+
+.settings-btn-primary:hover {
+    background: #2a2a2a;
+}
+
+.settings-logo-preview {
+    max-height: 80px;
+    max-width: 160px;
+    border-radius: 4px;
+    border: 1px solid #444;
+    display: block;
+}
+
+.settings-path-list {
+    flex-basis: 100%;
+}
+
+.settings-path-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    background: #1e1e1e;
+    border: 1px solid #333;
+    border-radius: 6px;
+    margin-bottom: 0.5rem;
+}
+
+.settings-path-item span {
+    flex: 1;
+    font-family: monospace;
+    font-size: 0.85rem;
+    color: #e0e0e0;
+    word-break: break-all;
+}
+
+.settings-toggle-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    color: #c0c0c0;
+    font-weight: 500;
+}
+
+.settings-toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 40px;
+    height: 22px;
+    flex-shrink: 0;
+}
+
+.settings-toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+    position: absolute;
+}
+
+.settings-toggle-slider {
+    position: absolute;
+    inset: 0;
+    background: #1e1e1e;
+    border-radius: 22px;
+    transition: background 0.15s;
+    cursor: pointer;
+}
+
+.settings-toggle-slider::before {
+    content: "";
+    position: absolute;
+    height: 16px;
+    width: 16px;
+    left: 3px;
+    top: 3px;
+    background: #7a7a7a;
+    border-radius: 50%;
+    transition: transform 0.15s, background 0.15s;
+}
+
+.settings-toggle-switch input:checked + .settings-toggle-slider {
+    background: #363636;
+}
+
+.settings-toggle-switch input:checked + .settings-toggle-slider::before {
+    transform: translateX(18px);
+    background: #c0c0c0;
+}
+
+.settings-row-below {
+    flex-basis: 100%;
+    padding-left: calc(240px + 1.5rem);
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
 }
 
 .settings-message {
@@ -47,19 +279,20 @@
 }
 
 .settings-message.success {
-    background: #d4edda;
-    color: #155724;
+    background: #26402e;
+    color: #7fd99a;
 }
 
 .settings-message.error {
-    background: #f8d7da;
-    color: #721c24;
+    background: #402626;
+    color: #e08080;
 }
 </style>
 
-<div style="max-width: 800px; margin: 2rem auto; padding: 2rem;">
-    <h1 style="margin-bottom: 2rem;">Project Settings</h1>
-    
+<div style="min-height: 100vh; padding: 2rem 0;">
+<div style="max-width: 800px; margin: 0 auto; padding: 0 2rem;">
+    <h1 class="settings-heading">Project Settings</h1>
+
     <!-- Flash Messages -->
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
@@ -70,191 +303,157 @@
             {% endfor %}
         {% endif %}
     {% endwith %}
-    
+
     {% if project %}
-    <div style="background: white; border-radius: 8px; padding: 2rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-        <!-- Project Name Section -->
-        <div class="settings-section">
-            <h3 class="settings-section-title settings-title-with-tooltip" style="margin: 0;">
-                Project Name
-                <span class="settings-tooltip">You can hide the title to show only the logo, or leave the name empty</span>
-            </h3>
-            <div style="display: flex; gap: 1rem; align-items: center;">
-                <input type="text" 
-                       id="project-name-input" 
-                       value="{{ project.name }}" 
-                       placeholder="Leave empty to hide title on dashboard"
-                       style="padding: 0.5rem; border: 2px solid #ddd; border-radius: 4px; font-size: 1rem; flex: 1; max-width: 400px;">
-                
+    <div class="settings-panel">
+
+        <!-- Project Name -->
+        <div class="settings-row">
+            <div class="settings-row-info">
+                <div class="settings-row-title">Project Name</div>
             </div>
-            <div style="margin-top: 0.5rem;">
-                <button onclick="toggleDashboardTitle()" id="toggle-dashboard-title-btn" 
-                        style="padding: 0.5rem 1rem; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 500;">
+            <div class="settings-row-control">
+                <input type="text"
+                       id="project-name-input"
+                       class="settings-input"
+                       value="{{ project.name }}"
+                       placeholder="Leave empty to hide title on dashboard">
+            </div>
+            <div class="settings-row-below">
+                <button onclick="toggleDashboardTitle()" id="toggle-dashboard-title-btn" class="settings-btn">
                     Hide Title on Dashboard
                 </button>
             </div>
-            
-            <div id="name-message" style="margin-top: 0.5rem; font-weight: 600; color: #20b2aa;"></div>
+            <div id="name-message" class="settings-row-message"></div>
         </div>
-        
-        <!-- Logo Upload Section -->
-        <div class="settings-section">
-            <h3 class="settings-section-title settings-title-with-tooltip" style="margin: 0;">
-                Project Logo
-                <span class="settings-tooltip">Upload a logo image for your project header (PNG, JPG, GIF)</span>
-            </h3>
-            
-            {% if project.logo_path %}
-            <!-- Current Logo Display -->
-            <div style="margin-bottom: 1rem; padding: 1rem; background: #f8f9fa; border-radius: 6px; border: 2px solid #dee2e6;">
-                <div style="margin-bottom: 0.5rem;">
-                    <strong style="color: #20b2aa;"> Current Logo:</strong>
-                </div>
-                <img src="{{ url_for('static', filename=project.logo_path) }}" 
-                     alt="Project logo" 
-                     style="max-height: 200px; max-width: 400px; border-radius: 4px; border: 2px solid #ddd; display: block; margin-bottom: 0.5rem;">
-                <small style="color: #6c757d;">{{ project.logo_path.split('/')[-1] if project.logo_path else 'No file' }}</small>
+
+        <!-- Project Logo -->
+        <div class="settings-row">
+            <div class="settings-row-info">
+                <div class="settings-row-title">Project Logo</div>
             </div>
-            
-            <!-- Logo Management Buttons -->
-            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem;">
-                <button onclick="toggleDashboardLogo()" id="toggle-dashboard-logo-btn" 
-                        style="padding: 0.5rem 1rem; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 500;">
+
+            {% if project.logo_path %}
+            <div class="settings-row-control">
+                <img src="{{ url_for('static', filename=project.logo_path) }}"
+                     alt="Project logo"
+                     class="settings-logo-preview">
+            </div>
+            <div class="settings-row-actions">
+                <button onclick="toggleDashboardLogo()" id="toggle-dashboard-logo-btn" class="settings-btn">
                     Hide Logo on Dashboard
                 </button>
-                <button onclick="document.querySelector('#logo-upload-form input[type=file]').click();" 
-                        style="padding: 0.5rem 1rem; background: #20b2aa; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 500;">
+                <button onclick="document.querySelector('#logo-upload-form input[type=file]').click();" class="settings-btn settings-btn-primary">
                     Change Logo
                 </button>
                 <form action="/project/{{ project.id }}/remove_logo" method="POST" style="display: inline;">
-                    <button type="submit" 
-                            style="padding: 0.5rem 1rem; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 500;"
-                            onclick="return confirm('Are you sure you want to permanently remove the project logo?')">
+                    <button type="submit"
+                            class="settings-btn">
                         Remove Logo
                     </button>
                 </form>
             </div>
-            
-            <!-- Upload New Logo Form (hidden by default when logo exists) -->
-            <form id="logo-upload-form" action="/project/{{ project.id }}/upload_logo" method="POST" enctype="multipart/form-data" 
+
+            <form id="logo-upload-form" action="/project/{{ project.id }}/upload_logo" method="POST" enctype="multipart/form-data"
                   style="display: none;">
                 <input type="file" name="logo" accept="image/*" onchange="this.form.submit()" style="display: none;">
-                </div>
+            </form>
 
-            </form>
-            
-            <small style="color: #6c757d; display: block; margin-top: 0.5rem;">
-                Click logo on dashboard to quickly change it
-            </small>
-            
             {% else %}
-            <!-- No Logo - Show Upload Form -->
-            <form action="/project/{{ project.id }}/upload_logo" method="POST" enctype="multipart/form-data" 
-                  style="display: flex; gap: 1rem; align-items: center; margin-bottom: 0.5rem;">
-                <input type="file" name="logo" accept="image/*" onchange="this.form.submit()" style="padding: 0.5rem; border: 2px solid #ddd; border-radius: 4px; flex: 1;">
-                <span style="color: #6c757d; font-size: 0.9rem;">Logo will upload automatically</span>
+            <form id="logo-upload-form"
+                  action="/project/{{ project.id }}/upload_logo"
+                  method="POST"
+                  enctype="multipart/form-data"
+                  style="display: contents;">
+                <input type="file"
+                       name="logo"
+                       accept="image/*"
+                       id="logo-file-input"
+                       onchange="this.form.submit()"
+                       style="display: none;">
             </form>
-            
-            
+            <div class="settings-row-actions">
+                <button type="button"
+                        onclick="document.getElementById('logo-file-input').click()"
+                        class="settings-btn">
+                    Upload
+                </button>
+            </div>
             {% endif %}
         </div>
-        
-        <!-- Frame Rate Setting -->
-        <div style="margin-bottom: 2rem;">
-            <h3 class="settings-section-title settings-title-with-tooltip" style="margin: 0;">
-                Frame Rate (FPS)
-                <span class="settings-tooltip">Common rates: 23.976, 24, 25, 29.97, 30, 48, 60</span>
-            </h3>
-            <div style="display: flex; gap: 1rem; align-items: center;">
-                <input type="number" 
-                       id="fps-input" 
-                       value="{{ project.fps }}" 
-                       min="1" 
-                       max="120" 
-                       step="0.01"
-                       style="padding: 0.5rem; border: 2px solid #ddd; border-radius: 4px; font-size: 1rem; width: 150px;">
-                <span style="color: #6c757d;">fps</span>
-                
-            </div>
-            
-            <div id="fps-message" style="margin-top: 0.5rem; font-weight: 600;"></div>
-        </div>
-        
-        <!-- Default Start Frame Setting -->
-        <div class="settings-section" style="margin-top: 2rem;">
-            <h3 class="settings-section-title settings-title-with-tooltip" style="margin: 0;">
-                Default Start Frame
-                <span class="settings-tooltip">Applied automatically to all new plates on EDL import. Existing plates are not affected. You can still override per-shot in the edit section.</span>
-            </h3>
-            <div style="display: flex; gap: 1rem; align-items: center; margin-top: 0.5rem;">
-                <input type="number" 
-                       id="default-start-frame-input"
-                       value="{{ project.default_start_frame if project.default_start_frame is not none else 1001 }}" 
-                       style="width: 120px; padding: 0.5rem; border: 2px solid #ddd; border-radius: 6px; font-size: 1rem;"
-                       onchange="updateDefaultStartFrame({{ project.id }}, this.value)">
-                <span style="color: #6c757d;">frames</span>
-            </div>
-            <p style="font-size: 0.85rem; color: #888; margin-top: 0.5rem;">Common values: 0, 1001, 1000001</p>
-            <div id="start-frame-message" style="margin-top: 0.5rem; font-weight: 600;"></div>
-        
-        <!-- Path Aliases Section -->
-        <div class="settings-section">
-            <h3 class="settings-section-title settings-title-with-tooltip" style="margin: 0;">
-                Reference Image Path Aliases
-                <span class="settings-tooltip">Add multiple base paths where reference images might be stored. The app will try each path until it finds the image. Useful for multi-user setups or when working across different drives.</span>
-            </h3>
-            
-            
-            <div id="path-aliases-list" style="margin-bottom: 1rem;">
-                <!-- Paths will be populated here -->
-            </div>
 
-            
-            <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
-                <input type="text" 
-                       id="new-path-input" 
-                       placeholder="e.g., C:/Project/VFX/Thumbnails or /Volumes/Server/Project/VFX"
-                       style="padding: 0.5rem; border: 2px solid #ddd; border-radius: 4px; font-size: 0.9rem; flex: 1;">
-                <button onclick="addPathAlias()" 
-                        style="background: #20b2aa; color: white; padding: 0.5rem 1.5rem; border: none; border-radius: 4px; cursor: pointer; font-weight: 500;">
-                    Add Path
-                </button>
+        <!-- Frame Rate (FPS) -->
+        <div class="settings-row">
+            <div class="settings-row-info">
+                <div class="settings-row-title">Frame Rate (FPS)</div>
             </div>
-            
-            
-            <div id="path-message" style="margin-top: 0.5rem; font-weight: 600;"></div>
+            <div class="settings-row-control">
+                <input type="number"
+                       id="fps-input"
+                       class="settings-input"
+                       value="{{ project.fps }}"
+                       min="1"
+                       max="120"
+                       step="0.01">
+            </div>
+            <div id="fps-message" class="settings-row-message"></div>
         </div>
-        
-        <!-- Image Cache Management -->
-        <div class="settings-section">
-            <h3 class="settings-section-title settings-title-with-tooltip" style="margin: 0;">
-                Image Cache
-                <span class="settings-tooltip">Reference images are cached locally for faster loading. Clear the cache to free up disk space or force re-download from server.</span>
-            </h3>
-            
-            
-            <div style="margin-bottom: 1rem; padding: 1rem; background: #f8f9fa; border-radius: 8px;">
-                <label style="display: flex; align-items: center; gap: 0.75rem; cursor: pointer;">
-                    <input type="checkbox" id="cache-enabled-toggle" onchange="toggleCacheEnabled(this.checked)"
-                           style="width: 20px; height: 20px; cursor: pointer;">
-                    <span style="font-weight: 600;">Enable Image Caching</span>
-                </label>
-                <div style="font-size: 0.85rem; color: #666; margin-top: 0.5rem; margin-left: 2rem;">
-                    When disabled, images load directly from the server (slower but always up-to-date)
+
+        <!-- Default Start Frame -->
+        <div class="settings-row">
+            <div class="settings-row-info">
+                <div class="settings-row-title">Default Start Frame</div>
+            </div>
+            <div class="settings-row-control">
+                <input type="number"
+                       id="default-start-frame-input"
+                       class="settings-input"
+                       value="{{ project.default_start_frame if project.default_start_frame is not none else 1001 }}"
+                       onchange="updateDefaultStartFrame({{ project.id }}, this.value)">
+            </div>
+            <div id="start-frame-message" class="settings-row-message"></div>
+        </div>
+
+        <!-- Path Aliases -->
+        <div class="settings-row">
+            <div class="settings-row-info">
+                <div class="settings-row-title">Reference Image Path Aliases</div>
+            </div>
+            <div class="settings-row-control">
+                <div class="settings-input-with-btn">
+                    <input type="text"
+                           id="new-path-input"
+                           class="settings-input">
+                    <button onclick="addPathAlias()" class="settings-inline-btn">Add Path</button>
                 </div>
             </div>
-            
-            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                <button onclick="openCacheLocation()" 
-                        style="padding: 0.5rem 1rem; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 500;">
+            <div id="path-message" class="settings-row-message"></div>
+            <div id="path-aliases-list" class="settings-path-list"></div>
+        </div>
+
+        <!-- Image Cache -->
+        <div class="settings-row">
+            <div class="settings-row-info">
+                <div class="settings-row-title">Image Cache</div>
+            </div>
+            <div class="settings-row-control">
+                <label class="settings-toggle-label">
+                    <span class="settings-toggle-switch">
+                        <input type="checkbox" id="cache-enabled-toggle" onchange="toggleCacheEnabled(this.checked)">
+                        <span class="settings-toggle-slider"></span>
+                    </span>
+                    Enable Image Caching
+                </label>
+            </div>
+            <div class="settings-row-below">
+                <button onclick="openCacheLocation()" class="settings-btn">
                     Open Cache Location
                 </button>
-                <button onclick="clearImageCache()" 
-                        style="padding: 0.5rem 1rem; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 500;">
+                <button onclick="clearImageCache()" class="settings-btn">
                     Clear Image Cache
                 </button>
             </div>
-            <div id="cache-message" style="margin-top: 0.5rem; font-weight: 600;"></div>
+            <div id="cache-message" class="settings-row-message"></div>
         </div>
 
     </div>
@@ -263,20 +462,16 @@
         No active project. Please create or select a project first.
     </div>
     {% endif %}
-    
+
     <!-- Save All Changes Button -->
     <div style="text-align: center; margin-top: 3rem; margin-bottom: 2rem;">
-        <button onclick="saveAllChanges()" class="settings-button settings-button-primary" style="padding: 1rem 3rem; font-size: 1.1rem;">
+        <button onclick="saveAllChanges()" class="settings-btn settings-btn-primary" style="padding: 1rem 3rem; font-size: 1.1rem;">
             Save All Changes
         </button>
         <div id="save-all-message" class="settings-message" style="display: none; margin-top: 1rem;"></div>
     </div>
-    
-    <div style="margin-top: 2rem;">
-        <a href="/" class="btn btn-secondary" style="padding: 0.5rem 1.5rem; text-decoration: none;">
-            <- Back to Dashboard
-        </a>
-    </div>
+
+</div>
 </div>
 
 <script>
@@ -284,10 +479,10 @@ function updateProjectName() {
     const nameInput = document.getElementById('project-name-input');
     const messageDiv = document.getElementById('name-message');
     const newName = nameInput.value.trim();
-    
+
     console.log('Saving name:', newName, 'is empty:', !newName);
     // Allow empty name - user can show only logo
-    
+
     fetch('/project/{{ project.id }}/update', {
         method: 'POST',
         headers: {
@@ -319,13 +514,13 @@ function updateFPS() {
     const fpsInput = document.getElementById('fps-input');
     const messageDiv = document.getElementById('fps-message');
     const newFPS = parseFloat(fpsInput.value);
-    
+
     if (isNaN(newFPS) || newFPS <= 0 || newFPS > 120) {
         messageDiv.style.color = '#dc3545';
         messageDiv.textContent = 'Please enter a valid FPS between 0 and 120';
         return;
     }
-    
+
     fetch('/project/{{ project.id }}/update_fps', {
         method: 'POST',
         headers: {
@@ -359,30 +554,26 @@ function updateFPS() {
 function toggleDashboardLogo() {
     const btn = document.getElementById('toggle-dashboard-logo-btn');
     const currentState = localStorage.getItem('logoVisible') !== 'false';
-    
+
     localStorage.setItem('logoVisible', !currentState);
-    
+
     if (currentState) {
         btn.textContent = 'Show Logo on Dashboard';
-        btn.style.background = '#20b2aa';
     } else {
         btn.textContent = 'Hide Logo on Dashboard';
-        btn.style.background = '#6c757d';
     }
 }
 
 function toggleDashboardTitle() {
     const btn = document.getElementById('toggle-dashboard-title-btn');
     const currentState = localStorage.getItem('titleVisible') !== 'false';
-    
+
     localStorage.setItem('titleVisible', !currentState);
-    
+
     if (currentState) {
         btn.textContent = 'Show Title on Dashboard';
-        btn.style.background = '#20b2aa';
     } else {
         btn.textContent = 'Hide Title on Dashboard';
-        btn.style.background = '#6c757d';
     }
 }
 
@@ -395,15 +586,14 @@ function loadPathAliases() {
         .then(data => {
             const listDiv = document.getElementById('path-aliases-list');
             const paths = data.paths || [];
-            
+
             if (paths.length === 0) {
-                listDiv.innerHTML = '<div style="padding: 1rem; background: #f8f9fa; border-radius: 4px; color: #6c757d; text-align: center;">No paths configured yet</div>';
+                listDiv.innerHTML = '<div style="padding: 0.75rem; color: #9a9a9a; text-align: center; font-size: 0.85rem;">No paths configured yet</div>';
             } else {
                 listDiv.innerHTML = paths.map((path, index) => `
-                    <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem; background: #f8f9fa; border-radius: 4px; margin-bottom: 0.5rem;">
-                        <span style="flex: 1; font-family: monospace; font-size: 0.9rem;">${path}</span>
-                        <button onclick="removePathAlias(${index})" 
-                                style="background: #dc3545; color: white; padding: 0.25rem 0.75rem; border: none; border-radius: 4px; cursor: pointer; font-size: 0.85rem;">
+                    <div class="settings-path-item">
+                        <span>${path}</span>
+                        <button onclick="removePathAlias(${index})" class="settings-btn" style="padding: 0.25rem 0.75rem; font-size: 0.85rem;">
                             Remove
                         </button>
                     </div>
@@ -417,13 +607,13 @@ function addPathAlias() {
     const input = document.getElementById('new-path-input');
     const messageDiv = document.getElementById('path-message');
     const newPath = input.value.trim();
-    
+
     if (!newPath) {
         messageDiv.style.color = '#dc3545';
         messageDiv.textContent = 'Please enter a path';
         return;
     }
-    
+
     fetch('/project/{{ project.id }}/path_aliases/add', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
@@ -451,9 +641,9 @@ function addPathAlias() {
 
 function removePathAlias(index) {
     if (!confirm('Remove this path alias?')) return;
-    
+
     const messageDiv = document.getElementById('path-message');
-    
+
     fetch('/project/{{ project.id }}/path_aliases/remove', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
@@ -486,25 +676,21 @@ window.addEventListener('load', function() {// Set button text on load
         const logoVisible = localStorage.getItem('logoVisible');
         if (logoVisible === 'false') {
             logoBtn.textContent = 'Show Logo on Dashboard';
-            logoBtn.style.background = '#20b2aa';
         } else {
             logoBtn.textContent = 'Hide Logo on Dashboard';
-            logoBtn.style.background = '#6c757d';
         }
     }
-    
+
     const titleBtn = document.getElementById('toggle-dashboard-title-btn');
     if (titleBtn) {
         const titleVisible = localStorage.getItem('titleVisible');
         if (titleVisible === 'false') {
             titleBtn.textContent = 'Show Title on Dashboard';
-            titleBtn.style.background = '#20b2aa';
         } else {
             titleBtn.textContent = 'Hide Title on Dashboard';
-            titleBtn.style.background = '#6c757d';
         }
     }
-    
+
     // Load path aliases
     loadPathAliases();
 });
@@ -531,11 +717,11 @@ function clearImageCache() {
     if (!confirm('Clear all cached images? They will be re-downloaded from the server when needed.')) {
         return;
     }
-    
+
     const messageDiv = document.getElementById('cache-message');
     messageDiv.textContent = 'Clearing cache...';
-    messageDiv.style.color = '#6c757d';
-    
+    messageDiv.style.color = '#9a9a9a';
+
     fetch('/cache/clear', {
         method: 'POST'
     })
@@ -598,17 +784,17 @@ async function saveAllChanges() {
     messageDiv.style.display = 'block';
     messageDiv.className = 'settings-message';
     messageDiv.textContent = 'Saving...';
-    
+
     let allSuccess = true;
     let errors = [];
     const projectId = {{ project.id if project else 'null' }};
-    
+
     if (!projectId) {
         messageDiv.className = 'settings-message error';
         messageDiv.textContent = 'No project found';
         return;
     }
-    
+
     try {
         // Save project name (allow empty to hide title on dashboard)
         const projectNameInput = document.getElementById('project-name-input');
@@ -625,7 +811,7 @@ async function saveAllChanges() {
                 errors.push('Project name');
             }
         }
-        
+
         // Save FPS
         const fpsInput = document.getElementById('fps-input');
         if (fpsInput && fpsInput.value) {
@@ -640,10 +826,10 @@ async function saveAllChanges() {
                 errors.push('FPS');
             }
         }
-        
+
         // Skip logo upload - logo should be uploaded via the form buttons, not Save All Changes
         // Logo upload requires file handling and is better done immediately
-        
+
         // Add path if entered
         const pathInput = document.getElementById('new-path-input');
         if (pathInput && pathInput.value.trim()) {
@@ -660,93 +846,7 @@ async function saveAllChanges() {
                 pathInput.value = '';
             }
         }
-        
-        if (allSuccess) {
-            messageDiv.className = 'settings-message success';
-            messageDiv.textContent = 'All changes saved successfully!';
-            setTimeout(() => {
-                location.reload();
-            }, 1500);
-        } else {
-            messageDiv.className = 'settings-message error';
-            messageDiv.textContent = 'Some changes failed: ' + errors.join(', ');
-        }
-    } catch (error) {
-        messageDiv.className = 'settings-message error';
-        messageDiv.textContent = 'Error saving changes';
-        console.error('Save error:', error);
-    }
-}
 
-
-async function saveAllChanges() {
-    const messageDiv = document.getElementById('save-all-message');
-    messageDiv.style.display = 'block';
-    messageDiv.className = 'settings-message';
-    messageDiv.textContent = 'Saving...';
-    
-    let allSuccess = true;
-    let errors = [];
-    const projectId = {{ project.id if project else 'null' }};
-    
-    if (!projectId) {
-        messageDiv.className = 'settings-message error';
-        messageDiv.textContent = 'No project found';
-        return;
-    }
-    
-    try {
-        // Save project name (allow empty to hide title on dashboard)
-        const projectNameInput = document.getElementById('project-name-input');
-        if (projectNameInput) {
-            const nameValue = projectNameInput.value.trim();  // Get value (can be empty)
-            const nameResponse = await fetch(`/project/${projectId}/update`, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({name: nameValue})  // Send empty string if user cleared it
-            });
-            const nameData = await nameResponse.json();
-            if (!nameData.success) {
-                allSuccess = false;
-                errors.push('Project name');
-            }
-        }
-        
-        // Save FPS
-        const fpsInput = document.getElementById('fps-input');
-        if (fpsInput && fpsInput.value) {
-            const fpsResponse = await fetch(`/project/${projectId}/update_fps`, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({fps: parseFloat(fpsInput.value)})
-            });
-            const fpsData = await fpsResponse.json();
-            if (!fpsData.success) {
-                allSuccess = false;
-                errors.push('FPS');
-            }
-        }
-        
-        // Skip logo upload - logo should be uploaded via the form buttons, not Save All Changes
-        // Logo upload requires file handling and is better done immediately
-        
-        // Add path if entered
-        const pathInput = document.getElementById('new-path-input');
-        if (pathInput && pathInput.value.trim()) {
-            const pathResponse = await fetch(`/project/${projectId}/path_aliases/add`, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({path: pathInput.value.trim()})
-            });
-            const pathData = await pathResponse.json();
-            if (!pathData.success) {
-                allSuccess = false;
-                errors.push('Path alias');
-            } else {
-                pathInput.value = '';
-            }
-        }
-        
         if (allSuccess) {
             messageDiv.className = 'settings-message success';
             messageDiv.textContent = 'All changes saved successfully!';
