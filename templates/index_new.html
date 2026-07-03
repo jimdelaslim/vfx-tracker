@@ -105,6 +105,31 @@ function clearAllFilters() {
 </script>
 
 <style>
+/* Dashboard chrome — dark theme (matches settings.html palette) */
+body {
+    background: #333333 !important;
+    margin: 0;
+}
+
+#search-input, #sort-select {
+    background: #232323;
+    border: 1px solid transparent;
+    color: #c8c8c8;
+    border-radius: 4px;
+    font-family: inherit;
+}
+
+#search-input::placeholder {
+    color: #7a7a7a;
+}
+
+#search-input:focus, #sort-select:focus {
+    outline: none;
+    border-color: #5a5a5a;
+    background: #282828;
+    box-shadow: none;
+}
+
 /* VFX Code Container Styles */
 
 
@@ -915,7 +940,7 @@ function clearAllFilters() {
     display: block;
     width: 100%;
     padding: 8px 12px;
-    background: #20b2aa;
+    background: #454545;
     color: white;
     text-decoration: none;
     border: none;
@@ -928,6 +953,20 @@ function clearAllFilters() {
     box-sizing: border-box;
     -webkit-appearance: none;
     appearance: none;
+}
+
+.sidebar-import-btn:hover {
+    background: #525252;
+}
+
+.sidebar-export-btn {
+    background: #454545;
+    color: white;
+    border: none;
+}
+
+.sidebar-export-btn:hover {
+    background: #525252;
 }
 </style>
 
@@ -952,9 +991,9 @@ function clearAllFilters() {
                 <div id="project-title-container">
                     <div id="project-title-display" style="cursor: pointer;" onclick="document.getElementById('project-title-edit').style.display='block'; this.style.display='none';">
                         {% if project.name %}
-                        <h2 style="margin: 0; font-size: 2.5rem; font-weight: 700; color: white; text-shadow: -1px -1px 0 #495057, 1px -1px 0 #495057, -1px 1px 0 #495057, 1px 1px 0 #495057, 1px 1px 2px rgba(0,0,0,0.2);">
-                            {{ project.name }} 
-                            <small style="font-size: 0.5em; font-weight: 400; color: #495057; text-shadow: none;">
+                        <h2 style="margin: 0; font-size: 2.5rem; font-weight: 700; color: #c8c8c8; text-shadow: -1px -1px 0 #495057, 1px -1px 0 #495057, -1px 1px 0 #495057, 1px 1px 0 #495057, 1px 1px 2px rgba(0,0,0,0.2);">
+                            {{ project.name }}
+                            <small style="font-size: 0.5em; font-weight: 400; color: #7a7a7a; text-shadow: none;">
                                 (<span id="project-fps-display">{{ project.fps }}</span>fps)
                             </small>
                         </h2>
@@ -975,25 +1014,25 @@ function clearAllFilters() {
             
             <!-- Square Stats Cards -->
             <div style="display: flex; gap: 0.75rem;">
-                <div onclick="filterByStatus('Prep')" style="background: white; width: 90px; height: 90px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
-                    <div style="font-size: 0.7rem; color: #6c757d; text-transform: uppercase; font-weight: 600; margin-bottom: 0.25rem;">Prep</div>
-                    <div style="font-size: 2rem; font-weight: 700; color: #495057;">{{ status_counts.prep }}</div>
+                <div onclick="filterByStatus('Prep')" style="background: #3a3a3a; width: 90px; height: 90px; border-radius: 8px; box-shadow: none; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+                    <div style="font-size: 0.7rem; color: #7a7a7a; text-transform: uppercase; font-weight: 600; margin-bottom: 0.25rem;">Prep</div>
+                    <div style="font-size: 2rem; font-weight: 700; color: #c8c8c8;">{{ status_counts.prep }}</div>
                 </div>
-                <div onclick="filterByStatus('Ready')" style="background: white; width: 90px; height: 90px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
-                    <div style="font-size: 0.7rem; color: #6c757d; text-transform: uppercase; font-weight: 600; margin-bottom: 0.25rem;">Ready</div>
-                    <div style="font-size: 2rem; font-weight: 700; color: #495057;">{{ status_counts.ready }}</div>
+                <div onclick="filterByStatus('Ready')" style="background: #3a3a3a; width: 90px; height: 90px; border-radius: 8px; box-shadow: none; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+                    <div style="font-size: 0.7rem; color: #7a7a7a; text-transform: uppercase; font-weight: 600; margin-bottom: 0.25rem;">Ready</div>
+                    <div style="font-size: 2rem; font-weight: 700; color: #c8c8c8;">{{ status_counts.ready }}</div>
                 </div>
-                <div onclick="filterByStatus('Turned Over')" style="background: white; width: 90px; height: 90px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
-                    <div style="font-size: 0.7rem; color: #6c757d; text-transform: uppercase; font-weight: 600; margin-bottom: 0.25rem;">Turned Over</div>
-                    <div style="font-size: 2rem; font-weight: 700; color: #495057;">{{ status_counts.turnover }}</div>
+                <div onclick="filterByStatus('Turned Over')" style="background: #3a3a3a; width: 90px; height: 90px; border-radius: 8px; box-shadow: none; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+                    <div style="font-size: 0.7rem; color: #7a7a7a; text-transform: uppercase; font-weight: 600; margin-bottom: 0.25rem;">Turned Over</div>
+                    <div style="font-size: 2rem; font-weight: 700; color: #c8c8c8;">{{ status_counts.turnover }}</div>
                 </div>
-                <div onclick="filterByStatus('Update')" style="background: white; width: 90px; height: 90px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
-                    <div style="font-size: 0.7rem; color: #6c757d; text-transform: uppercase; font-weight: 600; margin-bottom: 0.25rem;">Update</div>
-                    <div style="font-size: 2rem; font-weight: 700; color: #495057;">{{ status_counts['update'] }}</div>
+                <div onclick="filterByStatus('Update')" style="background: #3a3a3a; width: 90px; height: 90px; border-radius: 8px; box-shadow: none; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+                    <div style="font-size: 0.7rem; color: #7a7a7a; text-transform: uppercase; font-weight: 600; margin-bottom: 0.25rem;">Update</div>
+                    <div style="font-size: 2rem; font-weight: 700; color: #c8c8c8;">{{ status_counts['update'] }}</div>
                 </div>
-                <div onclick="filterByStatus('Omitted')" style="background: white; width: 90px; height: 90px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
-                    <div style="font-size: 0.7rem; color: #6c757d; text-transform: uppercase; font-weight: 600; margin-bottom: 0.25rem;">Omitted</div>
-                    <div style="font-size: 2rem; font-weight: 700; color: #495057;">{{ status_counts.omitted }}</div>
+                <div onclick="filterByStatus('Omitted')" style="background: #3a3a3a; width: 90px; height: 90px; border-radius: 8px; box-shadow: none; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+                    <div style="font-size: 0.7rem; color: #7a7a7a; text-transform: uppercase; font-weight: 600; margin-bottom: 0.25rem;">Omitted</div>
+                    <div style="font-size: 2rem; font-weight: 700; color: #c8c8c8;">{{ status_counts.omitted }}</div>
                 </div>
             </div>
         </div>
@@ -1003,23 +1042,23 @@ function clearAllFilters() {
     
     <!-- Fixed Left Sidebar -->
     <div style="position: fixed; left: 20px; top: 200px; width: 200px; z-index: 1000;">
-        <div style="background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
-            <h3 style="margin: 0 0 1rem 0; font-size: 1rem; color: #000; font-weight: 800;">Import & Export</h3>
-            
+        <div style="background: #3a3a3a; padding: 1.5rem; border-radius: 12px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
+            <h3 style="margin: 0 0 1rem 0; font-size: 1rem; color: #b8b8b8; font-weight: 500;">Import & Export</h3>
+
             <!-- Select All / Deselect All -->
             <div style="margin-bottom: 1rem;">
-                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-weight: 600; margin-bottom: 0.5rem;">
+                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-weight: 600; margin-bottom: 0.5rem; color: #c8c8c8;">
                     <input type="checkbox" id="select-all" onclick="toggleSelectAll()" style="width: 18px; height: 18px; cursor: pointer;">
                     Select All
                 </label>
-                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-weight: 600;" onclick="deselectAll()">
+                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-weight: 600; color: #c8c8c8;" onclick="deselectAll()">
                     <input type="checkbox" style="width: 18px; height: 18px; cursor: pointer; pointer-events: none;" disabled>
                     Deselect All
                 </label>
             </div>
-            
+
             <!-- Import Buttons -->
-            <div style="margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 2px solid #e5e7eb;">
+            <div style="margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid #4a4a4a;">
                 <a href="{{ url_for('import_edl_route') }}" class="sidebar-import-btn" style="margin-bottom: 8px;">
                     Import EDL
                 </a>
@@ -1033,52 +1072,52 @@ function clearAllFilters() {
             </div>
             
             <!-- Export Buttons -->
-            <div style="margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 2px solid #e5e7eb;">
+            <div style="margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid #4a4a4a;">
                 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem;">
-                    <h4 style="margin: 0; font-size: 0.9rem; font-weight: 600; color: #495057;">Export</h4>
-                    <span id="selectedCount" style="background: #6c757d; color: white; padding: 0.2rem 0.6rem; border-radius: 12px; font-size: 0.8rem; font-weight: 600;">(0)</span>
+                    <h4 style="margin: 0; font-size: 0.9rem; font-weight: 500; color: #b8b8b8;">Export</h4>
+                    <span id="selectedCount" style="background: #4a4a4a; color: #7a7a7a; padding: 0.2rem 0.6rem; border-radius: 12px; font-size: 0.8rem; font-weight: 600;">(0)</span>
                 </div>
-                
+
                 <!-- Export - VFX -->
                 <div style="margin-bottom: 1rem;">
-                    <h5 style="margin: 0 0 0.5rem 0; font-size: 0.8rem; font-weight: 600; color: #6c757d;">VFX</h5>
+                    <h5 style="margin: 0 0 0.5rem 0; font-size: 0.8rem; font-weight: 500; color: #b8b8b8;">VFX</h5>
                     <div style="display: flex; flex-direction: column; gap: 0.4rem;">
-                        <button onclick="exportSelectedEDL()" class="btn btn-secondary" style="width: 100%; padding: 0.4rem; font-size: 0.8rem;">EDL</button>
-                        <button onclick="exportSelectedALE()" class="btn btn-secondary" style="width: 100%; padding: 0.4rem; font-size: 0.8rem;">ALE</button>
-                        <button onclick="exportSelectedPDF()" class="btn btn-secondary" style="width: 100%; padding: 0.4rem; font-size: 0.8rem;">PDF</button>
-                        <button onclick="exportSelectedVFXCSV()" class="btn btn-secondary" style="width: 100%; padding: 0.4rem; font-size: 0.8rem;">CSV</button>
+                        <button onclick="exportSelectedEDL()" class="btn sidebar-export-btn" style="width: 100%; padding: 0.4rem; font-size: 0.8rem;">EDL</button>
+                        <button onclick="exportSelectedALE()" class="btn sidebar-export-btn" style="width: 100%; padding: 0.4rem; font-size: 0.8rem;">ALE</button>
+                        <button onclick="exportSelectedPDF()" class="btn sidebar-export-btn" style="width: 100%; padding: 0.4rem; font-size: 0.8rem;">PDF</button>
+                        <button onclick="exportSelectedVFXCSV()" class="btn sidebar-export-btn" style="width: 100%; padding: 0.4rem; font-size: 0.8rem;">CSV</button>
                     </div>
                 </div>
                 
                 <!-- Export - Metadata -->
                 <div>
-                    <h5 style="margin: 0 0 0.5rem 0; font-size: 0.8rem; font-weight: 600; color: #6c757d;">Metadata</h5>
+                    <h5 style="margin: 0 0 0.5rem 0; font-size: 0.8rem; font-weight: 500; color: #b8b8b8;">Metadata</h5>
                     <div style="display: flex; flex-direction: column; gap: 0.4rem;">
-                        <button onclick="exportSelectedMetadataPDF()" class="btn btn-secondary" style="width: 100%; padding: 0.4rem; font-size: 0.8rem;">PDF</button>
-                        <button onclick="exportSelectedCSV()" class="btn btn-secondary" style="width: 100%; padding: 0.4rem; font-size: 0.8rem;">CSV</button>
+                        <button onclick="exportSelectedMetadataPDF()" class="btn sidebar-export-btn" style="width: 100%; padding: 0.4rem; font-size: 0.8rem;">PDF</button>
+                        <button onclick="exportSelectedCSV()" class="btn sidebar-export-btn" style="width: 100%; padding: 0.4rem; font-size: 0.8rem;">CSV</button>
                     </div>
                 </div>
             </div>
             
             <!-- Delete Button -->
-            <button class="btn btn-danger" onclick="deleteSelected()" style="width: 100%; padding: 0.5rem; font-size: 0.85rem;background: #495057; border-color: #495057;">Delete</button>
-            
+            <button class="btn sidebar-export-btn" onclick="deleteSelected()" style="width: 100%; padding: 0.5rem; font-size: 0.85rem;">Delete</button>
+
             <!-- Back to Top Button -->
-            <button onclick="scrollToTop()" style="width: 100%; padding: 0.75rem; font-size: 0.9rem; background: #6c757d; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; margin-top: 1rem;">
+            <button class="btn sidebar-export-btn" onclick="scrollToTop()" style="width: 100%; padding: 0.75rem; font-size: 0.9rem; margin-top: 1rem;">
                 ^ Back to Top
             </button>
         </div>
     </div>
     
     <!-- Search and Sort Bar -->
-    <div style="background: white; padding: 1rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 2rem; display: grid; grid-template-columns: 1fr auto; gap: 1rem; align-items: center;">
+    <div style="background: transparent; padding: 1rem; border-radius: 8px; box-shadow: none; margin-bottom: 2rem; display: grid; grid-template-columns: 1fr auto; gap: 1rem; align-items: center;">
         <!-- Search -->
-        <input type="text" id="search-input" placeholder="Search by VFX code, clip name, vendor..." value="{{ search_term }}" 
-               style="padding: 0.5rem 1rem; border: 2px solid #ddd; border-radius: 6px; font-size: 0.9rem;"
+        <input type="text" id="search-input" placeholder="Search by VFX code, clip name, vendor..." value="{{ search_term }}"
+               style="padding: 0.5rem 1rem; border-radius: 4px; font-size: 0.9rem;"
                onkeypress="if(event.key === 'Enter') filterShots()">
-        
+
         <!-- Sort -->
-        <select id="sort-select" onchange="sortShots()" style="padding: 0.5rem 1rem; border: 2px solid #ddd; border-radius: 6px; font-size: 0.9rem;">
+        <select id="sort-select" onchange="sortShots()" style="padding: 0.5rem 1rem; border-radius: 4px; font-size: 0.9rem;">
             <option value="vfx_code" {% if sort_by == 'vfx_code' %}selected{% endif %}>VFX Code (A-Z)</option>
             <option value="vfx_code_reverse" {% if sort_by == 'vfx_code_reverse' %}selected{% endif %}>VFX Code (Z-A)</option>
             <option value="turnover_recent" {% if sort_by == 'turnover_recent' %}selected{% endif %}>TO Number (Recent First)</option>

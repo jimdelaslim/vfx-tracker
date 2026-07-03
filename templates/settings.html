@@ -3,13 +3,14 @@
 {% block content %}
 <style>
 body {
-    background: #1e1e1e !important;
+    background: #2a2a2a !important;
     margin: 0;
 }
 
 /* Settings — dark grey palette */
 .settings-panel {
-    background: #222222;
+    background: #333333;
+    border: 1px solid #3d3d3d;
     border-radius: 8px;
     padding: 1.5rem 2rem;
     box-shadow: 0 2px 4px rgba(0,0,0,0.2);
@@ -26,7 +27,7 @@ body {
     align-items: center;
     gap: 1.5rem;
     flex-wrap: wrap;
-    background: #262626;
+    background: #333333;
     border-radius: 4px;
     padding: 0.9rem 1.1rem;
     margin-bottom: 6px;
@@ -36,7 +37,11 @@ body {
 }
 
 .settings-row:hover {
-    background: #2a2a2a;
+    background: #3a3a3a;
+}
+
+.settings-row + .settings-row {
+    border-top: 1px solid #4a4a4a;
 }
 
 .settings-row-info {
@@ -85,7 +90,7 @@ body {
 }
 
 .settings-input {
-    background: #1e1e1e;
+    background: #232323;
     border: 1px solid transparent !important;
     color: #c8c8c8;
     border-radius: 4px;
@@ -103,7 +108,7 @@ body {
 .settings-input:focus {
     outline: none !important;
     border-color: #5a5a5a !important;
-    background: #232323;
+    background: #282828;
     box-shadow: none;
 }
 
@@ -127,7 +132,7 @@ body {
     right: 3px;
     top: 50%;
     transform: translateY(-50%);
-    background: #2a2a2a;
+    background: #333333;
     color: #c0c0c0;
     border: 1px solid transparent;
     border-radius: 3px;
@@ -139,11 +144,11 @@ body {
 }
 
 .settings-inline-btn:hover {
-    background: #363636;
+    background: #3d3d3d;
 }
 
 .settings-btn {
-    background: #1e1e1e;
+    background: #232323;
     color: #c0c0c0;
     border: 1px solid transparent;
     border-radius: 4px;
@@ -156,7 +161,7 @@ body {
 }
 
 .settings-btn:hover {
-    background: #2a2a2a;
+    background: #3d3d3d;
 }
 
 .settings-btn-danger {
@@ -169,13 +174,13 @@ body {
 }
 
 .settings-btn-primary {
-    background: #1e1e1e;
+    background: #232323;
     border-color: transparent;
     color: #d0d0d0;
 }
 
 .settings-btn-primary:hover {
-    background: #2a2a2a;
+    background: #3d3d3d;
 }
 
 .settings-logo-preview {
@@ -195,8 +200,8 @@ body {
     align-items: center;
     gap: 0.5rem;
     padding: 0.5rem 0.75rem;
-    background: #1e1e1e;
-    border: 1px solid #333;
+    background: #232323;
+    border: 1px solid #3d3d3d;
     border-radius: 6px;
     margin-bottom: 0.5rem;
 }
@@ -236,7 +241,7 @@ body {
 .settings-toggle-slider {
     position: absolute;
     inset: 0;
-    background: #1e1e1e;
+    background: #232323;
     border-radius: 22px;
     transition: background 0.15s;
     cursor: pointer;
@@ -255,7 +260,7 @@ body {
 }
 
 .settings-toggle-switch input:checked + .settings-toggle-slider {
-    background: #363636;
+    background: #3d3d3d;
 }
 
 .settings-toggle-switch input:checked + .settings-toggle-slider::before {

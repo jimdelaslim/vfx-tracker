@@ -17,6 +17,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Pull on Windows and verify before considering a change done
 - Build installers via build-mac.sh (Mac) and build-windows.ps1 (Windows)
 
+## Session workflow
+- Propose changes in prose before editing. Wait for explicit go-ahead. Show diffs only after approval of the plan.
+
 ## Don't touch unless asked
 - *.backup, *.old files (app.py.backup, database.py.backup, index_new.html.backup, pdf_generator.py.old, etc.)
 - One-off migration scripts: implement_new_features.py, migrate_add_internal_notes.py, migrate_cache_setting.py
