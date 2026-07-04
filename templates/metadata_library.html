@@ -1,37 +1,66 @@
 {% extends "base.html" %}
 
 {% block content %}
+<style>
+body {
+    background: #333333 !important;
+    color: #c8c8c8;
+    margin: 0;
+}
+
+.meta-btn {
+    background: #232323;
+    color: #c0c0c0;
+    border: none;
+}
+
+.meta-btn:hover {
+    background: #3d3d3d;
+}
+
+.meta-badge {
+    display: inline-block;
+    padding: 3px 8px;
+    background: #3d3d3d;
+    color: #c8c8c8;
+    border-radius: 12px;
+    font-size: 0.85rem;
+}
+
+.meta-badge-muted {
+    color: #7a7a7a;
+}
+</style>
 <div style="max-width: 1400px; margin: 2rem auto; padding: 0 2rem;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
         <h1>Metadata Library</h1>
         <div style="display: flex; gap: 0.5rem;">
-            <button type="button" onclick="deleteSelected()" class="btn btn-secondary" style="background: #dc3545;">Delete Selected</button>
-            <form method="POST" action="/metadata/library/clear_orphaned" style="display: inline;" 
+            <button type="button" onclick="deleteSelected()" class="btn meta-btn">Delete Selected</button>
+            <form method="POST" action="/metadata/library/clear_orphaned" style="display: inline;"
                   onsubmit="return confirm('Delete all metadata not linked to any shot?');">
-                <button type="submit" class="btn" style="background: #f39c12;">Clear All Orphaned</button>
+                <button type="submit" class="btn meta-btn">Clear All Orphaned</button>
             </form>
         </div>
     </div>
-    
+
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% for category, message in messages %}
-            <div style="padding: 1rem; margin-bottom: 1rem; border-radius: 6px; 
-                        background: {% if category == 'success' %}#d4edda{% else %}#f8d7da{% endif %};">
+            <div style="padding: 1rem; margin-bottom: 1rem; border-radius: 6px; background: #3a3a3a; color: #c8c8c8;{% if category != 'success' %} border-left: 3px solid #5a5a5a;{% endif %}">
                 {{ message }}
             </div>
         {% endfor %}
     {% endwith %}
-    
-    <div style="background: #e3f2fd; padding: 1rem; border-radius: 6px; margin-bottom: 1rem; font-size: 0.9rem;">
+
+    <div style="background: #3a3a3a; border: 1px solid #4a4a4a; padding: 1rem; border-radius: 6px; margin-bottom: 1rem; font-size: 0.9rem;">
         <strong>Total:</strong> {{ metadata_info|length }} metadata entries
         • <strong>Linked:</strong> {{ metadata_info|selectattr('linked_count', '>', 0)|list|length }}
         • <strong>Orphaned:</strong> {{ metadata_info|selectattr('linked_count', 'equalto', 0)|list|length }}
     </div>
-    
-    <div style="background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); overflow: hidden;">
+
+    <div style="background: #3a3a3a; border: 1px solid #4a4a4a; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.2); overflow: hidden;">
         <table style="width: 100%; border-collapse: collapse;">
             <thead>
-                <tr style="background: #343a40; color: white;">
+                <tr style="background: #2a2a2a; color: #c8c8c8;">
                     <th style="padding: 0.75rem; text-align: left; width: 40px;">
                         <input type="checkbox" id="select-all" onchange="toggleAll(this)">
                     </th>
@@ -44,7 +73,7 @@
             </thead>
             <tbody>
                 {% for info in metadata_info %}
-                <tr style="border-bottom: 1px solid #dee2e6; background: {% if info.linked_count == 0 %}#fff3cd{% endif %};">
+                <tr style="border-bottom: 1px solid #4a4a4a; background: {% if info.linked_count == 0 %}#3d3d3d{% else %}#333333{% endif %};">
                     <td style="padding: 0.75rem;">
                         <input type="checkbox" class="metadata-check" value="{{ info.metadata.id }}">
                     </td>
@@ -53,16 +82,16 @@
                     <td style="padding: 0.75rem;">{{ info.metadata.lens or '-' }}</td>
                     <td style="padding: 0.75rem;">
                         {% if info.linked_count > 0 %}
-                            <span style="background: #28a745; color: white; padding: 3px 8px; border-radius: 12px; font-size: 0.85rem;">
+                            <span class="meta-badge">
                                 Linked ({{ info.linked_count }})
                             </span>
                         {% else %}
-                            <span style="background: #ffc107; color: #333; padding: 3px 8px; border-radius: 12px; font-size: 0.85rem;">
+                            <span class="meta-badge meta-badge-muted">
                                 Orphaned
                             </span>
                         {% endif %}
                     </td>
-                    <td style="padding: 0.75rem; font-size: 0.85rem; color: #6c757d;">
+                    <td style="padding: 0.75rem; font-size: 0.85rem; color: #7a7a7a;">
                         {{ info.linked_clips|join(', ') }}{% if info.linked_count > 3 %}...{% endif %}
                     </td>
                 </tr>

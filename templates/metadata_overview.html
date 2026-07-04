@@ -8,7 +8,7 @@
         
         {% if shots %}
         <div style="margin-bottom: 1rem;">
-            <p style="color: #7f8c8d;">Showing metadata for {{ shots|length }} shot(s). Click "Edit Metadata" to view or modify details.</p>
+            <p style="color: #7a7a7a;">Showing metadata for {{ shots|length }} shot(s). Click "Edit Metadata" to view or modify details.</p>
         </div>
         
         <div style="margin-bottom: 1.5rem;">
@@ -16,10 +16,10 @@
                 <input type="checkbox" id="selectAll" style="margin-right: 0.5rem; cursor: pointer;">
                 <strong>Select All</strong>
             </label>
-            <button onclick="deleteSelectedMetadata()" style="padding: 0.5rem 1rem; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; display: none; margin-left: 1rem;" id="deleteBtn">
+            <button onclick="deleteSelectedMetadata()" class="meta-btn" style="padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; display: none; margin-left: 1rem;" id="deleteBtn">
                 Delete Selected Metadata
             </button>
-            <a href="/metadata/library" style="padding: 0.5rem 1rem; background: #20b2aa; color: white; text-decoration: none; border-radius: 4px; font-weight: 500; margin-left: 1rem; display: inline-block;">
+            <a href="/metadata/library" class="meta-btn" style="padding: 0.5rem 1rem; text-decoration: none; border-radius: 4px; font-weight: 500; margin-left: 1rem; display: inline-block;">
                 Metadata Library
             </a>
         </div>
@@ -35,7 +35,7 @@
                 <div style="font-weight: 700; font-size: 1.1rem; margin-bottom: 0.3rem;">
                     {{ shot.clip_name }}
                 </div>
-                <div style="color: #6c757d; font-size: 0.9rem;">
+                <div style="color: #7a7a7a; font-size: 0.9rem;">
                     Tape: {{ shot.cam_roll or 'N/A' }}
                 </div>
             </div>
@@ -43,18 +43,18 @@
             <!-- Metadata Status -->
             <div style="flex-shrink: 0;">
                 {% if shot.camera or shot.lens or shot.iso or shot.lut or shot.color_space %}
-                    <span style="padding: 0.4rem 1rem; background: #d4edda; color: #155724; border-radius: 4px; font-weight: 600; font-size: 0.9rem; white-space: nowrap;">
+                    <span class="meta-badge">
                         Contains metadata
                     </span>
                 {% else %}
-                    <span style="padding: 0.4rem 1rem; background: #f8d7da; color: #721c24; border-radius: 4px; font-weight: 600; font-size: 0.9rem; white-space: nowrap;">
+                    <span class="meta-badge meta-badge-muted">
                         No metadata imported
                     </span>
                 {% endif %}
             </div>
             
             <!-- Edit Button -->
-            <a href="/shot/{{ shot.id }}/metadata" class="btn" style="background: #20b2aa; color: white; flex-shrink: 0; text-decoration: none; white-space: nowrap;">
+            <a href="/shot/{{ shot.id }}/metadata" class="btn meta-btn" style="flex-shrink: 0; text-decoration: none; white-space: nowrap;">
                 Edit Metadata
             </a>
         </div>
@@ -63,8 +63,8 @@
         {% else %}
         <div class="card" style="text-align: center; padding: 3rem;">
             <h3>No shots in this project</h3>
-            <p style="color: #7f8c8d; margin: 1rem 0;">Import an EDL to get started</p>
-            <a href="/import" class="btn" style="background: #20b2aa; color: white; text-decoration: none;">Import EDL</a>
+            <p style="color: #7a7a7a; margin: 1rem 0;">Import an EDL to get started</p>
+            <a href="/import" class="btn meta-btn" style="text-decoration: none;">Import EDL</a>
         </div>
         {% endif %}
     </div>
@@ -73,24 +73,24 @@
     <div style="width: 300px; flex-shrink: 0;">
         <div style="position: sticky; top: 2rem;">
             <!-- Search Box -->
-            <div style="background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 1.5rem;">
+            <div style="background: #3a3a3a; border: 1px solid #4a4a4a; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.2); margin-bottom: 1.5rem;">
                 <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Search Shots</label>
-                <input type="text" id="searchInput" placeholder="Search by name or tape..." 
-                       style="width: 100%; padding: 0.5rem; border: 2px solid #ddd; border-radius: 4px; font-size: 0.9rem;">
-                <div id="searchCount" style="margin-top: 0.5rem; color: #6c757d; font-size: 0.85rem;"></div>
+                <input type="text" id="searchInput" placeholder="Search by name or tape..."
+                       style="width: 100%; padding: 0.5rem; border-radius: 4px; font-size: 0.9rem;">
+                <div id="searchCount" style="margin-top: 0.5rem; color: #7a7a7a; font-size: 0.85rem;"></div>
             </div>
-            
+
             <!-- Export Section -->
-            <div style="background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            <div style="background: #3a3a3a; border: 1px solid #4a4a4a; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
                 <h3 style="margin: 0 0 1rem 0; font-size: 1.1rem;">Export</h3>
-                
-                <button onclick="exportMetadataCSV()" class="btn" id="exportCSVBtn" disabled 
-                        style="width: 100%; margin-bottom: 0.75rem; background: #495057; color: white; border: none; padding: 0.75rem; border-radius: 4px; cursor: pointer;">
+
+                <button onclick="exportMetadataCSV()" class="btn meta-btn" id="exportCSVBtn" disabled
+                        style="width: 100%; margin-bottom: 0.75rem; padding: 0.75rem; border-radius: 4px; cursor: pointer;">
                     Export CSV (<span id="csvCount">0</span>)
                 </button>
-                
-                <button onclick="exportMetadataPDF()" class="btn" id="exportPDFBtn" disabled 
-                        style="width: 100%; background: #495057; color: white; border: none; padding: 0.75rem; border-radius: 4px; cursor: pointer;">
+
+                <button onclick="exportMetadataPDF()" class="btn meta-btn" id="exportPDFBtn" disabled
+                        style="width: 100%; padding: 0.75rem; border-radius: 4px; cursor: pointer;">
                     Export PDF (<span id="pdfCount">0</span>)
                 </button>
             </div>
@@ -99,10 +99,21 @@
 </div>
 
 <style>
+body {
+    background: #333333 !important;
+    color: #c8c8c8;
+    margin: 0;
+}
+
+label {
+    color: #c8c8c8;
+}
+
 .card {
-    background: white;
+    background: #3a3a3a;
+    border: 1px solid #4a4a4a;
     border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
 }
 
 .btn:disabled {
@@ -115,7 +126,49 @@
 }
 
 .shot-card:hover {
-    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+}
+
+.meta-btn {
+    background: #232323;
+    color: #c0c0c0;
+    border: none;
+}
+
+.meta-btn:hover {
+    background: #3d3d3d;
+}
+
+.meta-badge {
+    display: inline-block;
+    padding: 0.4rem 1rem;
+    background: #3d3d3d;
+    color: #c8c8c8;
+    border-radius: 4px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    white-space: nowrap;
+}
+
+.meta-badge-muted {
+    color: #7a7a7a;
+}
+
+#searchInput {
+    background: #232323;
+    border: 1px solid transparent;
+    color: #c8c8c8;
+}
+
+#searchInput::placeholder {
+    color: #7a7a7a;
+}
+
+#searchInput:focus {
+    outline: none;
+    border-color: #5a5a5a;
+    background: #282828;
+    box-shadow: none;
 }
 </style>
 
