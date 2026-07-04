@@ -183,7 +183,7 @@ function showProjectPicker() {
                 body {
                     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
                     padding: 20px;
-                    background: #f5f5f5;
+                    background: #333333;
                     overflow-y: auto;
                     height: 100vh;
                 }
@@ -196,52 +196,50 @@ function showProjectPicker() {
                     width: 100%;
                     padding: 15px;
                     margin: 10px 0;
-                    border: 2px solid #20b2aa;
                     border-radius: 8px;
-                    background: white;
                     cursor: pointer;
                     text-align: left;
                     font-size: 14px;
                     transition: all 0.2s;
                     text-decoration: none;
-                    color: #333;
                 }
-                .button:hover {
-                    background: #20b2aa;
-                    color: white;
-                }
-                .button:hover .project-path {
-                    color: rgba(255, 255, 255, 0.8);
-                }
-                .button.new-project {
-                    background: #20b2aa;
-                    color: white;
-                    font-weight: bold;
+                .button-action {
+                    background: #232323;
+                    color: #c0c0c0;
+                    border: none;
                     text-align: center;
+                    font-weight: bold;
                 }
-                .button.new-project:hover {
-                    background: #1a9d96;
+                .button-action:hover {
+                    background: #3d3d3d;
+                }
+                .project-card {
+                    background: #3a3a3a;
+                    border: 1px solid #4a4a4a;
+                }
+                .project-card:hover {
+                    background: #3d3d3d;
                 }
                 .recent-label {
                     margin-top: 20px;
                     margin-bottom: 10px;
-                    color: #666;
+                    color: #b8b8b8;
                     font-size: 12px;
                     text-transform: uppercase;
                     font-weight: 600;
                 }
                 .project-name {
                     font-weight: 500;
-                    color: inherit;
+                    color: #c8c8c8;
                 }
                 .project-path {
                     font-size: 11px;
-                    color: #999;
+                    color: #7a7a7a;
                     margin-top: 4px;
                 }
                 .no-recent {
                     text-align: center;
-                    color: #999;
+                    color: #7a7a7a;
                     padding: 20px;
                     font-style: italic;
                 }
@@ -249,17 +247,17 @@ function showProjectPicker() {
         </head>
         <body>
             <div class="container">
-                <div class="button new-project" onclick="selectAction('new-project')">
+                <div class="button button-action" onclick="selectAction('new-project')">
                     + New Project
                 </div>
-                <div class="button" style="text-align: center;" onclick="selectAction('open-project')">
+                <div class="button button-action" onclick="selectAction('open-project')">
                     Open Existing Project...
                 </div>
-                
+
                 ${recentProjects.length > 0 ? `
                     <div class="recent-label">Recent Projects</div>
                     ${recentProjects.map((proj, idx) => `
-                        <div class="button" onclick="selectAction('recent-${idx}')">
+                        <div class="button project-card" onclick="selectAction('recent-${idx}')">
                             <div class="project-name">${path.basename(proj)}</div>
                             <div class="project-path">${proj}</div>
                         </div>
