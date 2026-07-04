@@ -30,17 +30,95 @@ body {
 .meta-badge-muted {
     color: #7a7a7a;
 }
+
+.metadata-tabs {
+    display: flex;
+    gap: 0.25rem;
+    margin-bottom: 1.5rem;
+    border-bottom: 1px solid #4a4a4a;
+}
+
+.metadata-tab {
+    padding: 0.75rem 1.5rem;
+    color: #7a7a7a;
+    text-decoration: none;
+    font-weight: 500;
+    background: transparent;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+}
+
+.metadata-tab:hover {
+    background: #333333;
+    color: #c8c8c8;
+}
+
+.metadata-tab.active {
+    background: #3d3d3d;
+    color: #c8c8c8;
+    border-bottom: 2px solid #c8c8c8;
+}
+
+.metadata-table th {
+    background: #2a2a2a;
+    color: #c8c8c8;
+    font-size: 1.1rem;
+    font-weight: 700;
+    text-transform: none;
+    letter-spacing: normal;
+    padding: 1rem 1.25rem;
+    text-align: left;
+}
+
+.metadata-table td {
+    padding: 1rem 1.25rem;
+}
+
+.metadata-table td:first-child {
+    border-left: 3px solid transparent;
+}
+
+.metadata-row {
+    border-bottom: 1px solid #4a4a4a;
+    background: #333333;
+    cursor: pointer;
+}
+
+.metadata-row.orphaned {
+    background: #3d3d3d;
+}
+
+.metadata-row:hover {
+    background: #3d3d3d;
+}
+
+.metadata-row.selected {
+    background: #3d3d3d;
+}
+
+.metadata-row.selected td:first-child {
+    border-left-color: #7a7a7a;
+}
 </style>
 <div style="max-width: 1400px; margin: 2rem auto; padding: 0 2rem;">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-        <h1>Metadata Library</h1>
-        <div style="display: flex; gap: 0.5rem;">
-            <button type="button" onclick="deleteSelected()" class="btn meta-btn">Delete Selected</button>
-            <form method="POST" action="/metadata/library/clear_orphaned" style="display: inline;"
-                  onsubmit="return confirm('Delete all metadata not linked to any shot?');">
-                <button type="submit" class="btn meta-btn">Clear All Orphaned</button>
-            </form>
-        </div>
+    <h2 style="margin-bottom: 1.5rem;">Metadata Library</h2>
+
+    <div class="metadata-tabs">
+        <a href="/metadata/overview" class="metadata-tab{% if request.path == '/metadata/overview' %} active{% endif %}">Metadata Linked</a>
+        <a href="/metadata/library" class="metadata-tab{% if request.path == '/metadata/library' %} active{% endif %}">Metadata Library</a>
+    </div>
+
+    <div style="margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
+        <button onclick="toggleSelectAllRows()" class="meta-btn" id="selectAllRowsBtn" style="padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer;">
+            Select All
+        </button>
+        <button onclick="deleteSelected()" class="meta-btn" id="deleteRowsBtn" style="padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; display: none;">
+            Delete Selected
+        </button>
+        <form method="POST" action="/metadata/library/clear_orphaned" style="display: inline; margin-left: auto;"
+              onsubmit="return confirm('Delete all metadata not linked to any shot?');">
+            <button type="submit" class="meta-btn" style="padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer;">Clear All Orphaned</button>
+        </form>
     </div>
 
     {% with messages = get_flashed_messages(with_categories=true) %}
@@ -58,29 +136,23 @@ body {
     </div>
 
     <div style="background: #3a3a3a; border: 1px solid #4a4a4a; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.2); overflow: hidden;">
-        <table style="width: 100%; border-collapse: collapse;">
+        <table class="metadata-table" style="width: 100%; border-collapse: collapse;">
             <thead>
-                <tr style="background: #2a2a2a; color: #c8c8c8;">
-                    <th style="padding: 0.75rem; text-align: left; width: 40px;">
-                        <input type="checkbox" id="select-all" onchange="toggleAll(this)">
-                    </th>
-                    <th style="padding: 0.75rem; text-align: left;">Cam Roll</th>
-                    <th style="padding: 0.75rem; text-align: left;">Camera</th>
-                    <th style="padding: 0.75rem; text-align: left;">Lens</th>
-                    <th style="padding: 0.75rem; text-align: left;">Status</th>
-                    <th style="padding: 0.75rem; text-align: left;">Linked Clips</th>
+                <tr>
+                    <th>Cam Roll</th>
+                    <th>Camera</th>
+                    <th>Lens</th>
+                    <th>Status</th>
+                    <th>Linked Clips</th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody id="metadataTableBody">
                 {% for info in metadata_info %}
-                <tr style="border-bottom: 1px solid #4a4a4a; background: {% if info.linked_count == 0 %}#3d3d3d{% else %}#333333{% endif %};">
-                    <td style="padding: 0.75rem;">
-                        <input type="checkbox" class="metadata-check" value="{{ info.metadata.id }}">
-                    </td>
-                    <td style="padding: 0.75rem; font-family: monospace; font-weight: 600;">{{ info.metadata.cam_roll }}</td>
-                    <td style="padding: 0.75rem;">{{ info.metadata.camera or '-' }}</td>
-                    <td style="padding: 0.75rem;">{{ info.metadata.lens or '-' }}</td>
-                    <td style="padding: 0.75rem;">
+                <tr class="metadata-row{% if info.linked_count == 0 %} orphaned{% endif %}" data-metadata-id="{{ info.metadata.id }}">
+                    <td style="font-family: monospace; font-weight: 700; font-size: 1.1rem; color: #c8c8c8;">{{ info.metadata.cam_roll }}</td>
+                    <td style="font-size: 0.95rem; color: #c8c8c8;">{{ info.metadata.camera or '-' }}</td>
+                    <td style="font-size: 0.95rem; color: #c8c8c8;">{{ info.metadata.lens or '-' }}</td>
+                    <td>
                         {% if info.linked_count > 0 %}
                             <span class="meta-badge">
                                 Linked ({{ info.linked_count }})
@@ -91,7 +163,7 @@ body {
                             </span>
                         {% endif %}
                     </td>
-                    <td style="padding: 0.75rem; font-size: 0.85rem; color: #7a7a7a;">
+                    <td style="font-size: 0.9rem; color: #7a7a7a;">
                         {{ info.linked_clips|join(', ') }}{% if info.linked_count > 3 %}...{% endif %}
                     </td>
                 </tr>
@@ -106,21 +178,118 @@ body {
 </form>
 
 <script>
-function toggleAll(checkbox) {
-    document.querySelectorAll('.metadata-check').forEach(cb => cb.checked = checkbox.checked);
+const tableBody = document.getElementById('metadataTableBody');
+const deleteRowsBtn = document.getElementById('deleteRowsBtn');
+const selectAllRowsBtn = document.getElementById('selectAllRowsBtn');
+
+let selectedRowIds = new Set();
+let lastRowAnchorId = null;
+
+function allRows() {
+    return tableBody ? Array.from(tableBody.querySelectorAll('.metadata-row')) : [];
 }
 
+function visibleRowIds() {
+    return allRows().filter(r => r.style.display !== 'none').map(r => r.dataset.metadataId);
+}
+
+function updateRowSelectionUI() {
+    allRows().forEach(r => {
+        r.classList.toggle('selected', selectedRowIds.has(r.dataset.metadataId));
+    });
+
+    const n = selectedRowIds.size;
+    if (deleteRowsBtn) {
+        if (n === 0) {
+            deleteRowsBtn.style.display = 'none';
+        } else {
+            deleteRowsBtn.style.display = 'inline-block';
+            deleteRowsBtn.textContent = n === 1 ? 'Delete Selected' : `Delete ${n} Selected`;
+        }
+    }
+
+    if (selectAllRowsBtn) {
+        selectAllRowsBtn.textContent = n > 0 ? 'Deselect All' : 'Select All';
+    }
+}
+
+function toggleSelectAllRows() {
+    if (selectedRowIds.size > 0) {
+        selectedRowIds.clear();
+    } else {
+        selectedRowIds = new Set(visibleRowIds());
+    }
+    lastRowAnchorId = null;
+    updateRowSelectionUI();
+}
+
+if (tableBody) {
+    tableBody.addEventListener('mousedown', function(e) {
+        if (e.shiftKey) e.preventDefault();
+    });
+
+    tableBody.addEventListener('click', function(e) {
+        const row = e.target.closest('.metadata-row');
+        if (!row) return;
+        const id = row.dataset.metadataId;
+        const ids = visibleRowIds();
+
+        if (e.shiftKey && lastRowAnchorId !== null && ids.includes(lastRowAnchorId)) {
+            const a = ids.indexOf(lastRowAnchorId), b = ids.indexOf(id);
+            const [start, end] = a < b ? [a, b] : [b, a];
+            selectedRowIds = new Set(ids.slice(start, end + 1));
+        } else if (e.ctrlKey || e.metaKey) {
+            if (selectedRowIds.has(id)) {
+                selectedRowIds.delete(id);
+            } else {
+                selectedRowIds.add(id);
+            }
+            lastRowAnchorId = id;
+        } else {
+            selectedRowIds = (selectedRowIds.size === 1 && selectedRowIds.has(id)) ? new Set() : new Set([id]);
+            lastRowAnchorId = id;
+        }
+        updateRowSelectionUI();
+    });
+}
+
+// Escape clears the selection on this page (overrides base.html's global
+// Escape-to-dashboard shortcut, suppressed here via stopImmediatePropagation).
+document.addEventListener('keydown', function(e) {
+    if (e.key !== 'Escape') return;
+    const activeEl = document.activeElement;
+    const isTyping = activeEl && (
+        activeEl.tagName === 'INPUT' ||
+        activeEl.tagName === 'TEXTAREA' ||
+        activeEl.tagName === 'SELECT' ||
+        activeEl.isContentEditable
+    );
+    if (isTyping) return;
+    e.stopImmediatePropagation();
+    selectedRowIds.clear();
+    updateRowSelectionUI();
+});
+
+// Clicking outside any row/control clears the selection
+document.addEventListener('click', function(e) {
+    if (e.target.closest('.metadata-row, button, a, input, .metadata-tabs')) return;
+    if (selectedRowIds.size > 0) {
+        selectedRowIds.clear();
+        updateRowSelectionUI();
+    }
+});
+
 function deleteSelected() {
-    const checked = document.querySelectorAll('.metadata-check:checked');
-    if (checked.length === 0) {
+    if (selectedRowIds.size === 0) {
         alert('No metadata selected');
         return;
     }
-    if (!confirm(`Delete ${checked.length} metadata entries?`)) return;
-    
-    const ids = Array.from(checked).map(cb => cb.value).join(',');
-    document.getElementById('metadata-ids-input').value = ids;
+    if (!confirm(`Delete ${selectedRowIds.size} metadata entries?`)) return;
+
+    document.getElementById('metadata-ids-input').value = Array.from(selectedRowIds).join(',');
     document.getElementById('delete-form').submit();
 }
+
+updateRowSelectionUI();
 </script>
 {% endblock %}

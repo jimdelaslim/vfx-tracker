@@ -4,32 +4,26 @@
 <div style="max-width: 1600px; margin: 0 auto; display: flex; gap: 2rem;">
     <!-- Main Content Area -->
     <div style="flex: 1; min-width: 0;">
-        <h2 style="margin-bottom: 2rem;">All Shots Metadata - {{ project.name }}</h2>
-        
-        {% if shots %}
-        <div style="margin-bottom: 1rem;">
-            <p style="color: #7a7a7a;">Showing metadata for {{ shots|length }} shot(s). Click "Edit Metadata" to view or modify details.</p>
-        </div>
-        
-        <div style="margin-bottom: 1.5rem;">
-            <label style="cursor: pointer; user-select: none;">
-                <input type="checkbox" id="selectAll" style="margin-right: 0.5rem; cursor: pointer;">
-                <strong>Select All</strong>
-            </label>
-            <button onclick="deleteSelectedMetadata()" class="meta-btn" style="padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; display: none; margin-left: 1rem;" id="deleteBtn">
-                Delete Selected Metadata
-            </button>
-            <a href="/metadata/library" class="meta-btn" style="padding: 0.5rem 1rem; text-decoration: none; border-radius: 4px; font-weight: 500; margin-left: 1rem; display: inline-block;">
-                Metadata Library
-            </a>
+        <h2 style="margin-bottom: 1.5rem;">All Shots Metadata - {{ project.name }}</h2>
+
+        <div class="metadata-tabs">
+            <a href="/metadata/overview" class="metadata-tab{% if request.path == '/metadata/overview' %} active{% endif %}">Metadata Linked</a>
+            <a href="/metadata/library" class="metadata-tab{% if request.path == '/metadata/library' %} active{% endif %}">Metadata Library</a>
         </div>
 
-        
+        {% if shots %}
+        <div style="margin-bottom: 1.5rem;">
+            <button onclick="toggleSelectAll()" class="meta-btn" id="selectAllBtn" style="padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer;">
+                Select All
+            </button>
+            <button onclick="deleteSelectedMetadata()" class="meta-btn" style="padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; display: none; margin-left: 1rem;" id="deleteBtn">
+                Delete Selected
+            </button>
+        </div>
+
+        <div id="shotCardsContainer">
         {% for shot in shots %}
-        <div class="card shot-card" style="margin-bottom: 1.5rem; padding: 1.5rem; display: flex; justify-content: space-between; align-items: center; gap: 1.5rem; max-width: fit-content;">
-            <!-- Checkbox -->
-            <input type="checkbox" class="shot-checkbox" value="{{ shot.id }}" style="cursor: pointer; width: 20px; height: 20px; flex-shrink: 0;">
-            
+        <div class="card shot-card" data-shot-id="{{ shot.id }}" style="margin-bottom: 1.5rem; padding: 1.5rem; display: flex; justify-content: space-between; align-items: center; gap: 1.5rem; max-width: fit-content;">
             <!-- Shot Info -->
             <div style="min-width: 300px;">
                 <div style="font-weight: 700; font-size: 1.1rem; margin-bottom: 0.3rem;">
@@ -59,7 +53,8 @@
             </a>
         </div>
         {% endfor %}
-        
+        </div>
+
         {% else %}
         <div class="card" style="text-align: center; padding: 3rem;">
             <h3>No shots in this project</h3>
@@ -122,11 +117,46 @@ label {
 }
 
 .shot-card {
-    transition: box-shadow 0.2s;
+    border-left: 3px solid transparent;
+    transition: box-shadow 0.2s, background 0.15s;
+    cursor: pointer;
 }
 
 .shot-card:hover {
     box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+}
+
+.shot-card.selected {
+    background: #3d3d3d;
+    border-left-color: #7a7a7a;
+}
+
+.metadata-tabs {
+    display: flex;
+    gap: 0.25rem;
+    margin-bottom: 1.5rem;
+    border-bottom: 1px solid #4a4a4a;
+}
+
+.metadata-tab {
+    padding: 0.75rem 1.5rem;
+    color: #7a7a7a;
+    text-decoration: none;
+    font-weight: 500;
+    background: transparent;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+}
+
+.metadata-tab:hover {
+    background: #333333;
+    color: #c8c8c8;
+}
+
+.metadata-tab.active {
+    background: #3d3d3d;
+    color: #c8c8c8;
+    border-bottom: 2px solid #c8c8c8;
 }
 
 .meta-btn {
@@ -173,151 +203,202 @@ label {
 </style>
 
 <script>
-// Checkbox selection
-const checkboxes = document.querySelectorAll('.shot-checkbox');
-const selectAllCheckbox = document.getElementById('selectAll');
 const exportCSVBtn = document.getElementById('exportCSVBtn');
 const exportPDFBtn = document.getElementById('exportPDFBtn');
 const csvCount = document.getElementById('csvCount');
 const pdfCount = document.getElementById('pdfCount');
 const searchInput = document.getElementById('searchInput');
 const searchCount = document.getElementById('searchCount');
-const shotCards = document.querySelectorAll('.shot-card');
+const cardsContainer = document.getElementById('shotCardsContainer');
+const deleteBtn = document.getElementById('deleteBtn');
+const selectAllBtn = document.getElementById('selectAllBtn');
 
-function updateSelectedCount() {
-    const checked = document.querySelectorAll('.shot-checkbox:checked').length;
-    csvCount.textContent = checked;
-    pdfCount.textContent = checked;
-    exportCSVBtn.disabled = checked === 0;
-    exportPDFBtn.disabled = checked === 0;
-    selectAllCheckbox.checked = checked === checkboxes.length && checkboxes.length > 0;
+let selectedCardIds = new Set();
+let lastAnchorId = null;
+
+function allCards() {
+    return cardsContainer ? Array.from(cardsContainer.querySelectorAll('.shot-card')) : [];
 }
 
-checkboxes.forEach(cb => {
-    cb.addEventListener('change', updateSelectedCount);
+function visibleCardIds() {
+    return allCards().filter(c => c.style.display !== 'none').map(c => c.dataset.shotId);
+}
+
+function updateSelectionUI() {
+    allCards().forEach(c => {
+        c.classList.toggle('selected', selectedCardIds.has(c.dataset.shotId));
+    });
+
+    const n = selectedCardIds.size;
+    csvCount.textContent = n;
+    pdfCount.textContent = n;
+    exportCSVBtn.disabled = n === 0;
+    exportPDFBtn.disabled = n === 0;
+
+    if (deleteBtn) {
+        if (n === 0) {
+            deleteBtn.style.display = 'none';
+        } else {
+            deleteBtn.style.display = 'inline-block';
+            deleteBtn.textContent = n === 1 ? 'Delete Selected' : `Delete ${n} Selected`;
+        }
+    }
+
+    if (selectAllBtn) {
+        selectAllBtn.textContent = n > 0 ? 'Deselect All' : 'Select All';
+    }
+}
+
+function toggleSelectAll() {
+    if (selectedCardIds.size > 0) {
+        selectedCardIds.clear();
+    } else {
+        selectedCardIds = new Set(visibleCardIds());
+    }
+    lastAnchorId = null;
+    updateSelectionUI();
+}
+
+if (cardsContainer) {
+    cardsContainer.addEventListener('mousedown', function(e) {
+        if (e.shiftKey) e.preventDefault();
+    });
+
+    cardsContainer.addEventListener('click', function(e) {
+        if (e.target.closest('a')) return;
+        const card = e.target.closest('.shot-card');
+        if (!card) return;
+        const id = card.dataset.shotId;
+        const ids = visibleCardIds();
+
+        if (e.shiftKey && lastAnchorId !== null && ids.includes(lastAnchorId)) {
+            const a = ids.indexOf(lastAnchorId), b = ids.indexOf(id);
+            const [start, end] = a < b ? [a, b] : [b, a];
+            selectedCardIds = new Set(ids.slice(start, end + 1));
+        } else if (e.ctrlKey || e.metaKey) {
+            if (selectedCardIds.has(id)) {
+                selectedCardIds.delete(id);
+            } else {
+                selectedCardIds.add(id);
+            }
+            lastAnchorId = id;
+        } else {
+            selectedCardIds = (selectedCardIds.size === 1 && selectedCardIds.has(id)) ? new Set() : new Set([id]);
+            lastAnchorId = id;
+        }
+        updateSelectionUI();
+    });
+}
+
+// Escape clears the selection on this page (overrides the global Escape-to-dashboard
+// shortcut from base.html, which registers its listener after this one and is
+// suppressed here via stopImmediatePropagation).
+document.addEventListener('keydown', function(e) {
+    if (e.key !== 'Escape') return;
+    const activeEl = document.activeElement;
+    const isTyping = activeEl && (
+        activeEl.tagName === 'INPUT' ||
+        activeEl.tagName === 'TEXTAREA' ||
+        activeEl.tagName === 'SELECT' ||
+        activeEl.isContentEditable
+    );
+    if (isTyping) return;
+    e.stopImmediatePropagation();
+    selectedCardIds.clear();
+    updateSelectionUI();
 });
 
-selectAllCheckbox.addEventListener('change', function() {
-    checkboxes.forEach(cb => {
-        if (cb.closest('.shot-card').style.display !== 'none') {
-            cb.checked = this.checked;
-        }
-    });
-    updateSelectedCount();
+// Clicking outside any card/control clears the selection
+document.addEventListener('click', function(e) {
+    if (e.target.closest('.shot-card, button, a, input, .metadata-tabs')) return;
+    if (selectedCardIds.size > 0) {
+        selectedCardIds.clear();
+        updateSelectionUI();
+    }
 });
 
 // Search functionality
-searchInput.addEventListener('input', function() {
-    const searchTerm = this.value.toLowerCase();
-    let visibleCount = 0;
-    
-    shotCards.forEach(card => {
-        const text = card.textContent.toLowerCase();
-        if (text.includes(searchTerm)) {
-            card.style.display = 'flex';
-            visibleCount++;
+if (searchInput) {
+    searchInput.addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase();
+        const cards = allCards();
+        let visibleCount = 0;
+
+        cards.forEach(card => {
+            const text = card.textContent.toLowerCase();
+            if (text.includes(searchTerm)) {
+                card.style.display = 'flex';
+                visibleCount++;
+            } else {
+                card.style.display = 'none';
+                selectedCardIds.delete(card.dataset.shotId);
+            }
+        });
+
+        if (searchTerm) {
+            searchCount.textContent = `Showing ${visibleCount} of ${cards.length} shots`;
         } else {
-            card.style.display = 'none';
-            // Uncheck hidden cards
-            const checkbox = card.querySelector('.shot-checkbox');
-            if (checkbox) checkbox.checked = false;
+            searchCount.textContent = '';
         }
+
+        updateSelectionUI();
     });
-    
-    if (searchTerm) {
-        searchCount.textContent = `Showing ${visibleCount} of ${shotCards.length} shots`;
-    } else {
-        searchCount.textContent = '';
-    }
-    
-    updateSelectedCount();
-});
+}
 
 function exportMetadataCSV() {
-    const selected = Array.from(document.querySelectorAll('.shot-checkbox:checked'))
-        .map(cb => cb.value);
-    
-    if (selected.length === 0) {
+    if (selectedCardIds.size === 0) {
         alert('Please select at least one shot');
         return;
     }
-    
+
     const form = document.createElement('form');
     form.method = 'POST';
     form.action = '/export/metadata/csv/selected';
-    
+
     const input = document.createElement('input');
     input.type = 'hidden';
     input.name = 'shot_ids';
-    input.value = selected.join(',');
-    
+    input.value = Array.from(selectedCardIds).join(',');
+
     form.appendChild(input);
     document.body.appendChild(form);
     form.submit();
 }
 
 function exportMetadataPDF() {
-    const selected = Array.from(document.querySelectorAll('.shot-checkbox:checked'))
-        .map(cb => cb.value);
-    
-    if (selected.length === 0) {
+    if (selectedCardIds.size === 0) {
         alert('Please select at least one shot');
         return;
     }
-    
+
     const form = document.createElement('form');
     form.method = 'POST';
     form.action = '/export/metadata/pdf/selected';
-    
+
     const input = document.createElement('input');
     input.type = 'hidden';
     input.name = 'shot_ids';
-    input.value = selected.join(',');
-    
+    input.value = Array.from(selectedCardIds).join(',');
+
     form.appendChild(input);
     document.body.appendChild(form);
     form.submit();
 }
 
-
-// Show/hide delete button based on selection
-function updateDeleteButton() {
-    const checkboxes = document.querySelectorAll('.shot-checkbox:checked');
-    const deleteBtn = document.getElementById('deleteBtn');
-    if (checkboxes.length > 0) {
-        deleteBtn.style.display = 'block';
-    } else {
-        deleteBtn.style.display = 'none';
-    }
-}
-
-// Add event listeners to all checkboxes
-document.addEventListener('DOMContentLoaded', function() {
-    const checkboxes = document.querySelectorAll('.shot-checkbox');
-    checkboxes.forEach(cb => {
-        cb.addEventListener('change', updateDeleteButton);
-    });
-    
-    document.getElementById('selectAll').addEventListener('change', function() {
-        setTimeout(updateDeleteButton, 0);
-    });
-});
-
 // Delete selected metadata
 function deleteSelectedMetadata() {
-    const checkboxes = document.querySelectorAll('.shot-checkbox:checked');
-    if (checkboxes.length === 0) {
+    if (selectedCardIds.size === 0) {
         alert('No shots selected');
         return;
     }
-    
-    const count = checkboxes.length;
+
+    const count = selectedCardIds.size;
     if (!confirm(`Delete metadata from ${count} shot(s)? This will remove all camera/lens metadata but keep the shots.`)) {
         return;
     }
-    
-    const shotIds = Array.from(checkboxes).map(cb => cb.value).join(',');
-    
+
+    const shotIds = Array.from(selectedCardIds).join(',');
+
     fetch('/metadata/delete-selected', {
         method: 'POST',
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
@@ -330,6 +411,8 @@ function deleteSelectedMetadata() {
         }
     });
 }
+
+updateSelectionUI();
 </script>
 
 {% endblock %}
