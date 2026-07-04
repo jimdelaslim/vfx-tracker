@@ -1,57 +1,150 @@
 {% extends "base.html" %}
 
 {% block content %}
+<style>
+body {
+    background: #333333 !important;
+    color: #c8c8c8;
+    margin: 0;
+}
+
+label {
+    color: #c8c8c8;
+}
+
+.import-panel {
+    background: #3a3a3a;
+    border: 1px solid #4a4a4a;
+    border-radius: 8px;
+    padding: 2rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.import-inset {
+    background: #333333;
+    border: 1px solid #4a4a4a;
+}
+
+.import-input {
+    width: 100%;
+    background: #232323;
+    border: 1px solid transparent !important;
+    color: #c8c8c8;
+    padding: 0.5rem;
+    border-radius: 4px;
+    outline: none;
+    box-shadow: none;
+    font-family: inherit;
+}
+
+.import-input:focus {
+    outline: none !important;
+    border-color: #5a5a5a !important;
+    background: #282828;
+    box-shadow: none;
+}
+
+.import-btn {
+    background: #232323;
+    color: #c0c0c0;
+    border: none;
+}
+
+.import-btn:hover {
+    background: #3d3d3d;
+}
+
+.settings-toggle-label {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    cursor: pointer;
+    color: #c0c0c0;
+    font-weight: 600;
+}
+
+.settings-toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 40px;
+    height: 22px;
+    flex-shrink: 0;
+}
+
+.settings-toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+    position: absolute;
+}
+
+.settings-toggle-slider {
+    position: absolute;
+    inset: 0;
+    background: #232323;
+    border-radius: 22px;
+    transition: background 0.15s;
+    cursor: pointer;
+}
+
+.settings-toggle-slider::before {
+    content: "";
+    position: absolute;
+    height: 16px;
+    width: 16px;
+    left: 3px;
+    top: 3px;
+    background: #7a7a7a;
+    border-radius: 50%;
+    transition: transform 0.15s, background 0.15s;
+}
+
+.settings-toggle-switch input:checked + .settings-toggle-slider {
+    background: #3d3d3d;
+}
+
+.settings-toggle-switch input:checked + .settings-toggle-slider::before {
+    transform: translateX(18px);
+    background: #c0c0c0;
+}
+</style>
 <div style="max-width: 600px; margin: 0 auto;">
     <h2 style="margin-bottom: 1.5rem;">Import EDL</h2>
-    
-    <div style="background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+
+    <div class="import-panel">
         <form method="POST" enctype="multipart/form-data">
             <div style="margin-bottom: 1.5rem;">
                 <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Select EDL File</label>
-                <input type="file" name="edl_file" accept=".edl" required 
-                       style="width: 100%; padding: 0.5rem; border: 2px solid #ddd; border-radius: 4px;">
-                <small style="color: #7f8c8d; display: block; margin-top: 0.5rem;">
-                    Supported format: CMX3600 EDL (.edl)
-                </small>
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                    <button type="button" onclick="document.getElementById('edl-file-input').click()" class="btn import-btn">Choose File</button>
+                    <span id="edl-file-name" style="color: #7a7a7a; font-size: 0.9rem;">No file chosen</span>
+                </div>
+                <input type="file" name="edl_file" accept=".edl" required id="edl-file-input"
+                       style="opacity: 0; position: absolute; width: 0; height: 0;"
+                       onchange="document.getElementById('edl-file-name').textContent = this.files[0] ? this.files[0].name : 'No file chosen';">
             </div>
-            
+
             <div style="margin-bottom: 1.5rem;">
                 <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Frame Rate (FPS)</label>
                 <input type="number" name="fps" value="{{ project.fps }}" min="1" max="120" step="0.01"
-                       style="width: 100%; padding: 0.5rem; border: 2px solid #ddd; border-radius: 4px;">
-                <small style="color: #7f8c8d; display: block; margin-top: 0.5rem;">
-                    Override project default ({{ project.fps }}fps) for this import only. Leave as-is to use project FPS.
-                </small>
+                       class="import-input">
             </div>
-            
-            <div style="margin-bottom: 1.5rem; padding: 1rem; background: #f8f9fa; border-radius: 6px; border: 2px solid #ddd;">
-                <label style="display: flex; align-items: center; gap: 0.75rem; cursor: pointer; font-weight: 600;">
-                    <input type="checkbox" name="use_markers" 
-                           style="width: 20px; height: 20px; cursor: pointer;">
+
+            <div class="import-inset" style="margin-bottom: 1.5rem; padding: 1rem; border-radius: 6px;">
+                <label class="settings-toggle-label">
+                    <span class="settings-toggle-switch">
+                        <input type="checkbox" name="use_markers">
+                        <span class="settings-toggle-slider"></span>
+                    </span>
                     Use Avid Marker Names as VFX Codes
                 </label>
-                <small style="color: #7f8c8d; display: block; margin-top: 0.5rem; margin-left: 2rem;">
-                    Enable this for Avid EDLs that use markers to name VFX shots.<br>
-                    Reads VFX codes from <code style="background: #e9ecef; padding: 2px 4px; border-radius: 3px;">|M:MARKER_NAME|</code> instead of the clip name.<br>
-                    Leave unchecked for Resolve/standard EDLs.
-                </small>
             </div>
-            
+
             <div style="display: flex; gap: 1rem;">
-                <button type="submit" class="btn">Import</button>
-                <a href="/" class="btn btn-secondary">Cancel</a>
+                <button type="submit" class="btn import-btn">Import</button>
+                <a href="/" class="btn import-btn">Cancel</a>
             </div>
         </form>
-    </div>
-    
-    <div style="background: #e8f4f8; padding: 1.5rem; border-radius: 8px; margin-top: 2rem; border-left: 4px solid #3498db;">
-        <h3 style="margin-bottom: 0.5rem;">ℹ️ How it works</h3>
-        <ul style="margin-left: 1.5rem; color: #555;">
-            <li>Upload your EDL file from your NLE</li>
-            <li>Shots will be imported with timecode and duration info</li>
-            <li>You can then add VFX codes, vendor info, and handles</li>
-            <li>Export pull EDLs when ready for turnover</li>
-        </ul>
     </div>
 </div>
 {% endblock %}
