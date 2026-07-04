@@ -1,55 +1,96 @@
 {% extends "base.html" %}
 
 {% block content %}
+<style>
+body {
+    background: #333333 !important;
+    color: #c8c8c8;
+    margin: 0;
+}
+
+label {
+    color: #c8c8c8;
+}
+
+.card {
+    background: #3a3a3a;
+    border: 1px solid #4a4a4a;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+input[type="text"] {
+    background: #232323;
+    border: 1px solid transparent;
+    color: #c8c8c8;
+}
+
+input[type="text"]:focus {
+    outline: none;
+    border-color: #5a5a5a;
+    background: #282828;
+    box-shadow: none;
+}
+
+.metadata-btn {
+    background: #232323;
+    color: #c0c0c0;
+    border: none;
+}
+
+.metadata-btn:hover {
+    background: #3d3d3d;
+}
+</style>
 <div style="max-width: 1200px; margin: 0 auto;">
     <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rem;">
         <h2>Edit Metadata - {{ shot.clip_name }}</h2>
-        <a href="/metadata/overview" class="btn btn-secondary" style="background: #6c757d; color: white; text-decoration: none;"><- Back to Metadata</a>
+        <a href="/metadata/overview" class="btn metadata-btn" style="text-decoration: none;"><- Back to Metadata</a>
     </div>
-    
+
     <!-- Display Current Metadata (Read-Only) -->
-    <div style="background: white; padding: 2rem; border-radius: 8px; margin-bottom: 2rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-        <h3 style="margin-bottom: 1.5rem; color: #2c3e50;"> Current Camera & Lens Metadata</h3>
+    <div style="background: #3a3a3a; border: 1px solid #4a4a4a; padding: 2rem; border-radius: 8px; margin-bottom: 2rem; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
+        <h3 style="margin-bottom: 1.5rem; color: #b8b8b8;"> Current Camera & Lens Metadata</h3>
         
         {% if shot.camera or shot.lens or shot.lut or shot.iso or shot.resolution or shot.codec %}
         <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem;">
-            {% if shot.camera %}<div><strong style="color: #7f8c8d;">Camera Type:</strong> {{ shot.camera }}</div>{% endif %}
-            {% if shot.camera_manufacturer %}<div><strong style="color: #7f8c8d;">Camera Manufacturer:</strong> {{ shot.camera_manufacturer }}</div>{% endif %}
-            {% if shot.camera_serial %}<div><strong style="color: #7f8c8d;">Camera Serial #:</strong> {{ shot.camera_serial }}</div>{% endif %}
-            {% if shot.lens %}<div><strong style="color: #7f8c8d;">Lens Type:</strong> {{ shot.lens }}</div>{% endif %}
-            {% if shot.focal_length %}<div><strong style="color: #7f8c8d;">Focal Point (mm):</strong> {{ shot.focal_length }}</div>{% endif %}
-            {% if shot.t_stop %}<div><strong style="color: #7f8c8d;">Camera Aperture:</strong> {{ shot.t_stop }}</div>{% endif %}
-            {% if shot.distance %}<div><strong style="color: #7f8c8d;">Distance:</strong> {{ shot.distance }}</div>{% endif %}
-            {% if shot.iso %}<div><strong style="color: #7f8c8d;">ISO:</strong> {{ shot.iso }}</div>{% endif %}
-            {% if shot.shutter_angle %}<div><strong style="color: #7f8c8d;">Shutter Angle:</strong> {{ shot.shutter_angle }}</div>{% endif %}
-            {% if shot.shutter_speed %}<div><strong style="color: #7f8c8d;">Shutter Speed:</strong> {{ shot.shutter_speed }}</div>{% endif %}
-            {% if shot.white_balance %}<div><strong style="color: #7f8c8d;">White Point (Kelvin):</strong> {{ shot.white_balance }}</div>{% endif %}
-            {% if shot.nd_filter %}<div><strong style="color: #7f8c8d;">ND Filter:</strong> {{ shot.nd_filter }}</div>{% endif %}
-            {% if shot.camera_tilt %}<div><strong style="color: #7f8c8d;">Camera Tilt Angle:</strong> {{ shot.camera_tilt }}</div>{% endif %}
-            {% if shot.camera_roll %}<div><strong style="color: #7f8c8d;">Camera Roll Angle:</strong> {{ shot.camera_roll }}</div>{% endif %}
-            {% if shot.lut %}<div><strong style="color: #7f8c8d;">LUT Used:</strong> {{ shot.lut }}</div>{% endif %}
-            {% if shot.resolution %}<div><strong style="color: #7f8c8d;">Resolution:</strong> {{ shot.resolution }}</div>{% endif %}
-            {% if shot.codec %}<div><strong style="color: #7f8c8d;">Video Codec:</strong> {{ shot.codec }}</div>{% endif %}
-            {% if shot.color_space %}<div><strong style="color: #7f8c8d;">Color Space Notes:</strong> {{ shot.color_space }}</div>{% endif %}
-            {% if shot.gamma %}<div><strong style="color: #7f8c8d;">Gamma Notes:</strong> {{ shot.gamma }}</div>{% endif %}
-            {% if shot.cdl_sat %}<div><strong style="color: #7f8c8d;">CDL SAT:</strong> {{ shot.cdl_sat }}</div>{% endif %}
-            {% if shot.cdl_sop %}<div><strong style="color: #7f8c8d;">CDL SOP:</strong> {{ shot.cdl_sop }}</div>{% endif %}
-            {% if shot.shot_frame_rate %}<div><strong style="color: #7f8c8d;">Shot Frame Rate:</strong> {{ shot.shot_frame_rate }}</div>{% endif %}
-            {% if shot.start_tc %}<div><strong style="color: #7f8c8d;">Start TC:</strong> {{ shot.start_tc }}</div>{% endif %}
-            {% if shot.end_tc %}<div><strong style="color: #7f8c8d;">End TC:</strong> {{ shot.end_tc }}</div>{% endif %}
-            {% if shot.start_frame %}<div><strong style="color: #7f8c8d;">Start Frame:</strong> {{ shot.start_frame }}</div>{% endif %}
-            {% if shot.end_frame %}<div><strong style="color: #7f8c8d;">End Frame:</strong> {{ shot.end_frame }}</div>{% endif %}
-            {% if shot.total_frames %}<div><strong style="color: #7f8c8d;">Frames:</strong> {{ shot.total_frames }}</div>{% endif %}
-            {% if shot.camera_clipname %}<div><strong style="color: #7f8c8d;">Camera Clipname:</strong> {{ shot.camera_clipname }}</div>{% endif %}
+            {% if shot.camera %}<div><strong style="color: #7a7a7a;">Camera Type:</strong> {{ shot.camera }}</div>{% endif %}
+            {% if shot.camera_manufacturer %}<div><strong style="color: #7a7a7a;">Camera Manufacturer:</strong> {{ shot.camera_manufacturer }}</div>{% endif %}
+            {% if shot.camera_serial %}<div><strong style="color: #7a7a7a;">Camera Serial #:</strong> {{ shot.camera_serial }}</div>{% endif %}
+            {% if shot.lens %}<div><strong style="color: #7a7a7a;">Lens Type:</strong> {{ shot.lens }}</div>{% endif %}
+            {% if shot.focal_length %}<div><strong style="color: #7a7a7a;">Focal Point (mm):</strong> {{ shot.focal_length }}</div>{% endif %}
+            {% if shot.t_stop %}<div><strong style="color: #7a7a7a;">Camera Aperture:</strong> {{ shot.t_stop }}</div>{% endif %}
+            {% if shot.distance %}<div><strong style="color: #7a7a7a;">Distance:</strong> {{ shot.distance }}</div>{% endif %}
+            {% if shot.iso %}<div><strong style="color: #7a7a7a;">ISO:</strong> {{ shot.iso }}</div>{% endif %}
+            {% if shot.shutter_angle %}<div><strong style="color: #7a7a7a;">Shutter Angle:</strong> {{ shot.shutter_angle }}</div>{% endif %}
+            {% if shot.shutter_speed %}<div><strong style="color: #7a7a7a;">Shutter Speed:</strong> {{ shot.shutter_speed }}</div>{% endif %}
+            {% if shot.white_balance %}<div><strong style="color: #7a7a7a;">White Point (Kelvin):</strong> {{ shot.white_balance }}</div>{% endif %}
+            {% if shot.nd_filter %}<div><strong style="color: #7a7a7a;">ND Filter:</strong> {{ shot.nd_filter }}</div>{% endif %}
+            {% if shot.camera_tilt %}<div><strong style="color: #7a7a7a;">Camera Tilt Angle:</strong> {{ shot.camera_tilt }}</div>{% endif %}
+            {% if shot.camera_roll %}<div><strong style="color: #7a7a7a;">Camera Roll Angle:</strong> {{ shot.camera_roll }}</div>{% endif %}
+            {% if shot.lut %}<div><strong style="color: #7a7a7a;">LUT Used:</strong> {{ shot.lut }}</div>{% endif %}
+            {% if shot.resolution %}<div><strong style="color: #7a7a7a;">Resolution:</strong> {{ shot.resolution }}</div>{% endif %}
+            {% if shot.codec %}<div><strong style="color: #7a7a7a;">Video Codec:</strong> {{ shot.codec }}</div>{% endif %}
+            {% if shot.color_space %}<div><strong style="color: #7a7a7a;">Color Space Notes:</strong> {{ shot.color_space }}</div>{% endif %}
+            {% if shot.gamma %}<div><strong style="color: #7a7a7a;">Gamma Notes:</strong> {{ shot.gamma }}</div>{% endif %}
+            {% if shot.cdl_sat %}<div><strong style="color: #7a7a7a;">CDL SAT:</strong> {{ shot.cdl_sat }}</div>{% endif %}
+            {% if shot.cdl_sop %}<div><strong style="color: #7a7a7a;">CDL SOP:</strong> {{ shot.cdl_sop }}</div>{% endif %}
+            {% if shot.shot_frame_rate %}<div><strong style="color: #7a7a7a;">Shot Frame Rate:</strong> {{ shot.shot_frame_rate }}</div>{% endif %}
+            {% if shot.start_tc %}<div><strong style="color: #7a7a7a;">Start TC:</strong> {{ shot.start_tc }}</div>{% endif %}
+            {% if shot.end_tc %}<div><strong style="color: #7a7a7a;">End TC:</strong> {{ shot.end_tc }}</div>{% endif %}
+            {% if shot.start_frame %}<div><strong style="color: #7a7a7a;">Start Frame:</strong> {{ shot.start_frame }}</div>{% endif %}
+            {% if shot.end_frame %}<div><strong style="color: #7a7a7a;">End Frame:</strong> {{ shot.end_frame }}</div>{% endif %}
+            {% if shot.total_frames %}<div><strong style="color: #7a7a7a;">Frames:</strong> {{ shot.total_frames }}</div>{% endif %}
+            {% if shot.camera_clipname %}<div><strong style="color: #7a7a7a;">Camera Clipname:</strong> {{ shot.camera_clipname }}</div>{% endif %}
         </div>
         {% else %}
-        <p style="color: #7f8c8d; font-style: italic;">No metadata imported yet. <a href="/import/metadata" style="color: #667eea;">Import metadata CSV</a></p>
+        <p style="color: #7a7a7a; font-style: italic;">No metadata imported yet. <a href="/import/metadata" style="color: #c8c8c8; text-decoration: underline;">Import metadata CSV</a></p>
         {% endif %}
     </div>
     
     <!-- Edit Form -->
     <div class="card">
-        <h3 style="margin-bottom: 1.5rem;">Edit Metadata</h3>
+        <h3 style="margin-bottom: 1.5rem; color: #b8b8b8;">Edit Metadata</h3>
         
         <form method="POST" action="/shot/{{ shot.id }}/metadata/update">
             <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
@@ -168,8 +209,8 @@
             </div>
             
             <div style="display: flex; gap: 1rem;">
-                <button type="submit" class="btn">Save Metadata</button>
-                <a href="/" class="btn btn-secondary">Cancel</a>
+                <button type="submit" class="btn metadata-btn">Save Metadata</button>
+                <a href="/" class="btn metadata-btn">Cancel</a>
             </div>
         </form>
     </div>
