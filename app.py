@@ -143,6 +143,14 @@ def migrate_database_schema():
                 connection.commit()
                 print("AUTO-MIGRATION: from_clip_name (shots) complete!")
 
+            if 'manual_tc_override' not in shot_columns:
+                print("AUTO-MIGRATION: Adding manual_tc_override/manual_tc_cut_in/manual_tc_cut_out to shots...")
+                cursor.execute("ALTER TABLE shots ADD COLUMN manual_tc_override BOOLEAN DEFAULT 0")
+                cursor.execute("ALTER TABLE shots ADD COLUMN manual_tc_cut_in VARCHAR(20)")
+                cursor.execute("ALTER TABLE shots ADD COLUMN manual_tc_cut_out VARCHAR(20)")
+                connection.commit()
+                print("AUTO-MIGRATION: manual_tc_override (shots) complete!")
+
             cursor.close()
             connection.close()
     except Exception as e:
@@ -1161,10 +1169,11 @@ def get_vfx_timecode_data(vfx_id):
                 'tail_end': fr['tail_end'],
                 'total_end': fr['total_end'],
             },
-            'duration_frames': shot.duration_frames or 0,
+            'duration_frames': shot.effective_length_frames(),
             'detected_respeed': shot.detected_respeed or 0,
-            'source_in': shot.source_in or '',
-            'source_out': shot.source_out or '',
+            'source_in': shot.effective_tc_cut_in() or '',
+            'source_out': shot.effective_tc_cut_out() or '',
+            'manual_tc_override': shot.manual_tc_override,
         })
     
     return jsonify({
@@ -1310,8 +1319,8 @@ def export_vfx_group_csv(vfx_code):
             shot.vfx_element or '',
             shot.version,
             shot.clip_name,
-            shot.source_in or '',
-            shot.source_out or '',
+            shot.effective_tc_cut_in() or '',
+            shot.effective_tc_cut_out() or '',
             shot.tc_scan_in() or '',
             shot.tc_scan_out() or '',
             shot.head_handles or 0,
@@ -1664,16 +1673,18 @@ def generate_pull_ale(shots, fps=24):
         try:
             tc_in = shot.tc_scan_in() if callable(shot.tc_scan_in) else shot.tc_scan_in
         except:
+            # NOTE: broken fallback references nonexistent shot.tc_cut_in/tc_cut_out — pre-existing bug, not related to manual_tc_cut_in/manual_tc_cut_out fields added in this feature
             tc_in = shot.tc_cut_in or ""
         try:
             tc_out = shot.tc_scan_out() if callable(shot.tc_scan_out) else shot.tc_scan_out
         except:
+            # NOTE: broken fallback references nonexistent shot.tc_cut_in/tc_cut_out — pre-existing bug, not related to manual_tc_cut_in/manual_tc_cut_out fields added in this feature
             tc_out = shot.tc_cut_out or ""
         
         # Duration = total scan frames as timecode
         head = shot.head_handles or 0
         tail = shot.tail_handles or 0
-        duration_frames = (shot.duration_frames or 0) + head + tail
+        duration_frames = shot.effective_length_frames() + head + tail
         try:
             duration_tc = frames_to_timecode(duration_frames, fps)
         except:
@@ -1856,11 +1867,11 @@ def export_vfx_csv_selected():
             shot.tail_handles or 0,
             f"{shot.crank_speed}%" if shot.crank_speed else '100%',
             shot.shot_frame_rate or shot.fps or '',
-            shot.source_in or '',
-            shot.source_out or '',
+            shot.effective_tc_cut_in() or '',
+            shot.effective_tc_cut_out() or '',
             shot.tc_scan_in() or '',
             shot.tc_scan_out() or '',
-            shot.duration_frames or 0,
+            shot.effective_length_frames(),
             shot.total_source_frames() or 0,
             vfx_code.scope_of_work if vfx_code else '',
             vfx_code.vfx_editorial_note if vfx_code else ''
@@ -1923,11 +1934,11 @@ def export_vfx_csv_selected():
                     shot.tail_handles or 0,
                     f"{shot.crank_speed}%" if shot.crank_speed else '100%',
                     shot.shot_frame_rate or shot.fps or '',
-                    shot.source_in or '',
-                    shot.source_out or '',
+                    shot.effective_tc_cut_in() or '',
+                    shot.effective_tc_cut_out() or '',
                     shot.tc_scan_in() or '',
                     shot.tc_scan_out() or '',
-                    shot.duration_frames or 0,
+                    shot.effective_length_frames(),
                     shot.total_source_frames() or 0,
                     vfx_code_obj.scope_of_work if vfx_code_obj else '',
                     vfx_code_obj.vfx_editorial_note if vfx_code_obj else ''
@@ -3683,13 +3694,95 @@ def get_shot_data(shot_id):
         'tail_handles': shot.tail_handles or 0,
         'crank_speed': shot.crank_speed or 100.0,
         'plate_number': shot.plate_number or 0,
-        'duration_frames': shot.duration_frames or 0,
+        'duration_frames': shot.effective_length_frames(),
         'start_frame': shot.start_frame or 1001,
         'vfx_code': shot.vfx_code or '',
         'plate_type': shot.plate_type or '',
         'vfx_element': shot.vfx_element or '',
         'version': shot.version or 1,
+        'manual_tc_override': shot.manual_tc_override,
+        'manual_tc_cut_in': shot.manual_tc_cut_in or '',
+        'manual_tc_cut_out': shot.manual_tc_cut_out or '',
         'clip_name': shot.clip_name or ''
+    })
+
+
+@app.route('/shot/<int:shot_id>/manual_tc/toggle', methods=['POST'])
+def toggle_manual_tc_override(shot_id):
+    """Toggle manual TC override on/off for a single plate"""
+    shot = Shot.query.get_or_404(shot_id)
+    data = request.get_json() or {}
+    enabled = bool(data.get('enabled'))
+
+    shot.manual_tc_override = enabled
+    if not enabled:
+        # Discard manual values - restore to original EDL timecodes
+        shot.manual_tc_cut_in = None
+        shot.manual_tc_cut_out = None
+
+    db.session.commit()
+
+    fr = shot.frame_range_display()
+    range_text = (
+        f"{fr['head_start']}[{fr['head_frames']}]{fr['head_end']} • "
+        f"{fr['shot_start']}[{fr['shot_frames']}]{fr['shot_end']} • "
+        f"{fr['tail_start']}[{fr['tail_frames']}]{fr['tail_end']}"
+    )
+
+    return jsonify({
+        'success': True,
+        'manual_tc_override': shot.manual_tc_override,
+        'tc_cut_in': shot.effective_tc_cut_in() or '',
+        'tc_cut_out': shot.effective_tc_cut_out() or '',
+        'scan_in': shot.tc_scan_in() or '',
+        'scan_out': shot.tc_scan_out() or '',
+        'length': shot.effective_length_frames(),
+        'total_scan': shot.total_source_frames(),
+        'range': range_text,
+    })
+
+
+@app.route('/shot/<int:shot_id>/manual_tc/save', methods=['POST'])
+def save_manual_tc(shot_id):
+    """Save manual TC Cut In/Out values for a plate with manual override enabled"""
+    from models import timecode_to_frames, validate_tc_format
+
+    shot = Shot.query.get_or_404(shot_id)
+
+    if not shot.manual_tc_override:
+        return jsonify({'success': False, 'error': 'Manual override is not enabled for this plate'}), 400
+
+    data = request.get_json() or {}
+    tc_cut_in = (data.get('tc_cut_in') or '').strip()
+    tc_cut_out = (data.get('tc_cut_out') or '').strip()
+
+    if not validate_tc_format(tc_cut_in) or not validate_tc_format(tc_cut_out):
+        return jsonify({'success': False, 'error': 'Invalid timecode format - use HH:MM:SS:FF'}), 400
+
+    fps = shot.fps or 24.0
+    if timecode_to_frames(tc_cut_out, fps) <= timecode_to_frames(tc_cut_in, fps):
+        return jsonify({'success': False, 'error': 'TC Cut Out must be after TC Cut In'}), 400
+
+    shot.manual_tc_cut_in = tc_cut_in
+    shot.manual_tc_cut_out = tc_cut_out
+    db.session.commit()
+
+    fr = shot.frame_range_display()
+    range_text = (
+        f"{fr['head_start']}[{fr['head_frames']}]{fr['head_end']} • "
+        f"{fr['shot_start']}[{fr['shot_frames']}]{fr['shot_end']} • "
+        f"{fr['tail_start']}[{fr['tail_frames']}]{fr['tail_end']}"
+    )
+
+    return jsonify({
+        'success': True,
+        'tc_cut_in': shot.effective_tc_cut_in() or '',
+        'tc_cut_out': shot.effective_tc_cut_out() or '',
+        'scan_in': shot.tc_scan_in() or '',
+        'scan_out': shot.tc_scan_out() or '',
+        'length': shot.effective_length_frames(),
+        'total_scan': shot.total_source_frames(),
+        'range': range_text,
     })
 
 

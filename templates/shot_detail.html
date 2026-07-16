@@ -46,7 +46,7 @@
         <!-- TC and Frame Info Grid -->
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; font-size: 0.95rem;">
             <div>
-                <strong>TC Cut In:</strong> {{ shot.source_in }} to {{ shot.source_out }}<br>
+                <strong>TC Cut In:</strong> {{ shot.effective_tc_cut_in() }} to {{ shot.effective_tc_cut_out() }}<br>
                 <strong>TC Scan In:</strong> {{ shot.tc_scan_in() }} to {{ shot.tc_scan_out() }}
             </div>
             <div>
@@ -54,7 +54,7 @@
                 <strong>Total Scan:</strong> {{ shot.total_source_frames() }} frames (source for vendor)
             </div>
             <div>
-                <strong>Length:</strong> {{ shot.duration_frames }} frames (output)<br>
+                <strong>Length:</strong> {{ shot.effective_length_frames() }} frames (output)<br>
                 {% if shot.crank_speed != 100.0 %}
                 <strong>Source Length:</strong> {{ shot.source_frames_needed() }} frames @ {{ shot.crank_speed }}%
                 {% endif %}
@@ -67,7 +67,7 @@
         {% if shot.crank_speed != 100.0 %}
         <div style="background: rgba(255,193,7,0.2); border: 2px solid #ffc107; padding: 1rem; border-radius: 4px; margin-top: 1rem;">
             <strong>⚠️ RETIMED CLIP: {{ shot.crank_speed }}%</strong><br>
-            Vendor will receive {{ shot.source_frames_needed() }} source frames to create {{ shot.duration_frames }} frames of output
+            Vendor will receive {{ shot.source_frames_needed() }} source frames to create {{ shot.effective_length_frames() }} frames of output
         </div>
         {% endif %}
     </div>

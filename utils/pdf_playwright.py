@@ -150,9 +150,9 @@ def prepare_plate_data(shot, project, tape_map=None):
         'total_frames': shot.total_source_frames(),
 
         # Timecode
-        'source_in': shot.source_in,
-        'source_out': shot.source_out,
-        'duration_frames': shot.duration_frames,
+        'source_in': shot.effective_tc_cut_in(),
+        'source_out': shot.effective_tc_cut_out(),
+        'duration_frames': shot.effective_length_frames(),
         'tc_scan_in': shot.tc_scan_in(),
         'tc_scan_out': shot.tc_scan_out(),
         'total_source_frames': shot.total_source_frames(),

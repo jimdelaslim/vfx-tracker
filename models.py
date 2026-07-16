@@ -25,6 +25,10 @@ def frames_to_timecode(frames, fps=24.0):
     hh = total_seconds // 3600
     return f"{hh:02d}:{mm:02d}:{ss:02d}:{ff:02d}"
 
+def validate_tc_format(timecode):
+    """Check if a string matches HH:MM:SS:FF timecode format"""
+    return bool(re.match(r'^\d{2}:\d{2}:\d{2}:\d{2}$', timecode or ''))
+
 
 class Project(db.Model):
     __tablename__ = 'projects'
@@ -142,6 +146,12 @@ class Shot(db.Model):
     tail_handles = db.Column(db.Integer, default=0)
     crank_speed = db.Column(db.Float, default=100.0)
     detected_respeed = db.Column(db.Float)  # Detected from EDL M2 line (for warning)
+
+    # Manual TC Override - for Avid reverse-timewarp EDLs and other odd respeed cases
+    # where the EDL timecodes don't match what needs to be pulled
+    manual_tc_override = db.Column(db.Boolean, default=False, nullable=False)
+    manual_tc_cut_in = db.Column(db.String(20), nullable=True)
+    manual_tc_cut_out = db.Column(db.String(20), nullable=True)
     
     # Additional Info
     scope_of_work = db.Column(db.Text)
@@ -192,27 +202,46 @@ class Shot(db.Model):
     
     def __repr__(self):
         return f'<Shot {self.clip_name} - {self.vfx_code}>'
-    
+
+    def effective_tc_cut_in(self):
+        """Return manual TC Cut In if override is on and populated, else the EDL source_in"""
+        if self.manual_tc_override and self.manual_tc_cut_in is not None:
+            return self.manual_tc_cut_in
+        return self.source_in
+
+    def effective_tc_cut_out(self):
+        """Return manual TC Cut Out if override is on and populated, else the EDL source_out"""
+        if self.manual_tc_override and self.manual_tc_cut_out is not None:
+            return self.manual_tc_cut_out
+        return self.source_out
+
+    def effective_length_frames(self):
+        """Return length in frames from manual TC Cut In/Out if override is on and both populated, else duration_frames"""
+        if self.manual_tc_override and self.manual_tc_cut_in is not None and self.manual_tc_cut_out is not None:
+            # Exclusive convention, matching duration_frames (OTIO end_time_exclusive - start_time)
+            return timecode_to_frames(self.manual_tc_cut_out, self.fps) - timecode_to_frames(self.manual_tc_cut_in, self.fps)
+        return self.duration_frames or 0
+
     def source_frames_needed(self):
         """Calculate source frames needed based on output duration and crank speed"""
-        output_frames = self.duration_frames or 0
+        output_frames = self.effective_length_frames()
         return int(output_frames * (self.crank_speed / 100.0))
-    
+
     def source_handles(self):
         """Return source handles directly (input boxes already contain source handles)"""
         head = self.head_handles or 0
         tail = self.tail_handles or 0
         return head, tail
-    
+
     def total_source_frames(self):
         """Total SOURCE frames to scan (including handles)"""
         # This is what vendor actually scans from the source material
         # Example: 114 source frames + 16 head + 16 tail = 146 frames
-        return (self.duration_frames or 0) + (self.head_handles or 0) + (self.tail_handles or 0)
-    
+        return self.effective_length_frames() + (self.head_handles or 0) + (self.tail_handles or 0)
+
     def total_frames_with_handles(self):
         """Calculate total OUTPUT frames including handles"""
-        base_frames = self.duration_frames or 0
+        base_frames = self.effective_length_frames()
         handles = (self.head_handles or 0) + (self.tail_handles or 0)
         return base_frames + handles
     
@@ -228,7 +257,7 @@ class Shot(db.Model):
         # If crank is 100% (no respeed): need 57 source frames
         # If crank is 200% (double speed): need 114 source frames (twice as many)
         # If crank is 50% (half speed): need 28.5 source frames (half as many)
-        timeline_frames = self.duration_frames or 0
+        timeline_frames = self.effective_length_frames()
         crank = self.crank_speed or 100.0
         
         # duration_frames already contains SOURCE frames (adjusted on import)
@@ -269,38 +298,42 @@ class Shot(db.Model):
         }
     
     def tc_scan_in(self):
-        """Calculate scan in timecode (source in - head handles)"""
-        if not self.source_in:
+        """Calculate scan in timecode (effective cut in - head handles)"""
+        cut_in = self.effective_tc_cut_in()
+        if not cut_in:
             return None
-        source_in_frames = timecode_to_frames(self.source_in, self.fps)
+        source_in_frames = timecode_to_frames(cut_in, self.fps)
         head, _ = self.source_handles()
         scan_in_frames = source_in_frames - head
         return frames_to_timecode(scan_in_frames, self.fps)
-    
+
     def tc_scan_out(self):
-        """Calculate scan out timecode (source out + tail handles)"""
-        if not self.source_out:
+        """Calculate scan out timecode (effective cut out + tail handles)"""
+        cut_out = self.effective_tc_cut_out()
+        if not cut_out:
             return None
-        
-        # Start from source_out
-        source_out_frames = timecode_to_frames(self.source_out, self.fps)
-        
+
+        # Start from effective cut out
+        source_out_frames = timecode_to_frames(cut_out, self.fps)
+
         # Add tail handles
         _, tail = self.source_handles()
-        
+
         scan_out_frames = source_out_frames + tail
-        
+
         return frames_to_timecode(scan_out_frames, self.fps)
 
 
     def get_scan_timecodes(self):
         """Calculate scan timecodes including handles"""
-        if not self.source_in or not self.source_out:
+        cut_in = self.effective_tc_cut_in()
+        cut_out = self.effective_tc_cut_out()
+        if not cut_in or not cut_out:
             return None, None
-        
+
         fps = self.fps or 24.0
         head, tail = self.source_handles()
-        
+
         # Parse timecode HH:MM:SS:FF
         def tc_to_frames(tc_str, fps):
             parts = tc_str.split(':')
@@ -308,7 +341,7 @@ class Shot(db.Model):
                 return 0
             h, m, s, f = map(int, parts)
             return int((h * 3600 + m * 60 + s) * fps + f)
-        
+
         def frames_to_tc(frames, fps):
             f = int(frames % fps)
             total_seconds = int(frames // fps)
@@ -316,17 +349,17 @@ class Shot(db.Model):
             m = (total_seconds // 60) % 60
             h = total_seconds // 3600
             return f"{h:02d}:{m:02d}:{s:02d}:{f:02d}"
-        
+
         # Calculate scan in (subtract head handles)
-        in_frames = tc_to_frames(self.source_in, fps)
+        in_frames = tc_to_frames(cut_in, fps)
         scan_in_frames = max(0, in_frames - head)
         scan_in = frames_to_tc(scan_in_frames, fps)
-        
+
         # Calculate scan out (add tail handles)
-        out_frames = tc_to_frames(self.source_out, fps)
+        out_frames = tc_to_frames(cut_out, fps)
         scan_out_frames = out_frames + tail
         scan_out = frames_to_tc(scan_out_frames, fps)
-        
+
         return scan_in, scan_out
 
     def validate_handles(self):

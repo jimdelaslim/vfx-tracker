@@ -86,12 +86,12 @@ def generate_vfx_report(shots):
         report_lines.append("")
         
         # Timecodes
-        report_lines.append(f"TC Cut In:  {shot.source_in} to {shot.source_out}")
+        report_lines.append(f"TC Cut In:  {shot.effective_tc_cut_in()} to {shot.effective_tc_cut_out()}")
         report_lines.append(f"TC Scan In: {shot.tc_scan_in()} to {shot.tc_scan_out()}")
         report_lines.append("")
-        
+
         # Frame counts
-        report_lines.append(f"Length: {shot.duration_frames} frames (output)")
+        report_lines.append(f"Length: {shot.effective_length_frames()} frames (output)")
         if shot.crank_speed != 100.0:
             report_lines.append(f"Source Length: {shot.source_frames_needed()} frames @ {shot.crank_speed}%")
         report_lines.append(f"Total Scan: {shot.total_source_frames()} frames (source for vendor)")

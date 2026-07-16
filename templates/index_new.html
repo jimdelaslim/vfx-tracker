@@ -831,6 +831,151 @@ body {
     color: #fd7e14;
 }
 
+/* Manual TC Override - toggle switch (plate card is light-themed, unlike dashboard chrome) */
+.plate-toggle-label {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    cursor: pointer;
+    color: #6c757d;
+    font-weight: 600;
+}
+
+.plate-toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 34px;
+    height: 18px;
+    flex-shrink: 0;
+}
+
+.plate-toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+    position: absolute;
+}
+
+.plate-toggle-slider {
+    position: absolute;
+    inset: 0;
+    background: #ced4da;
+    border-radius: 18px;
+    transition: background 0.15s;
+    cursor: pointer;
+}
+
+.plate-toggle-slider::before {
+    content: "";
+    position: absolute;
+    height: 14px;
+    width: 14px;
+    left: 2px;
+    top: 2px;
+    background: white;
+    border-radius: 50%;
+    transition: transform 0.15s;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+}
+
+.plate-toggle-switch input:checked + .plate-toggle-slider {
+    background: #495057;
+}
+
+.plate-toggle-switch input:checked + .plate-toggle-slider::before {
+    transform: translateX(16px);
+}
+
+/* Manual TC Override - editable TC Cut In/Out inputs (shown when override is on) */
+.tc-cut-input {
+    width: 100%;
+    padding: 0.25rem 0.35rem;
+    border: 2px solid #ddd;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #212529;
+    box-sizing: border-box;
+}
+
+.tc-cut-input:focus {
+    outline: none;
+    border-color: #495057;
+}
+
+.tc-cut-error {
+    display: block;
+    color: #dc3545;
+    font-size: 0.65rem;
+    font-weight: 600;
+    margin-top: 0.15rem;
+}
+
+/* Generic confirm modal - reusable for override-off confirm and future confirm-with-custom-labels needs */
+.confirm-modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 20000;
+    align-items: center;
+    justify-content: center;
+}
+
+.confirm-modal-overlay.open {
+    display: flex;
+}
+
+.confirm-modal-box {
+    background: #232323;
+    color: #e0e0e0;
+    border-radius: 8px;
+    padding: 1.5rem;
+    max-width: 420px;
+    width: 90%;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+}
+
+.confirm-modal-message {
+    font-size: 0.95rem;
+    line-height: 1.5;
+    margin-bottom: 1.5rem;
+}
+
+.confirm-modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+}
+
+.confirm-modal-btn {
+    padding: 0.5rem 1.25rem;
+    border-radius: 6px;
+    border: none;
+    font-weight: 600;
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+
+.confirm-modal-btn.cancel {
+    background: #3d3d3d;
+    color: #c0c0c0;
+}
+
+.confirm-modal-btn.cancel:hover {
+    background: #4a4a4a;
+}
+
+.confirm-modal-btn.confirm {
+    background: #6c757d;
+    color: white;
+}
+
+.confirm-modal-btn.confirm:hover {
+    background: #5a6268;
+}
+
 .plate-notes-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -1518,17 +1663,42 @@ body {
                                 <!-- Timecode Grid (Bordered Box) -->
                                 <div style="border: 2px solid #495057; border-radius: 6px; padding: 0.75rem; background: white; margin-bottom: 0.75rem;">
                                     <div class="plate-info-grid">
+                                        <div class="plate-info-item" style="grid-column: 1 / -1;">
+                                            <label class="plate-toggle-label">
+                                                <span class="plate-toggle-switch">
+                                                    <input type="checkbox" data-shot-id="{{ shot.id }}"
+                                                           {% if shot.manual_tc_override %}checked{% endif %}
+                                                           onchange="toggleManualTcOverride({{ shot.id }}, this)">
+                                                    <span class="plate-toggle-slider"></span>
+                                                </span>
+                                                Manual TC Override
+                                            </label>
+                                        </div>
                                         <div class="plate-info-item">
                                             <span class="plate-info-label">TC Cut In</span>
-                                            <span class="plate-info-value">{{ shot.source_in or 'N/A' }}</span>
+                                            {% if shot.manual_tc_override %}
+                                            <input type="text" class="plate-info-value tc-cut-input tc-cut-in-input" data-shot-id="{{ shot.id }}"
+                                                   value="{{ shot.effective_tc_cut_in() or '' }}"
+                                                   onblur="saveManualTc({{ shot.id }}, 'tc_cut_in', this)">
+                                            <span class="tc-cut-error tc-cut-in-error" data-shot-id="{{ shot.id }}"></span>
+                                            {% else %}
+                                            <span class="plate-info-value tc-cut-in" data-shot-id="{{ shot.id }}">{{ shot.effective_tc_cut_in() or 'N/A' }}</span>
+                                            {% endif %}
                                         </div>
                                         <div class="plate-info-item">
                                             <span class="plate-info-label">TC Cut Out</span>
-                                            <span class="plate-info-value">{{ shot.source_out or 'N/A' }}</span>
+                                            {% if shot.manual_tc_override %}
+                                            <input type="text" class="plate-info-value tc-cut-input tc-cut-out-input" data-shot-id="{{ shot.id }}"
+                                                   value="{{ shot.effective_tc_cut_out() or '' }}"
+                                                   onblur="saveManualTc({{ shot.id }}, 'tc_cut_out', this)">
+                                            <span class="tc-cut-error tc-cut-out-error" data-shot-id="{{ shot.id }}"></span>
+                                            {% else %}
+                                            <span class="plate-info-value tc-cut-out" data-shot-id="{{ shot.id }}">{{ shot.effective_tc_cut_out() or 'N/A' }}</span>
+                                            {% endif %}
                                         </div>
                                         <div class="plate-info-item">
                                             <span class="plate-info-label">Length</span>
-                                            <span class="plate-info-value">{{ shot.duration_frames or 0 }}</span>
+                                            <span class="plate-info-value tc-length" data-shot-id="{{ shot.id }}">{{ shot.effective_length_frames() }}</span>
                                         </div>
                                         <div class="plate-info-item">
                                             <span class="plate-info-label">TC Scan In</span>
@@ -3738,8 +3908,8 @@ function updatePlateDisplayDirect(card, vfxId, head, tail, crank, startFrame) {
         else if (labelText === 'Handles (Source)')        value.textContent = head + '/' + tail;
         else if (labelText === 'Range')                   value.textContent = rangeText;
         else if (labelText === 'Retime Handles (Output)') value.textContent = outputHead + '/' + outputTail;
-        else if (labelText === 'TC Cut In')               sourceIn = value.textContent.trim();
-        else if (labelText === 'TC Cut Out')              sourceOut = value.textContent.trim();
+        else if (labelText === 'TC Cut In')               sourceIn = (value.tagName === 'INPUT' ? value.value : value.textContent).trim();
+        else if (labelText === 'TC Cut Out')              sourceOut = (value.tagName === 'INPUT' ? value.value : value.textContent).trim();
     });
 
     // Update TC Scan In / Scan Out directly from source timecodes + new handles
@@ -3761,6 +3931,169 @@ function updatePlateDisplayDirect(card, vfxId, head, tail, crank, startFrame) {
         head_handles: head, tail_handles: tail,
         crank_speed: crankSafe, duration_frames: duration, start_frame: startFrame
     });
+}
+
+
+// ===== Manual TC Override =====
+
+function buildTcCutFieldHtml(shotId, field, mode, value) {
+    // field: 'tc_cut_in' | 'tc_cut_out' ; mode: 'input' | 'span'
+    const cls = field === 'tc_cut_in' ? 'tc-cut-in' : 'tc-cut-out';
+    if (mode === 'input') {
+        return '<input type="text" class="plate-info-value tc-cut-input ' + cls + '-input" data-shot-id="' + shotId + '" ' +
+               'value="' + (value || '') + '" onblur="saveManualTc(' + shotId + ', \'' + field + '\', this)">' +
+               '<span class="tc-cut-error ' + cls + '-error" data-shot-id="' + shotId + '"></span>';
+    }
+    return '<span class="plate-info-value ' + cls + '" data-shot-id="' + shotId + '">' + (value || 'N/A') + '</span>';
+}
+
+function repaintTcDerived(card, shotId, data) {
+    const scanIn = card.querySelector('.tc-scan-in[data-shot-id="' + shotId + '"]');
+    if (scanIn && data.scan_in !== undefined) scanIn.textContent = data.scan_in || 'N/A';
+
+    const scanOut = card.querySelector('.tc-scan-out[data-shot-id="' + shotId + '"]');
+    if (scanOut && data.scan_out !== undefined) scanOut.textContent = data.scan_out || 'N/A';
+
+    const lengthEl = card.querySelector('.tc-length[data-shot-id="' + shotId + '"]');
+    if (lengthEl && data.length !== undefined) lengthEl.textContent = data.length;
+
+    const totalScan = card.querySelector('.tc-total-scan[data-shot-id="' + shotId + '"]');
+    if (totalScan && data.total_scan !== undefined) totalScan.textContent = data.total_scan;
+
+    const rangeEl = card.querySelector('.tc-range[data-shot-id="' + shotId + '"]');
+    if (rangeEl && data.range !== undefined) rangeEl.textContent = data.range;
+}
+
+// Frame Range Banner is per-VFX-code, driven by whichever plate is loaded into the
+// Edit Section - repaintTcDerived only touches this one plate's card, so the banner
+// (and its cached duration) go stale if this plate is the one currently loaded there.
+function refreshVfxBannerAfterTcChange(card, shotId, data) {
+    const vfxContainer = card.closest('.vfx-code-container');
+    const vfxId = vfxContainer ? vfxContainer.dataset.vfxId : null;
+    if (!vfxId) return;
+
+    const editHeadInput = document.getElementById('edit-head-' + vfxId);
+    if (editHeadInput && editHeadInput.dataset.shotId === String(shotId)) {
+        editHeadInput.dataset.durationFrames = data.length;
+    }
+
+    refreshTimecodeDisplay(vfxId);
+}
+
+function toggleManualTcOverride(shotId, checkboxEl) {
+    const enabling = checkboxEl.checked;
+
+    if (!enabling) {
+        // Revert the native checkbox flip immediately - only actually turn off after confirm
+        checkboxEl.checked = true;
+        showConfirmModal(
+            'Turning off manual override will restore the original EDL timecodes. Your manual TC values will be discarded. Continue?',
+            () => applyManualTcToggle(shotId, checkboxEl, false),
+            { confirmLabel: 'Discard', cancelLabel: 'Cancel' }
+        );
+        return;
+    }
+
+    applyManualTcToggle(shotId, checkboxEl, true);
+}
+
+function applyManualTcToggle(shotId, checkboxEl, enabled) {
+    fetchWithTimeout('/shot/' + shotId + '/manual_tc/toggle', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ enabled: enabled })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (!data.success) return;
+
+        checkboxEl.checked = enabled;
+
+        const card = checkboxEl.closest('.plate-card');
+        if (!card) return;
+
+        const cutInItem = card.querySelector('.tc-cut-in, .tc-cut-in-input')?.closest('.plate-info-item');
+        const cutOutItem = card.querySelector('.tc-cut-out, .tc-cut-out-input')?.closest('.plate-info-item');
+
+        if (cutInItem) {
+            cutInItem.innerHTML = '<span class="plate-info-label">TC Cut In</span>' +
+                buildTcCutFieldHtml(shotId, 'tc_cut_in', enabled ? 'input' : 'span', data.tc_cut_in);
+        }
+        if (cutOutItem) {
+            cutOutItem.innerHTML = '<span class="plate-info-label">TC Cut Out</span>' +
+                buildTcCutFieldHtml(shotId, 'tc_cut_out', enabled ? 'input' : 'span', data.tc_cut_out);
+        }
+
+        repaintTcDerived(card, shotId, data);
+        refreshVfxBannerAfterTcChange(card, shotId, data);
+    })
+    .catch(err => console.error('Failed to toggle manual TC override', err));
+}
+
+function saveManualTc(shotId, field, inputEl) {
+    const card = inputEl.closest('.plate-card');
+    if (!card) return;
+
+    const otherField = field === 'tc_cut_in' ? 'tc_cut_out' : 'tc_cut_in';
+    const otherInputEl = card.querySelector((otherField === 'tc_cut_in' ? '.tc-cut-in-input' : '.tc-cut-out-input') + '[data-shot-id="' + shotId + '"]');
+    const errEl = card.querySelector((field === 'tc_cut_in' ? '.tc-cut-in-error' : '.tc-cut-out-error') + '[data-shot-id="' + shotId + '"]');
+
+    const payload = {};
+    payload[field] = inputEl.value.trim();
+    payload[otherField] = otherInputEl ? otherInputEl.value.trim() : '';
+
+    fetchWithTimeout('/shot/' + shotId + '/manual_tc/save', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (!data.success) {
+            if (errEl) errEl.textContent = data.error || 'Invalid timecode';
+            return;
+        }
+
+        if (errEl) errEl.textContent = '';
+
+        const inEl = card.querySelector('.tc-cut-in-input[data-shot-id="' + shotId + '"]');
+        if (inEl) inEl.value = data.tc_cut_in;
+        const outEl = card.querySelector('.tc-cut-out-input[data-shot-id="' + shotId + '"]');
+        if (outEl) outEl.value = data.tc_cut_out;
+
+        repaintTcDerived(card, shotId, data);
+        refreshVfxBannerAfterTcChange(card, shotId, data);
+    })
+    .catch(err => console.error('Failed to save manual TC', err));
+}
+
+// ===== Generic confirm modal (Cancel / custom-label confirm) =====
+
+let _confirmModalCallback = null;
+
+function showConfirmModal(message, onConfirm, opts) {
+    opts = opts || {};
+    const overlay = document.getElementById('confirm-modal-overlay');
+    if (!overlay) return;
+
+    document.getElementById('confirm-modal-message').textContent = message;
+    document.getElementById('confirm-modal-confirm-btn').textContent = opts.confirmLabel || 'Confirm';
+    document.getElementById('confirm-modal-cancel-btn').textContent = opts.cancelLabel || 'Cancel';
+
+    _confirmModalCallback = onConfirm;
+    overlay.classList.add('open');
+}
+
+function hideConfirmModal() {
+    const overlay = document.getElementById('confirm-modal-overlay');
+    if (overlay) overlay.classList.remove('open');
+    _confirmModalCallback = null;
+}
+
+function confirmModalAccept() {
+    const cb = _confirmModalCallback;
+    hideConfirmModal();
+    if (cb) cb();
 }
 
 
@@ -3851,18 +4184,21 @@ function refreshTimecodeDisplay(vfxId) {
 
             if (headBox) {
                 headBox.textContent = fr.head_frames;
-                headBox.parentElement.childNodes[0].textContent = fr.head_start + ' ';
-                headBox.parentElement.childNodes[2].textContent = ' ' + fr.head_end;
+                const frNums = headBox.parentElement.querySelectorAll('.fr-num');
+                if (frNums[0]) frNums[0].textContent = fr.head_start;
+                if (frNums[1]) frNums[1].textContent = fr.head_end;
             }
             if (actionBox) {
                 actionBox.textContent = fr.shot_frames;
-                actionBox.parentElement.childNodes[0].textContent = fr.shot_start + ' ';
-                actionBox.parentElement.childNodes[2].textContent = ' ' + fr.shot_end;
+                const frNums = actionBox.parentElement.querySelectorAll('.fr-num');
+                if (frNums[0]) frNums[0].textContent = fr.shot_start;
+                if (frNums[1]) frNums[1].textContent = fr.shot_end;
             }
             if (tailBox) {
                 tailBox.textContent = fr.tail_frames;
-                tailBox.parentElement.childNodes[0].textContent = fr.tail_start + ' ';
-                tailBox.parentElement.childNodes[2].textContent = ' ' + fr.tail_end;
+                const frNums = tailBox.parentElement.querySelectorAll('.fr-num');
+                if (frNums[0]) frNums[0].textContent = fr.tail_start;
+                if (frNums[1]) frNums[1].textContent = fr.tail_end;
             }
             if (totalScanHeader) {
                 totalScanHeader.textContent = 'TOTAL SCAN: ' + shot.total_scan + ' frames';
@@ -5465,6 +5801,17 @@ const vfxCodeTargets = {
         <button data-decision="replace-all" style="flex:1; padding:0.6rem; background:#495057; color:white; border:none; border-radius:4px; cursor:pointer; font-size:0.85rem;">Replace all remaining</button>
         <button data-decision="skip-all"    style="flex:1; padding:0.6rem; background:#495057; color:white; border:none; border-radius:4px; cursor:pointer; font-size:0.85rem;">Skip all remaining</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- Generic Confirm Modal -->
+<div id="confirm-modal-overlay" class="confirm-modal-overlay" role="dialog" aria-modal="true" aria-label="Confirm">
+  <div class="confirm-modal-box">
+    <p class="confirm-modal-message" id="confirm-modal-message"></p>
+    <div class="confirm-modal-actions">
+      <button type="button" class="confirm-modal-btn cancel" id="confirm-modal-cancel-btn" onclick="hideConfirmModal()">Cancel</button>
+      <button type="button" class="confirm-modal-btn confirm" id="confirm-modal-confirm-btn" onclick="confirmModalAccept()">Confirm</button>
     </div>
   </div>
 </div>
