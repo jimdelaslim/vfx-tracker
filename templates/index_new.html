@@ -1836,7 +1836,14 @@ body {
                            oninput="updateEditedPlate({{ vfx_code.id }}); handleEditSectionMirror('crank', this.value, this)">
 
                 </div>
-                
+
+                <div class="edit-field">
+                    <label>Manual Frame Range Override</label>
+                    <input type="number" min="1" step="1" placeholder="(auto)" id="edit-frame-range-override-{{ vfx_code.id }}" disabled
+                           class="batch-linkable batch-edit-frame-range-override" data-vfx-id="{{ vfx_code.id }}"
+                           oninput="updateEditedPlate({{ vfx_code.id }}); handleEditSectionMirror('frame-range-override', this.value, this)">
+                </div>
+
                 <!-- Update Timecodes Button -->
                 <button id="update-tc-btn-{{ vfx_code.id }}" 
                         onclick="updateTimecodes({{ vfx_code.id }})" 
@@ -2113,23 +2120,26 @@ function updateFrameBanner(vfxId, shotData) {
     
     const headHandles = Math.round((shotData.head_handles || 0) / crankMultiplier);
     const tailHandles = Math.round((shotData.tail_handles || 0) / crankMultiplier);
-    const actionFrames = Math.round((shotData.duration_frames || 0) / crankMultiplier);
-    
+    const actionFrames = Math.round((shotData.duration_frames || 0) / crankMultiplier);  // real derived count - drives position math below
+    const displayActionFrames = (shotData.manual_frame_range !== null && shotData.manual_frame_range !== undefined)
+        ? shotData.manual_frame_range
+        : actionFrames;
+
     // Calculate frame positions starting at custom start frame
     const headStart = parseInt(shotData.start_frame) || 1001;
     const headEnd = headStart + headHandles - 1;
     const actionStart = headEnd + 1;
-    const actionEnd = actionStart + actionFrames - 1;
+    const actionEnd = actionStart + actionFrames - 1;  // stays on real derived count, not the override
     const tailStart = actionEnd + 1;
     const tailEnd = tailStart + tailHandles - 1;
-    
+
     // Update the display
     const frameDisplay = document.getElementById(`frame-display-${vfxId}`);
     if (!frameDisplay) return;
     frameDisplay.innerHTML = `
         <span><span class="fr-num">${headStart}</span> <span class="frame-box" id="head-box-${vfxId}">${headHandles}</span> <span class="fr-num">${headEnd}</span></span>
         <span>•</span>
-        <span><span class="fr-num">${actionStart}</span> <span class="frame-box" id="action-box-${vfxId}">${actionFrames}</span> <span class="fr-num">${actionEnd}</span></span>
+        <span><span class="fr-num">${actionStart}</span> <span class="frame-box" id="action-box-${vfxId}">${displayActionFrames}</span> <span class="fr-num">${actionEnd}</span></span>
         <span>•</span>
         <span><span class="fr-num">${tailStart}</span> <span class="frame-box" id="tail-box-${vfxId}">${tailHandles}</span> <span class="fr-num">${tailEnd}</span></span>
     `;
@@ -2167,12 +2177,15 @@ function loadPlateToEdit(vfxId, plateNum) {
             document.getElementById(`edit-tail-${vfxId}`).value = data.tail_handles || 0;
             document.getElementById(`edit-crank-${vfxId}`).value = data.crank_speed || 100;
             document.getElementById(`edit-start-${vfxId}`).value = data.start_frame || 1001;
-            
+            document.getElementById(`edit-frame-range-override-${vfxId}`).value =
+                (data.manual_frame_range !== null && data.manual_frame_range !== undefined) ? data.manual_frame_range : '';
+
             // Enable edit fields
             document.getElementById(`edit-head-${vfxId}`).disabled = false;
             document.getElementById(`edit-tail-${vfxId}`).disabled = false;
             document.getElementById(`edit-crank-${vfxId}`).disabled = false;
             document.getElementById(`edit-start-${vfxId}`).disabled = false;
+            document.getElementById(`edit-frame-range-override-${vfxId}`).disabled = false;
             
             // UPDATE FRAME BANNER with selected plate's data
             updateFrameBanner(vfxId, data);
@@ -3272,7 +3285,9 @@ function updateEditedPlate(vfxId) {
     const tail = parseInt(document.getElementById(`edit-tail-${vfxId}`).value) || 0;
     const crank = parseFloat(document.getElementById(`edit-crank-${vfxId}`).value) || 100;
     const startFrame = parseInt(document.getElementById(`edit-start-${vfxId}`).value) || 1001;
-    
+    const frameRangeOverrideRaw = document.getElementById(`edit-frame-range-override-${vfxId}`).value.trim();
+    const manualFrameRange = frameRangeOverrideRaw === '' ? null : parseInt(frameRangeOverrideRaw);
+
     // Save to database
     fetchWithTimeout('/shot/' + shotId + '/update/field', {
         method: 'POST',
@@ -3281,23 +3296,25 @@ function updateEditedPlate(vfxId) {
             head_handles: head,
             tail_handles: tail,
             crank_speed: crank,
-            start_frame: startFrame
+            start_frame: startFrame,
+            manual_frame_range: manualFrameRange
         })
     });
-    
+
     // Get duration from the data attribute
     const duration = parseInt(document.getElementById(`edit-head-${vfxId}`).dataset.durationFrames) || 0;
-    
+
     // Validate handles
     validateHandles(vfxId);
-    
+
     // Update banner immediately
     updateFrameBanner(vfxId, {
         head_handles: head,
         tail_handles: tail,
         crank_speed: crank,
         duration_frames: duration,
-        start_frame: startFrame
+        start_frame: startFrame,
+        manual_frame_range: manualFrameRange
     });
     
     // Update plate area immediately
@@ -3808,20 +3825,23 @@ function updatePlateDisplay(shotId, head, tail, crank, startFrame) {
             // Calculate output handles (for display)
             const outputHead = Math.round(head / crankMultiplier);
             const outputTail = Math.round(tail / crankMultiplier);
-            const outputAction = Math.round(duration / crankMultiplier);
-            
+            const outputAction = Math.round(duration / crankMultiplier);  // real derived count - drives position math below
+            const displayAction = (data.manual_frame_range !== null && data.manual_frame_range !== undefined)
+                ? data.manual_frame_range
+                : outputAction;
+
             // Calculate total scan (source frames)
             const totalScan = duration + head + tail;
-            
+
             // Calculate frame ranges
             const headStart = startFrame;
             const headEnd = headStart + outputHead - 1;
             const shotStart = headEnd + 1;
-            const shotEnd = shotStart + outputAction - 1;
+            const shotEnd = shotStart + outputAction - 1;  // stays on real derived count, not the override
             const tailStart = shotEnd + 1;
             const tailEnd = tailStart + outputTail - 1;
-            
-            const rangeText = `${headStart}[${outputHead}]${headEnd} • ${shotStart}[${outputAction}]${shotEnd} • ${tailStart}[${outputTail}]${tailEnd}`;
+
+            const rangeText = `${headStart}[${outputHead}]${headEnd} • ${shotStart}[${displayAction}]${shotEnd} • ${tailStart}[${outputTail}]${tailEnd}`;
             
             // Update the plate area fields
             plateCard.querySelectorAll('.plate-info-item').forEach(item => {
@@ -3869,7 +3889,7 @@ function framesToTimecode(frames, fps) {
 
 // (avoids document.querySelector race with virtual scroller eviction)
 // Math mirrors Python's frame_range_display() exactly: int() = Math.trunc()
-function updatePlateDisplayDirect(card, vfxId, head, tail, crank, startFrame) {
+function updatePlateDisplayDirect(card, vfxId, head, tail, crank, startFrame, overrideFrames) {
     if (!card) return;
 
     const duration = parseInt(document.getElementById('edit-head-' + vfxId)?.dataset?.durationFrames) || 0;
@@ -3879,7 +3899,8 @@ function updatePlateDisplayDirect(card, vfxId, head, tail, crank, startFrame) {
     // Output frames: truncate like Python int()
     const outputHead   = Math.trunc(head / crankMult);
     const outputTail   = Math.trunc(tail / crankMult);
-    const outputAction = Math.trunc(duration / crankMult);
+    const outputAction = Math.trunc(duration / crankMult);  // real derived count - drives position math below
+    const displayAction = (overrideFrames !== null && overrideFrames !== undefined) ? overrideFrames : outputAction;
 
     // start_frame: same fallback as Python (falsy → 1001)
     const start = parseInt(startFrame) || 1001;
@@ -3887,13 +3908,13 @@ function updatePlateDisplayDirect(card, vfxId, head, tail, crank, startFrame) {
     const headStart = start;
     const headEnd   = headStart + outputHead - 1;
     const shotStart = headEnd + 1;
-    const shotEnd   = shotStart + outputAction - 1;
+    const shotEnd   = shotStart + outputAction - 1;  // stays on real derived count, not the override
     const tailStart = shotEnd + 1;
     const tailEnd   = tailStart + outputTail - 1;
 
-    const totalScan = duration + head + tail;
+    const totalScan = duration + head + tail;  // stays on real derived count, unaffected by override
     const rangeText = headStart + '[' + outputHead + ']' + headEnd + ' • ' +
-                      shotStart + '[' + outputAction + ']' + shotEnd + ' • ' +
+                      shotStart + '[' + displayAction + ']' + shotEnd + ' • ' +
                       tailStart + '[' + outputTail  + ']' + tailEnd;
 
     let sourceIn = null;
@@ -3929,7 +3950,8 @@ function updatePlateDisplayDirect(card, vfxId, head, tail, crank, startFrame) {
     // Update the frame banner (uses document.getElementById — safe when container is visible)
     updateFrameBanner(vfxId, {
         head_handles: head, tail_handles: tail,
-        crank_speed: crankSafe, duration_frames: duration, start_frame: startFrame
+        crank_speed: crankSafe, duration_frames: duration, start_frame: startFrame,
+        manual_frame_range: overrideFrames
     });
 }
 
@@ -4266,6 +4288,8 @@ async function batchUpdateTimecodes(sourceVfxId) {
     const tail       = parseInt(document.getElementById(`edit-tail-${sourceVfxId}`).value)  || 0;
     const crank      = parseFloat(document.getElementById(`edit-crank-${sourceVfxId}`).value) || 100;
     const startFrame = parseInt(document.getElementById(`edit-start-${sourceVfxId}`).value) || 1001;
+    const frameRangeOverrideRaw = document.getElementById(`edit-frame-range-override-${sourceVfxId}`).value.trim();
+    const manualFrameRange = frameRangeOverrideRaw === '' ? null : parseInt(frameRangeOverrideRaw);
 
     let updatedCount = 0;
     const skipped = [];
@@ -4300,7 +4324,8 @@ async function batchUpdateTimecodes(sourceVfxId) {
                         head_handles: head,
                         tail_handles: tail,
                         crank_speed: crank,
-                        start_frame: startFrame
+                        start_frame: startFrame,
+                        manual_frame_range: manualFrameRange
                     })
                 });
                 if (!resp.ok) {
@@ -4315,7 +4340,7 @@ async function batchUpdateTimecodes(sourceVfxId) {
         }
 
         // Update plate card display directly \u2014 avoids querySelector race with virtual scroller
-        updatePlateDisplayDirect(matchedCard, vfxId, head, tail, crank, startFrame);
+        updatePlateDisplayDirect(matchedCard, vfxId, head, tail, crank, startFrame, manualFrameRange);
 
         if (vfxId !== sourceVfxId) {
             const targetBtn = document.getElementById('update-tc-btn-' + vfxId);

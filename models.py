@@ -152,6 +152,10 @@ class Shot(db.Model):
     manual_tc_override = db.Column(db.Boolean, default=False, nullable=False)
     manual_tc_cut_in = db.Column(db.String(20), nullable=True)
     manual_tc_cut_out = db.Column(db.String(20), nullable=True)
+
+    # Manual Frame Range Override - overrides the displayed/exported action frame count only
+    # (Frame Range Banner + plate card + PDF/CSV). Never touches source math, TC, or ALE/EDL.
+    manual_frame_range = db.Column(db.Integer, nullable=True)
     
     # Additional Info
     scope_of_work = db.Column(db.Text)
@@ -222,6 +226,14 @@ class Shot(db.Model):
             return timecode_to_frames(self.manual_tc_cut_out, self.fps) - timecode_to_frames(self.manual_tc_cut_in, self.fps)
         return self.duration_frames or 0
 
+    def effective_action_frames(self):
+        """Return manual_frame_range if set, else the crank-derived action (output) frame count.
+        Display/export only - never feeds source math, TC, or ALE/EDL."""
+        if self.manual_frame_range is not None:
+            return self.manual_frame_range
+        crank = self.crank_speed or 100.0
+        return int(self.effective_length_frames() / (crank / 100.0))
+
     def source_frames_needed(self):
         """Calculate source frames needed based on output duration and crank speed"""
         output_frames = self.effective_length_frames()
@@ -289,7 +301,10 @@ class Shot(db.Model):
             'head_frames': head,
             'head_end': head_end,
             'shot_start': shot_start,
-            'shot_frames': source_frames,
+            # Displayed count only - position math above (shot_end etc.) stays on the real derived
+            # source_frames, so this can legitimately disagree with shot_start/shot_end when a
+            # manual_frame_range override is set. That's deliberate, not a bug.
+            'shot_frames': self.effective_action_frames(),
             'shot_end': shot_end,
             'tail_start': tail_start,
             'tail_frames': tail,

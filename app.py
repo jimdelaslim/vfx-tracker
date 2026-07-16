@@ -151,6 +151,12 @@ def migrate_database_schema():
                 connection.commit()
                 print("AUTO-MIGRATION: manual_tc_override (shots) complete!")
 
+            if 'manual_frame_range' not in shot_columns:
+                print("AUTO-MIGRATION: Adding manual_frame_range to shots...")
+                cursor.execute("ALTER TABLE shots ADD COLUMN manual_frame_range INTEGER")
+                connection.commit()
+                print("AUTO-MIGRATION: manual_frame_range (shots) complete!")
+
             cursor.close()
             connection.close()
     except Exception as e:
@@ -1845,7 +1851,11 @@ def export_vfx_csv_selected():
     for shot in shots:
         vfx_code = shot.vfx_code_obj  # Get the VFXCode object
         frame_range = shot.frame_range_display()
-        frame_range_str = f"{frame_range['head_start']}-{frame_range['total_end']}"
+        frame_range_str = (
+            f"{frame_range['head_start']}[{frame_range['head_frames']}]{frame_range['head_end']} • "
+            f"{frame_range['shot_start']}[{frame_range['shot_frames']}]{frame_range['shot_end']} • "
+            f"{frame_range['tail_start']}[{frame_range['tail_frames']}]{frame_range['tail_end']}"
+        )
         
         writer.writerow([
             vfx_code.vfx_code if vfx_code else shot.vfx_code,
@@ -1912,7 +1922,11 @@ def export_vfx_csv_selected():
             for shot in vfx_shots:
                 vfx_code_obj = shot.vfx_code_obj
                 frame_range = shot.frame_range_display()
-                frame_range_str = f"{frame_range['head_start']}-{frame_range['total_end']}"
+                frame_range_str = (
+                    f"{frame_range['head_start']}[{frame_range['head_frames']}]{frame_range['head_end']} • "
+                    f"{frame_range['shot_start']}[{frame_range['shot_frames']}]{frame_range['shot_end']} • "
+                    f"{frame_range['tail_start']}[{frame_range['tail_frames']}]{frame_range['tail_end']}"
+                )
                 
                 vfx_writer.writerow([
                     vfx_code_obj.vfx_code if vfx_code_obj else shot.vfx_code,
@@ -3703,6 +3717,7 @@ def get_shot_data(shot_id):
         'manual_tc_override': shot.manual_tc_override,
         'manual_tc_cut_in': shot.manual_tc_cut_in or '',
         'manual_tc_cut_out': shot.manual_tc_cut_out or '',
+        'manual_frame_range': shot.manual_frame_range,
         'clip_name': shot.clip_name or ''
     })
 
@@ -3864,6 +3879,18 @@ def update_shot_field_json(shot_id):
                 else:
                     value = None
                 setattr(shot, field_name, value)
+            elif field_name == 'manual_frame_range':
+                stripped = value.strip() if isinstance(value, str) else value
+                if stripped in (None, ''):
+                    shot.manual_frame_range = None
+                else:
+                    try:
+                        int_value = int(stripped)
+                    except (TypeError, ValueError):
+                        return jsonify({'success': False, 'error': 'Manual Frame Range Override must be a whole number'}), 400
+                    if int_value <= 0:
+                        return jsonify({'success': False, 'error': 'Manual Frame Range Override must be a positive integer'}), 400
+                    shot.manual_frame_range = int_value
             else:
                 setattr(shot, field_name, value)
 
