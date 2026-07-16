@@ -28,7 +28,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Known latent issues (don't fix unless asked)
 - VFXCode in models.py has duplicate `shots` relationship (one backref, one back_populates) — works but warns
-- Mac venv shows Python 3.9.6 but build needs 3.13 — investigate before rebuilding venv
+- Mac venv is on Python 3.9.6 with OTIO 0.18.1 — verified working end-to-end in the 2.8.1 build (EDL import, Manual TC Override, Manual Frame Range Override all functional). The earlier "3.13 required" note appears to have been stale or preemptive. If a future OTIO release actually requires 3.13, rebuild the venv then.
 
 ## What This Is
 
