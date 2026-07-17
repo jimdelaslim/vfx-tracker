@@ -35,7 +35,9 @@
       "!**/.git",
       "!**/__pycache__",
       "!**/.pytest_cache",
-      "!**/.DS_Store"
+      "!**/.DS_Store",
+      "!dist-archive/**",
+      "!uploads/**"
     ],
     "extraResources": [
       {
