@@ -1235,11 +1235,19 @@ body {
                 </div>
                 
                 <!-- Export - Metadata -->
-                <div>
+                <div style="margin-bottom: 1rem;">
                     <h5 style="margin: 0 0 0.5rem 0; font-size: 0.8rem; font-weight: 500; color: #b8b8b8;">Metadata</h5>
                     <div style="display: flex; flex-direction: column; gap: 0.4rem;">
                         <button onclick="exportSelectedMetadataPDF()" class="btn sidebar-export-btn" style="width: 100%; padding: 0.4rem; font-size: 0.8rem;">PDF</button>
                         <button onclick="exportSelectedCSV()" class="btn sidebar-export-btn" style="width: 100%; padding: 0.4rem; font-size: 0.8rem;">CSV</button>
+                    </div>
+                </div>
+
+                <!-- Export - Combined -->
+                <div>
+                    <h5 style="margin: 0 0 0.5rem 0; font-size: 0.8rem; font-weight: 500; color: #b8b8b8;">Combined</h5>
+                    <div style="display: flex; flex-direction: column; gap: 0.4rem;">
+                        <button onclick="exportSelectedCombinedCSV()" class="btn sidebar-export-btn" style="width: 100%; padding: 0.4rem; font-size: 0.8rem;">CSV</button>
                     </div>
                 </div>
             </div>
@@ -3027,6 +3035,138 @@ async function exportSelectedVFXCSV() {
         });
     }
 }
+
+
+async function exportSelectedCombinedCSV() {
+    // Get checked VFX code checkboxes AND individual plate checkboxes
+    const vfxHeaderChecks = document.querySelectorAll('.vfx-code-checkbox:checked');
+    const plateChecks = document.querySelectorAll('.shot-checkbox:checked');
+
+    // Collect VFX code IDs from header checkboxes
+    const vfxCodeIds = Array.from(vfxHeaderChecks).map(cb => cb.value);
+
+    // Collect shot IDs from individual plate checkboxes
+    const shotIds = Array.from(plateChecks).map(cb => cb.value);
+
+    if (vfxCodeIds.length === 0 && shotIds.length === 0) {
+        alert('Please select at least one VFX code or individual plate');
+        return;
+    }
+
+    let exportMode = 'single';
+
+    // If multiple VFX codes selected, ask for split vs combined
+    if (vfxCodeIds.length > 1) {
+        const dialogHtml = `
+            <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 10000;">
+                <div style="background: white; padding: 2rem; border-radius: 12px; max-width: 500px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+                    <h3 style="margin-top: 0; color: #333;">Multiple VFX Codes Selected</h3>
+                    <p style="color: #666; line-height: 1.5;">How would you like to export the combined CSVs?</p>
+                    <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+                        <button id="combined-csv-separate-btn" style="flex: 1; padding: 0.75rem 1.5rem; background: #20b2aa; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 1rem; font-weight: 600;">
+                            Separate CSVs
+                        </button>
+                        <button id="combined-csv-combined-btn" style="flex: 1; padding: 0.75rem 1.5rem; background: #6c757d; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 1rem; font-weight: 600;">
+                            Combined CSV
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        const dialogDiv = document.createElement('div');
+        dialogDiv.innerHTML = dialogHtml;
+        document.body.appendChild(dialogDiv);
+
+        exportMode = await new Promise((resolve) => {
+            document.getElementById('combined-csv-separate-btn').onclick = () => {
+                document.body.removeChild(dialogDiv);
+                resolve('split');
+            };
+            document.getElementById('combined-csv-combined-btn').onclick = () => {
+                document.body.removeChild(dialogDiv);
+                resolve('combined');
+            };
+        });
+    }
+
+    // Fetch CSV data
+    const response = await fetch('/export/combined_csv/selected', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            vfx_code_ids: vfxCodeIds.join(','),
+            shot_ids: shotIds.join(','),
+            export_mode: exportMode
+        })
+    });
+
+    if (!response.ok) {
+        alert('Failed to generate CSV');
+        return;
+    }
+
+    // Handle split mode vs single mode
+    if (exportMode === 'split') {
+        // SPLIT MODE: Pick folder and save multiple CSVs
+        const folderResult = await window.electron.pickFolder();
+
+        if (!folderResult.success) {
+            return;
+        }
+
+        const csvData = await response.json();
+
+        let successCount = 0;
+        for (const [filename, csvContent] of Object.entries(csvData.csvs)) {
+            const filePath = folderResult.folderPath + '/' + filename;
+            const base64 = btoa(unescape(encodeURIComponent(csvContent)));
+            const writeResult = await window.electron.writeExportFile({
+                filePath: filePath,
+                data: base64
+            });
+            if (writeResult.success) successCount++;
+        }
+
+        alert(`Exported ${successCount} of ${Object.keys(csvData.csvs).length} CSVs to folder`);
+    } else {
+        // SINGLE/COMBINED MODE: Save one CSV with smart filename
+        let defaultFilename = 'combined_export.csv';
+
+        // Smart filename based on selection
+        const vfxHeaders = document.querySelectorAll('.vfx-code-checkbox:checked');
+        const plateCbs = document.querySelectorAll('.shot-checkbox:checked');
+
+        if (vfxHeaders.length === 0 && plateCbs.length === 1) {
+            // Single plate selected
+            const plateCard = plateCbs[0].closest('.plate-card');
+            const clipName = plateCard?.querySelector('.plate-element-name')?.value?.trim();
+            if (clipName) defaultFilename = clipName + '_combined.csv';
+        } else if (vfxHeaders.length === 1) {
+            // Single VFX header
+            const vfxContainer = vfxHeaders[0].closest('.vfx-code-container');
+            const vfxCode = vfxContainer?.querySelector('.vfx-code-title')?.textContent.trim();
+            if (vfxCode) defaultFilename = vfxCode + '_combined.csv';
+        } else if (vfxHeaders.length > 1) {
+            defaultFilename = 'selected_shots_combined.csv';
+        }
+
+        const result = await window.electron.saveExportDialog({
+            type: 'csv',
+            defaultFilename: defaultFilename
+        });
+
+        if (!result.success) return;
+
+        const csvText = await response.text();
+        const base64 = btoa(unescape(encodeURIComponent(csvText)));
+        await window.electron.writeExportFile({
+            filePath: result.filePath,
+            data: base64
+        });
+    }
+}
+
 
 async function exportSelectedPDF() {
     const shotIds = await getSelectedShotIds();

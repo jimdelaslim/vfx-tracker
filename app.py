@@ -1993,6 +1993,192 @@ def export_vfx_csv_selected():
         return response
 
 
+@app.route('/export/combined_csv/selected', methods=['POST'])
+def export_combined_csv_selected():
+    """Export selected shots to a single CSV combining VFX CSV columns and Metadata CSV columns"""
+    from flask import make_response
+    import csv
+    from io import StringIO
+
+    # Handle both form and JSON
+    if request.is_json:
+        data = request.json
+        vfx_code_ids = data.get('vfx_code_ids', '')
+        shot_ids = data.get('shot_ids', '')
+        export_mode = data.get('export_mode', 'single')
+    else:
+        vfx_code_ids = request.form.get('vfx_code_ids', '')
+        shot_ids = request.form.get('shot_ids', '')
+        export_mode = 'single'
+
+    # Get shots from VFX codes
+    shots = []
+    if vfx_code_ids:
+        vfx_ids = [int(id) for id in vfx_code_ids.split(',')]
+        vfx_codes = VFXCode.query.filter(VFXCode.id.in_(vfx_ids)).all()
+        for vfx_code in vfx_codes:
+            shots.extend(vfx_code.shots)
+
+    # Get individual shots
+    if shot_ids:
+        shot_id_list = [int(id) for id in shot_ids.split(',')]
+        individual_shots = Shot.query.filter(Shot.id.in_(shot_id_list)).all()
+        # Add shots that aren't already in the list
+        for shot in individual_shots:
+            if shot not in shots:
+                shots.append(shot)
+
+    if not shots:
+        flash('No shots selected', 'error')
+        return redirect(url_for('index'))
+
+    header = [
+        'VFX Code', 'Clip Name', 'Tape Name', 'Plate Type', 'Plate #', 'Version',
+        'Status', 'Turnover #', 'Turnover Date',
+        'Vendor 1', 'Vendor 2', 'Vendor 3', 'Vendor 4',
+        'Frame Range', 'Starting Frame', 'Head Handles', 'Tail Handles',
+        'Crank Speed', 'FPS', 'TC Cut In', 'TC Cut Out', 'TC Scan In', 'TC Scan Out',
+        'Length (frames)', 'Total Scan (frames)',
+        'Scope of Work', 'VFX Editorial Note',
+        'Metadata Clip Name', 'Metadata VFX Code', 'Metadata Cam Roll', 'Metadata Camera Type',
+        'Metadata Camera Manufacturer', 'Metadata Camera Serial #', 'Metadata Lens Type',
+        'Metadata Focal Point (mm)', 'Metadata Camera Aperture', 'Metadata Distance', 'Metadata ISO',
+        'Metadata Shutter Angle', 'Metadata Shutter Speed', 'Metadata White Point (Kelvin)',
+        'Metadata ND Filter', 'Metadata Camera Tilt Angle', 'Metadata Camera Roll Angle',
+        'Metadata LUT Used', 'Metadata Resolution', 'Metadata Video Codec', 'Metadata Color Space Notes',
+        'Metadata Gamma Notes', 'Metadata Shot Frame Rate', 'Metadata Start TC', 'Metadata End TC',
+        'Metadata Start Frame', 'Metadata End Frame', 'Metadata Frames'
+    ]
+
+    def build_row(shot):
+        vfx_code = shot.vfx_code_obj  # Get the VFXCode object
+        frame_range = shot.frame_range_display()
+        frame_range_str = (
+            f"{frame_range['head_start']}[{frame_range['head_frames']}]{frame_range['head_end']} • "
+            f"{frame_range['shot_start']}[{frame_range['shot_frames']}]{frame_range['shot_end']} • "
+            f"{frame_range['tail_start']}[{frame_range['tail_frames']}]{frame_range['tail_end']}"
+        )
+        return [
+            vfx_code.vfx_code if vfx_code else shot.vfx_code,
+            shot.clip_name,
+            resolve_tape(shot),
+            shot.plate_type or '',
+            shot.plate_number or '',
+            f"v{shot.version}" if shot.version else '',
+            vfx_code.shot_status if vfx_code else '',
+            vfx_code.turnover_number if vfx_code else '',
+            vfx_code.turnover_date.strftime('%Y-%m-%d') if vfx_code and vfx_code.turnover_date else '',
+            vfx_code.vendor_1 if vfx_code else '',
+            vfx_code.vendor_2 if vfx_code else '',
+            vfx_code.vendor_3 if vfx_code else '',
+            vfx_code.vendor_4 if vfx_code else '',
+            frame_range_str,
+            shot.start_frame or 1001,
+            shot.head_handles or 0,
+            shot.tail_handles or 0,
+            f"{shot.crank_speed}%" if shot.crank_speed else '100%',
+            shot.shot_frame_rate or shot.fps or '',
+            shot.effective_tc_cut_in() or '',
+            shot.effective_tc_cut_out() or '',
+            shot.tc_scan_in() or '',
+            shot.tc_scan_out() or '',
+            shot.effective_length_frames(),
+            shot.total_source_frames() or 0,
+            vfx_code.scope_of_work if vfx_code else '',
+            vfx_code.vfx_editorial_note if vfx_code else '',
+            shot.clip_name,
+            shot.vfx_code or '',
+            resolve_tape(shot),
+            shot.camera or '',
+            shot.camera_manufacturer or '',
+            shot.camera_serial or '',
+            shot.lens or '',
+            shot.focal_length or '',
+            shot.t_stop or '',
+            shot.distance or '',
+            shot.iso or '',
+            shot.shutter_angle or '',
+            shot.shutter_speed or '',
+            shot.white_balance or '',
+            shot.nd_filter or '',
+            shot.camera_tilt or '',
+            shot.camera_roll or '',
+            shot.lut or '',
+            shot.resolution or '',
+            shot.codec or '',
+            shot.color_space or '',
+            shot.gamma or '',
+            shot.shot_frame_rate or '',
+            shot.start_tc or '',
+            shot.end_tc or '',
+            shot.start_frame or '',
+            shot.end_frame or '',
+            shot.total_frames or ''
+        ]
+
+    # Create CSV
+    output = StringIO()
+    writer = csv.writer(output)
+    writer.writerow(header)
+    for shot in shots:
+        writer.writerow(build_row(shot))
+
+    output.seek(0)
+    csv_content = output.getvalue()
+
+    # Handle split mode - create separate CSV for each VFX code
+    if export_mode == 'split' and request.is_json:
+        # Group shots by VFX code
+        shots_by_vfx = {}
+        for shot in shots:
+            vfx_key = shot.vfx_code_obj.vfx_code if shot.vfx_code_obj else shot.vfx_code or 'unknown'
+            if vfx_key not in shots_by_vfx:
+                shots_by_vfx[vfx_key] = []
+            shots_by_vfx[vfx_key].append(shot)
+
+        # Generate separate CSV for each VFX code
+        csvs = {}
+        for vfx_code, vfx_shots in shots_by_vfx.items():
+            vfx_output = StringIO()
+            vfx_writer = csv.writer(vfx_output)
+            vfx_writer.writerow(header)
+            for shot in vfx_shots:
+                vfx_writer.writerow(build_row(shot))
+            vfx_output.seek(0)
+            csvs[f'{vfx_code}_combined.csv'] = vfx_output.getvalue()
+
+        return jsonify({'csvs': csvs})
+
+    # Return plain CSV for JSON requests (Electron), attachment for form requests
+    if request.is_json:
+        return csv_content, 200, {'Content-Type': 'text/csv'}
+    else:
+        response = make_response(csv_content)
+        response.headers['Content-Type'] = 'text/csv'
+
+        # Generate filename
+        if len(shots) == 1:
+            filename = f"{shots[0].clip_name}_combined.csv"
+        else:
+            # Check if all shots are from same VFX code
+            vfx_codes = set()
+            for shot in shots:
+                if shot.vfx_code_obj:
+                    vfx_codes.add(shot.vfx_code_obj.vfx_code)
+                elif shot.vfx_code:
+                    vfx_codes.add(shot.vfx_code)
+
+            if len(vfx_codes) == 1:
+                # All from same VFX code
+                filename = f"{list(vfx_codes)[0]}_combined.csv"
+            else:
+                # Multiple VFX codes
+                filename = f"combined_data_{len(shots)}_shots.csv"
+
+        response.headers['Content-Disposition'] = f'attachment; filename={filename}'
+        return response
+
+
 @app.route('/export/pdf/selected', methods=['POST'])
 def export_pdf_selected():
     """Export selected shots as PDF"""
